@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Supabase Key Extractor</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #1a1a2e; color: #eee; }
+    h1 { color: #00d4ff; }
+    .step { background: #16213e; border-radius: 8px; padding: 20px; margin: 15px 0; border-left: 4px solid #00d4ff; }
+    .step h3 { color: #00d4ff; margin-top: 0; }
+    code { background: #0f3460; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 13px; color: #00ff88; display: block; margin: 10px 0; white-space: pre-wrap; word-break: break-all; }
+    .result { background: #0a0a1a; border: 2px solid #00d4ff; border-radius: 8px; padding: 15px; margin: 20px 0; display: none; }
+    .result.show { display: block; }
+    .result label { color: #888; font-size: 12px; display: block; margin-bottom: 4px; }
+    .result input { width: 100%; background: #111; border: 1px solid #333; color: #00ff88; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 11px; box-sizing: border-box; }
+    button { background: #00d4ff; color: #000; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #00ff88; }
+    .instruction { background: #0f3460; border-radius: 6px; padding: 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>🔑 Supabase Key Extractor</h1>
+  <p>Follow these steps to get your Supabase API keys:</p>
+
+  <div class="step">
+    <h3>Step 1: Open Supabase API Settings</h3>
+    <p>Click the button below to open your Supabase settings page:</p>
+    <button onclick="window.open('https://supabase.com/dashboard/project/jlkmrmdfvfobvneqgjya/settings/api', '_blank')">
+      Open Supabase API Settings →
+    </button>
+  </div>
+
+  <div class="step">
+    <h3>Step 2: Copy This Script</h3>
+    <p>On that Supabase page, press <strong>F12</strong> → click <strong>Console</strong> tab → paste this code and press Enter:</p>
+    <code id="script">
+(function() {
+  // Click all "Reveal" buttons first
+  document.querySelectorAll('button').forEach(b => {
+    if (b.textContent.includes('Reveal') || b.textContent.includes('reveal')) b.click();
+  });
+  
+  setTimeout(() => {
+    const keys = {};
+    // Try inputs
+    document.querySelectorAll('input').forEach(inp => {
+      const v = inp.value || '';
+      if (v.startsWith('eyJ') && v.length > 100) {
+        const label = inp.getAttribute('aria-label') || inp.closest('[class*="row"]')?.querySelector('p,span,label')?.textContent || 'key';
+        keys[label] = v;
+      }
+    });
+    // Try textareas
+    document.querySelectorAll('textarea').forEach(ta => {
+      const v = ta.value || '';
+      if (v.startsWith('eyJ') && v.length > 100) {
+        keys['textarea'] = v;
+      }
+    });
+    // Try visible text
+    const allText = document.body.innerText;
+    const matches = allText.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g) || [];
+    matches.forEach((m, i) => { if (m.length > 100) keys['found_' + i] = m; });
+    
+    const result = JSON.stringify(keys, null, 2);
+    console.log('%cSUPABASE KEYS:', 'color:lime;font-size:20px;font-weight:bold');
+    console.log(result);
+    
+    // Try to send to our local listener
+    fetch('http://localhost:7777/keys', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: result
+    }).then(() => console.log('%cKeys sent to local listener!', 'color:cyan')).catch(() => console.log('Local listener not running'));
+    
+    return result;
+  }, 1000);
+})();</code>
+  </div>
+
+  <div class="step">
+    <h3>Step 3: Extract Keys Automatically</h3>
+    <p>Or click below to start a local key listener, then run the script above:</p>
+    <button onclick="startListener()">Start Local Key Listener</button>
+    <div id="status" style="margin-top:10px;color:#888;"></div>
+  </div>
+
+  <div class="result" id="result">
+    <h3>✅ Keys Captured!</h3>
+    <div id="keyFields"></div>
+  </div>
+
+  <script>
+    function startListener() {
+      document.getElementById('status').textContent = 'Listener starting... Run the script in the Supabase console!';
+      
+      // Poll for keys from our local listener
+      const poll = setInterval(async () => {
+        try {
+          const r = await fetch('http://localhost:7777/get-keys');
+          if (r.ok) {
+            const data = await r.json();
+            clearInterval(poll);
+            showKeys(data);
+          }
+        } catch(e) {}
+      }, 2000);
+    }
+
+    function showKeys(data) {
+      const container = document.getElementById('keyFields');
+      container.innerHTML = '';
+      for (const [k, v] of Object.entries(data)) {
+        container.innerHTML += `
+          <label>${k}</label>
+          <input readonly value="${v}" onclick="this.select(); document.execCommand('copy');" title="Click to copy">
+          <br>
+        `;
+      }
+      document.getElementById('result').classList.add('show');
+    }
+
+    // Check if keys file exists
+    async function checkForKeys() {
+      try {
+        const r = await fetch('http://localhost:7777/get-keys');
+        if (r.ok) {
+          const data = await r.json();
+          if (Object.keys(data).length > 0) showKeys(data);
+        }
+      } catch(e) {}
+    }
+    checkForKeys();
+  </script>
+</body>
+</html>
