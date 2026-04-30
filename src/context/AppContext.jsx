@@ -121,15 +121,37 @@ export const AppProvider = ({ children }) => {
         accData,
         bankData
       ] = await Promise.all(dataPromises);
+
+      const safeParse = (data, keys) => {
+        if (!Array.isArray(data)) return [];
+        return data.map(item => {
+          const newItem = { ...item };
+          keys.forEach(key => {
+            if (newItem[key] && typeof newItem[key] === 'string') {
+              try {
+                newItem[key] = JSON.parse(newItem[key]);
+              } catch (e) {
+                console.warn(`Failed to parse ${key} for item ${newItem.id}:`, e.message);
+              }
+            }
+            // Ensure array type for common list columns if they are null/undefined
+            if (['items', 'photos', 'costs', 'containerNo', 'vehicleNo', 'driverName', 'extra_charges', 'services', 'assets', 'taxes'].includes(key)) {
+              if (!Array.isArray(newItem[key])) newItem[key] = [];
+            }
+          });
+          return newItem;
+        });
+      };
+
       setProspects(Array.isArray(prosData) ? prosData : []);
-      setQuotations(Array.isArray(quoData) ? quoData : []);
-      setJobOrders(Array.isArray(joData) ? joData : []);
-      setInvoices(Array.isArray(invData) ? invData : []);
-      setReceivables(Array.isArray(recData) ? recData : []);
-      setVendors(Array.isArray(venData) ? venData : []);
-      setPurchaseOrders(Array.isArray(poData) ? poData : []);
-      setSalaries(Array.isArray(salData) ? salData : []);
-      setOtherExpenses(Array.isArray(expData) ? expData : []);
+      setQuotations(safeParse(quoData, ['items']));
+      setJobOrders(safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName']));
+      setInvoices(safeParse(invData, ['extra_charges']));
+      setReceivables(safeParse(recData, ['extra_charges']));
+      setVendors(safeParse(venData, ['services', 'assets']));
+      setPurchaseOrders(safeParse(poData, ['items', 'vendorInvoicePhoto', 'paymentProofPhoto']));
+      setSalaries(safeParse(salData, ['taxes']));
+      setOtherExpenses(safeParse(expData, ['taxes']));
       setEmployees(Array.isArray(empData) ? empData : []);
       setEmployeeAccounts(Array.isArray(accData) ? accData : []);
       setCompanyBankAccounts(Array.isArray(bankData) ? bankData : []);
@@ -267,26 +289,81 @@ export const AppProvider = ({ children }) => {
     await updateJOStatus(joId, { status: 'done' });
   };
 
+  const cleanNumber = (val) => {
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    if (!val) return 0;
+    // Handle Indonesian format: dot as thousands separator, comma as decimal
+    // First, check if it's already a clean string number
+    if (/^\d+(\.\d+)?$/.test(String(val))) return parseFloat(val);
+    
+    // Otherwise, strip everything except digits, comma and dot
+    let str = String(val).replace(/[^\d.,-]/g, '');
+    
+    // If it has both dot and comma, or just comma, it's likely Indonesian format (1.000,00)
+    if (str.includes(',') && str.includes('.')) {
+      str = str.replace(/\./g, '').replace(/,/g, '.');
+    } else if (str.includes(',')) {
+      str = str.replace(/,/g, '.');
+    }
+    
+    const parsed = parseFloat(str);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
   const createInvoice = async (joId) => {
-    const jo = jobOrders.find(j => j.id === joId);
-    if (!jo) return null;
-    const quotation = quotations.find(q => q.id === jo.quotationId);
-    if (!quotation || !quotation.items) {
-      console.error("Quotation not found or has no items for JO:", joId);
+    console.log("Starting createInvoice for JO ID:", joId);
+    const jo = jobOrders.find(j => String(j.id) === String(joId));
+    if (!jo) {
+      console.error("Job Order not found in local state for ID:", joId);
       return null;
     }
     
+    const quotation = jo.quotationId 
+      ? quotations.find(q => String(q.id) === String(jo.quotationId))
+      : null;
+    
+    // Defensive parsing for quotation items
+    let items = [];
+    if (quotation && quotation.items) {
+      try {
+        items = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
+      } catch (e) {
+        console.error("Failed to parse quotation items:", e);
+        items = [];
+      }
+    }
+
+    if (!Array.isArray(items)) items = [];
+    
     // Find rate for selected activity (using description as matched in AdminHub)
     const targetDesc = (jo.instruction || jo.jobDescription || "").trim().toLowerCase();
-    const item = quotation.items.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
-    const rate = item ? parseFloat(item.rate || 0) : (parseFloat(jo.rate) || 0);
+    const item = items.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
+    
+    // Ensure rate is a valid number using cleanNumber
+    let rate = 0;
+    if (item && item.rate) {
+      rate = cleanNumber(item.rate);
+    } else {
+      rate = cleanNumber(jo.rate);
+    }
+
+    const qty = cleanNumber(jo.issueQuantity || jo.quantity || 1);
+    const amount = rate * qty;
+    
+    console.log(`Calculated amount: ${amount} (Rate: ${rate}, Qty: ${qty})`);
+    
+    if (isNaN(amount)) {
+      console.error("Calculated amount is NaN. Rate:", rate, "Qty:", qty);
+      throw new Error("Gagal menghitung nominal invoice (Data tidak valid).");
+    }
 
     const newInvoice = {
-      id: `INV-${Date.now().toString().slice(-6)}`,
+      // Use more robust ID generation
+      id: `INV-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
       joId,
-      customerName: jo.customerName,
-      amount: rate * (jo.issueQuantity || jo.quantity || 1),
-      subtotal: rate * (jo.issueQuantity || jo.quantity || 1),
+      customerName: jo.customerName || 'Pelanggan',
+      amount: amount,
+      subtotal: amount,
       tax: 0,
       date: new Date().toISOString(),
       status: 'unpaid',
@@ -302,13 +379,21 @@ export const AppProvider = ({ children }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newInvoice)
       });
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
       
-      const { id } = await response.json();
-      const finalInvoice = { ...newInvoice, id };
+      const data = await response.json().catch(() => ({}));
       
+      if (!response.ok) {
+        throw new Error(data.error || data.message || `Server error: ${response.status}`);
+      }
+      
+      const { id } = data;
+      const finalInvoice = { ...newInvoice, id: id || newInvoice.id };
+      
+      // Update local state
       setInvoices(prev => [...prev, finalInvoice]);
       setReceivables(prev => [...prev, { ...finalInvoice, balance: finalInvoice.amount }]);
+      setJobOrders(prev => prev.map(j => String(j.id) === String(joId) ? { ...j, status: 'invoiced' } : j));
+      
       return finalInvoice;
     } catch (error) {
       console.error("Failed to create invoice:", error);

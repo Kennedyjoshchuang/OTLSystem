@@ -177,23 +177,50 @@ app.get('/api/invoices', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-  const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status, signedReceiptPhoto, signedInvoicePhoto, deliveryStatus } = req.body;
-  const { error: invErr } = await supabase.from('invoices').insert({
-    id, joId, customerName, amount, subtotal, tax,
-    extra_charges: extra_charges || [], date, status,
-    signedReceiptPhoto, signedInvoicePhoto, deliveryStatus: deliveryStatus || 'not_sent'
-  });
-  if (invErr) return handleError(res, invErr, 'POST invoices');
+  const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status } = req.body;
+  
+  try {
+    // 1. Create Invoice — only send columns that exist in the DB
+    const { error: invErr } = await supabase.from('invoices').insert({
+      id, joId, customerName,
+      amount: parseFloat(amount) || 0,
+      subtotal: parseFloat(subtotal) || 0,
+      tax: parseFloat(tax) || 0,
+      extra_charges: extra_charges || [],
+      date, status,
+      signedReceiptPhoto: req.body.signedReceiptPhoto || null,
+      signedInvoicePhoto: req.body.signedInvoicePhoto || null,
+      deliveryStatus: req.body.deliveryStatus || 'not_sent'
+    });
+    if (invErr) return handleError(res, invErr, 'POST invoices');
 
-  // Also create receivable
-  const { error: recErr } = await supabase.from('receivables').insert({
-    id, invoiceId: id, customerName, amount, subtotal, tax,
-    extra_charges: extra_charges || [], balance: amount, status: 'unpaid',
-    paymentProofPhoto: null
-  });
-  if (recErr) console.error('Failed to create receivable:', recErr.message);
+    // 2. Create Receivable — only send columns that exist in the DB
+    const { error: recErr } = await supabase.from('receivables').insert({
+      id, invoiceId: id, customerName,
+      amount: parseFloat(amount) || 0,
+      subtotal: parseFloat(subtotal) || 0,
+      tax: parseFloat(tax) || 0,
+      extra_charges: extra_charges || [],
+      balance: parseFloat(amount) || 0,
+      status: 'unpaid'
+    });
+    if (recErr) {
+      console.error('Failed to create receivable:', recErr.message);
+      // We don't fail the whole request but log it
+    }
 
-  res.status(201).json({ id });
+    // 3. Update Job Order status to 'invoiced'
+    const { error: joErr } = await supabase.from('job_orders').update({ status: 'invoiced' }).eq('id', joId);
+    if (joErr) {
+      console.error('Failed to update JO status:', joErr.message);
+      // We don't fail the whole request but log it
+    }
+
+    res.status(201).json({ id });
+  } catch (err) {
+    console.error('Invoice issuance exception:', err);
+    res.status(500).json({ error: 'Internal server error during invoice issuance' });
+  }
 });
 
 app.put('/api/invoices/:id', async (req, res) => {
@@ -222,6 +249,13 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
   }).eq('invoiceId', req.params.id);
   if (recErr) return handleError(res, recErr, 'Settle Invoice (Receivables)');
   
+  res.sendStatus(200);
+});
+
+app.put('/api/invoices/:id', async (req, res) => {
+  const updates = req.body;
+  const { error } = await supabase.from('invoices').update(updates).eq('id', req.params.id);
+  if (error) return handleError(res, error, 'PUT invoices');
   res.sendStatus(200);
 });
 

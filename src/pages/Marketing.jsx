@@ -212,23 +212,22 @@ const Marketing = () => {
     const relatedCustomer = customers.find(c => c.id === quote.customerId);
     const address = quote.address || relatedProspect?.address || relatedCustomer?.address || 'Alamat tidak tersedia';
 
-    setSelectedDraft({
+    const printData = {
       id: quote.id,
       customerName: quote.customerName,
       pic: quote.pic,
       address: address,
-      description: quote.jobDescription || '',
+      companyAddress: quote.companyAddress || relatedProspect?.companyAddress,
       items: quote.items || [],
       generalNotes: quote.generalNotes || '',
       date: quote.date,
       rate: quote.total || quote.rate || 0,
-      quantity: quote.quantity || 1,
+      validTo: quote.validTo || '',
       marketingName: quote.marketingName,
-      marketingPhone: quote.marketingPhone,
       marketingEmail: quote.marketingEmail,
-      companyAddress: quote.companyAddress || relatedProspect?.companyAddress,
-      isOfficial: true
-    });
+    };
+    localStorage.setItem('print_quotation_data', JSON.stringify(printData));
+    window.open('/print/quotation', '_blank');
   };
 
   const handleExport = () => {
@@ -439,6 +438,14 @@ const Marketing = () => {
             zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
             padding: '40px 20px', overflowY: 'auto', backdropFilter: 'blur(10px)'
           }}>
+            <style>{`
+              @media print {
+                body > * { display: none !important; }
+                .draft-print-overlay { display: flex !important; position: static !important; background: white !important; padding: 0 !important; }
+                #quotation-print-area { box-shadow: none !important; width: 210mm !important; min-height: 297mm !important; margin: 0 !important; padding: 1cm !important; }
+                .no-print { display: none !important; }
+              }
+            `}</style>
             <motion.div 
               id="quotation-print-area"
               className="quotation-modal-content"
@@ -464,6 +471,9 @@ const Marketing = () => {
               }}>
                 <button onClick={() => setSelectedDraft(null)} className="btn" style={{ height: '45px', padding: '0 30px', fontSize: '1rem', background: '#f1f5f9', color: '#64748b', border: 'none' }}>
                   Close
+                </button>
+                <button onClick={() => window.print()} className="btn" style={{ height: '45px', padding: '0 30px', fontSize: '1rem', background: '#0f172a', color: 'white', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🖨️ Print
                 </button>
               </div>
 
@@ -720,7 +730,7 @@ const Marketing = () => {
                 <input required type="email" value={prospectData.marketingEmail} onChange={e => setProspectData({ ...prospectData, marketingEmail: e.target.value })} placeholder="email@alplogistics.co.id" />
               </div>
               <div className="input-group" style={{ gridColumn: 'span 3' }}>
-                <label>Alamat ALP Logistics Prakarsa (Tampil di Header Penawaran)</label>
+                <label>Alamat OTL (Tampil Di Header Penawaran)</label>
                 <input required type="text" value={prospectData.companyAddress} onChange={e => setProspectData({ ...prospectData, companyAddress: e.target.value })} placeholder="Masukkan alamat cabang OTL untuk penawaran ini..." />
               </div>
               <div className="input-group" style={{ gridColumn: 'span 3' }}>

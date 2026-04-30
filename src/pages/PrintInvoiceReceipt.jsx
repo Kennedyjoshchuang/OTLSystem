@@ -12,6 +12,9 @@ const PrintInvoiceReceipt = () => {
 
   if (!data) return <div style={{ padding: '50px', textAlign: 'center' }}>Loading Receipt Draft...</div>;
 
+  const { invoice, bankAccount } = data;
+  const totalAmount = parseFloat(invoice?.amount || 0);
+
   return (
     <div className="print-receipt-container" style={{ 
       width: '210mm', 
@@ -84,40 +87,48 @@ const PrintInvoiceReceipt = () => {
 
       <div className="receipt-card">
         <div className="receipt-header">
-          <div>
-            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900' }}>OTL FREIGHT SYSTEM</h1>
-            <p style={{ margin: 0, fontSize: '10px', color: '#64748b' }}>Premium Logistics & Transportation Solutions</p>
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <img src="/assets/logo.png" alt="Logo" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+            <div>
+              <h1 style={{ margin: 0, fontSize: '18px', fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</h1>
+              <p style={{ margin: 0, fontSize: '10px', color: '#64748b' }}>Premium Logistics & Transportation Solutions</p>
+            </div>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div className="receipt-title">KWITANSI / RECEIPT</div>
-            <div style={{ fontSize: '12px', fontWeight: '700', marginTop: '5px' }}>NO: {data.id}/REC/{new Date().getFullYear()}</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', marginTop: '5px' }}>NO: {invoice?.id}/REC/{new Date().getFullYear()}</div>
           </div>
         </div>
 
         <div className="receipt-row">
           <div className="receipt-label">Telah Terima Dari</div>
-          <div className="receipt-value" style={{ fontWeight: '800', fontSize: '16px' }}>{data.customerName}</div>
+          <div className="receipt-value" style={{ fontWeight: '800', fontSize: '16px' }}>{invoice?.customerName}</div>
         </div>
 
         <div className="receipt-row">
           <div className="receipt-label">Uang Sejumlah</div>
           <div className="receipt-value" style={{ fontStyle: 'italic', background: '#f8fafc', padding: '10px', border: '1px solid #e2e8f0' }}>
-             # {(data.total || 0).toLocaleString()} IDR #
+             # {totalAmount.toLocaleString('id-ID')} IDR #
           </div>
         </div>
 
         <div className="receipt-row" style={{ marginTop: '20px' }}>
           <div className="receipt-label">Untuk Pembayaran</div>
           <div className="receipt-value">
-            Pembayaran Invoice No: {data.id} - {data.jobDescription || 'Jasa Logistik & Transportasi'}
+            Pembayaran Invoice No: {invoice?.id} - Jasa Logistik & Transportasi
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '40px' }}>
           <div>
             <div className="amount-box">
-              RP. {(data.total || 0).toLocaleString()} ,-
+              RP. {totalAmount.toLocaleString('id-ID')} ,-
             </div>
+            {bankAccount && (
+              <div style={{ marginTop: '15px', fontSize: '0.75rem', color: '#475569' }}>
+                <strong>Via:</strong> {bankAccount.bankName} - {bankAccount.accountNo}
+              </div>
+            )}
           </div>
           <div style={{ textAlign: 'center', width: '200px' }}>
             <p style={{ fontSize: '12px', marginBottom: '60px' }}>Jakarta, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
@@ -134,27 +145,27 @@ const PrintInvoiceReceipt = () => {
         <div style={{ position: 'absolute', top: '10px', right: '10px', fontSize: '10px', fontWeight: '700', color: '#94a3b8' }}>ARCHIVE COPY</div>
         <div className="receipt-header">
           <div>
-            <h1 style={{ margin: 0, fontSize: '20px', fontWeight: '900' }}>OTL FREIGHT SYSTEM</h1>
+            <h1 style={{ margin: 0, fontSize: '16px', fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</h1>
           </div>
           <div style={{ textAlign: 'right' }}>
             <div className="receipt-title" style={{ fontSize: '18px' }}>KWITANSI / RECEIPT</div>
-            <div style={{ fontSize: '10px' }}>NO: {data.id}/REC/{new Date().getFullYear()}</div>
+            <div style={{ fontSize: '10px' }}>NO: {invoice?.id}/REC/{new Date().getFullYear()}</div>
           </div>
         </div>
 
         <div className="receipt-row">
           <div className="receipt-label">Terima Dari</div>
-          <div className="receipt-value">{data.customerName}</div>
+          <div className="receipt-value">{invoice?.customerName}</div>
         </div>
 
         <div className="receipt-row">
           <div className="receipt-label">Untuk</div>
-          <div className="receipt-value">Inv {data.id}</div>
+          <div className="receipt-value">Inv {invoice?.id}</div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '20px' }}>
           <div className="amount-box" style={{ fontSize: '16px', padding: '10px 15px' }}>
-            RP. {(data.total || 0).toLocaleString()}
+            RP. {totalAmount.toLocaleString('id-ID')}
           </div>
           <div style={{ textAlign: 'center', width: '150px' }}>
             <p style={{ fontSize: '10px', marginBottom: '40px' }}>Jakarta, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>

@@ -25,6 +25,7 @@ const Accounting = () => {
   const [isPendingCollapsed, setIsPendingCollapsed] = useState(false);
   const [isIssuedCollapsed, setIsIssuedCollapsed] = useState(false);
   const [undoConfirmJoId, setUndoConfirmJoId] = useState(null); // inline undo confirmation
+  const [uploadSignedModal, setUploadSignedModal] = useState(null); // { invId, type: 'invoice' | 'receipt' }
   
   // Mass Selection State
   const [selectedLedger, setSelectedLedger] = useState(new Set());
@@ -58,6 +59,10 @@ const Accounting = () => {
   const [batchPrintInvoices, setBatchPrintInvoices] = useState(null);
   const [bankModal, setBankModal] = useState(null); // { id, name, accountNo, bankName }
   const [showBankSettings, setShowBankSettings] = useState(false);
+
+  // Invoice Bank Selection
+  const [issuingInvoiceJoId, setIssuingInvoiceJoId] = useState(null);
+  const [selectedBankId, setSelectedBankId] = useState('');
   const [receivableProofModal, setReceivableProofModal] = useState(null); // invoice to upload proof for
 
   const { 
@@ -342,17 +347,27 @@ const Accounting = () => {
       return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
     });
   
-  const handleIssueInvoice = async (joId) => {
+  const handleIssueInvoice = async (joId, bankAccount) => {
     try {
-      const newInv = await createInvoice(joId);
-      if (!newInv) {
-        alert("Gagal menerbitkan invoice. Pastikan data Quotation tersedia.");
+      if (!bankAccount) {
+        setIssuingInvoiceJoId(joId);
+        if (companyBankAccounts.length > 0) {
+          setSelectedBankId(companyBankAccounts[0].id);
+        }
         return;
       }
+
+      console.log("Issuing invoice for JO:", joId, "with bank:", bankAccount.bankName);
+      const newInv = await createInvoice(joId);
+      
+      if (!newInv) {
+        throw new Error("Gagal menerbitkan invoice. Pastikan data Job Order & Quotation tersedia.");
+      }
+
       // Find linked JO and Quotation for draft print
-      const linkedJO = jobOrders.find(j => j.id === joId);
+      const linkedJO = jobOrders.find(j => String(j.id) === String(joId));
       const linkedQuo = linkedJO
-        ? quotations.find(q => q.id === linkedJO.quotationId)
+        ? quotations.find(q => String(q.id) === String(linkedJO.quotationId))
         : null;
 
       // Store data for the print page
@@ -360,26 +375,36 @@ const Accounting = () => {
         invoice: newInv,
         jo: linkedJO || null,
         quotation: linkedQuo || null,
+        bankAccount: bankAccount // Pass selected bank
       };
+      
       localStorage.setItem('print_invoice_data', JSON.stringify(printData));
 
-      // Open 3 tabs as requested
-      // 1. Invoice
+      // Open multiple tabs as requested
+      // Note: Browsers might block multiple popups. User needs to "Always allow pop-ups from this site".
+      
+      // 1. Main Invoice
       window.open('/print/invoice', '_blank');
       
-      // 2. Attachment (Operational Photos)
-      if (linkedJO && linkedJO.photos && linkedJO.photos.length > 0) {
+      // 2. Attachment (Operational Photos) - Only if photos exist
+      if (linkedJO && Array.isArray(linkedJO.photos) && linkedJO.photos.length > 0) {
         window.open('/print/invoice-attachment', '_blank');
       }
 
       // 3. Receipt Draft
       window.open('/print/invoice-receipt', '_blank');
 
-      // Also update billing tab state
+      // Update UI state
       setActiveTab('billing');
       setIsIssuedCollapsed(false);
+      setIssuingInvoiceJoId(null); // Reset modal
+      
+      // Success Notification
+      alert(`Invoice ${newInv.id} berhasil diterbitkan! Pastikan popup browser diizinkan untuk melihat semua dokumen.`);
+      
     } catch (err) {
-      alert("Error issuing invoice: " + err.message);
+      console.error("Issue Invoice error:", err);
+      alert("Error saat menerbitkan invoice: " + (err.message || "Unknown error"));
     }
   };
 
@@ -393,7 +418,24 @@ const Accounting = () => {
   };
 
   const handleDownloadInvoice = (inv) => {
-    setSelectedInvoice(inv);
+    const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
+    const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
+    
+    // Check if bank account info is needed (from existing logic if we can find it)
+    // For now we just pass what we have
+    localStorage.setItem('print_invoice_data', JSON.stringify({ 
+      invoice: inv, 
+      jo: linkedJO, 
+      quotation: linkedQuo 
+    }));
+
+    // 1. Main Invoice
+    window.open('/print/invoice', '_blank');
+    
+    // 2. Attachment (Operational Photos) - Only if photos exist
+    if (linkedJO && Array.isArray(linkedJO.photos) && linkedJO.photos.length > 0) {
+      window.open('/print/invoice-attachment', '_blank');
+    }
   };
 
   const handlePrint = () => {
@@ -1247,7 +1289,7 @@ const Accounting = () => {
               </thead>
               <tbody>
                 {completedJOs.map(jo => {
-                  const hasInvoice = invoices.some(inv => inv.joId === jo.id);
+                  const hasInvoice = invoices.some(inv => String(inv.joId) === String(jo.id));
                   return (
                     <tr key={jo.id} style={{ borderBottom: '1px solid var(--glass-border)' }}>
                       <td style={{ padding: '15px' }}>{jo.id}</td>
@@ -1367,7 +1409,7 @@ const Accounting = () => {
                     return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
                   })
                   .map(inv => {
-                    const linkedJO = jobOrders.find(j => j.id === inv.joId);
+                    const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
                     return (
                     <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
                       <td style={{ padding: '15px' }}>
@@ -1410,9 +1452,23 @@ const Accounting = () => {
                         })()}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
-                         {inv.signedInvoicePhoto ? (
-                           <button onClick={() => setPhotoViewer({ title: `Signed Invoice - ${inv.id}`, photos: [inv.signedInvoicePhoto] })} style={{ background:'none', border:'none', color:'#10b981', cursor:'pointer' }}><ShieldCheck size={18}/></button>
-                         ) : <span style={{ color:'var(--text-muted)', fontSize:'0.7rem' }}>Pending</span>}
+                         <div style={{ display:'flex', flexDirection:'column', gap:'5px', alignItems:'center' }}>
+                           <div style={{ display:'flex', gap:'8px' }}>
+                             {inv.signedInvoicePhoto ? (
+                               <button onClick={() => setPhotoViewer({ title: `Signed Invoice - ${inv.id}`, photos: [inv.signedInvoicePhoto] })} style={{ background:'none', border:'none', color:'#10b981', cursor:'pointer' }} title="Signed Invoice Uploaded"><ShieldCheck size={18}/></button>
+                             ) : (
+                               <button onClick={() => setUploadSignedModal({ invId: inv.id, type: 'invoice' })} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }} title="Upload Signed Invoice"><Image size={18}/></button>
+                             )}
+                             {inv.signedReceiptPhoto ? (
+                               <button onClick={() => setPhotoViewer({ title: `Signed Delivery Receipt - ${inv.id}`, photos: [inv.signedReceiptPhoto] })} style={{ background:'none', border:'none', color:'#3b82f6', cursor:'pointer' }} title="Signed STT Uploaded"><ShieldCheck size={18}/></button>
+                             ) : (
+                               <button onClick={() => setUploadSignedModal({ invId: inv.id, type: 'receipt' })} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }} title="Upload Signed STT"><FileText size={18}/></button>
+                             )}
+                           </div>
+                           <span style={{ fontSize:'0.65rem', color:'var(--text-muted)' }}>
+                             {!inv.signedInvoicePhoto && !inv.signedReceiptPhoto ? 'Pending' : 'Partial/Complete'}
+                           </span>
+                         </div>
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
                          <select 
@@ -1431,19 +1487,19 @@ const Accounting = () => {
                       <td style={{ padding: '15px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                           <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px' }} onClick={() => handleDownloadInvoice(inv)}>
-                            <Download size={14} /> View
+                            <Download size={14} /> View (Inv + Att)
                           </button>
                           <button 
                             className="btn" 
                             style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} 
                             onClick={() => {
-                              const linkedJO = jobOrders.find(j => j.id === inv.joId);
-                              const linkedQuo = linkedJO ? quotations.find(q => q.id === linkedJO.quotationId) : null;
+                              const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
+                              const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
                               localStorage.setItem('print_invoice_data', JSON.stringify({ invoice: inv, jo: linkedJO, quotation: linkedQuo }));
-                              window.open('/print/invoice-receipt', '_blank');
+                              window.open('/print/invoice-delivery', '_blank');
                             }}
                           >
-                            <FileText size={14} /> Receipt
+                            <FileText size={14} /> STT
                           </button>
                           <button 
                             className="btn" 
@@ -2806,6 +2862,188 @@ const Accounting = () => {
                 </div>
               ))}
               {companyBankAccounts.length === 0 && <div style={{ textAlign:'center', color:'var(--text-muted)', padding:'20px' }}>Belum ada rekening terdaftar.</div>}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Upload Signed Document Modal */}
+      {uploadSignedModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'450px', padding:'30px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'25px' }}>
+              <h3 style={{ margin:0, color:'var(--secondary)' }}>Upload Dokumen Tertandatangan</h3>
+              <button onClick={() => setUploadSignedModal(null)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={24}/></button>
+            </div>
+
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'20px' }}>
+              Pilih foto atau scan dari <strong>{uploadSignedModal.type === 'invoice' ? 'Invoice' : 'Surat Tanda Terima (STT)'}</strong> yang sudah tertandatangan oleh customer.
+            </p>
+
+            <div style={{ marginBottom:'30px' }}>
+              <div 
+                style={{ height:'150px', border:'2px dashed var(--glass-border)', borderRadius:'12px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', background:'rgba(255,255,255,0.02)', cursor:'pointer' }}
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = async (readerEvent) => {
+                        const base64 = readerEvent.target.result;
+                        try {
+                          const updateData = uploadSignedModal.type === 'invoice' 
+                            ? { signedInvoicePhoto: base64 } 
+                            : { signedReceiptPhoto: base64 };
+                          
+                          await updateInvoice(uploadSignedModal.invId, updateData);
+                          setUploadSignedModal(null);
+                          alert("Dokumen berhasil diupload!");
+                        } catch (err) {
+                          alert("Gagal upload dokumen: " + err.message);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  };
+                  input.click();
+                }}
+              >
+                <div style={{ background:'var(--secondary-glass)', p:2, borderRadius:'50%' }}>
+                  <Image size={32} style={{ color:'var(--secondary)' }}/>
+                </div>
+                <div style={{ fontWeight:'700', fontSize:'0.9rem' }}>Klik untuk Pilih Foto</div>
+                <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Format: JPG, PNG, WEBP</div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setUploadSignedModal(null)} 
+              className="btn" 
+              style={{ width:'100%', padding:'12px' }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Signed Document Modal */}
+      {uploadSignedModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'450px', padding:'30px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'25px' }}>
+              <h3 style={{ margin:0, color:'var(--secondary)' }}>Upload Dokumen Tertandatangan</h3>
+              <button onClick={() => setUploadSignedModal(null)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={24}/></button>
+            </div>
+
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'20px' }}>
+              Pilih foto atau scan dari <strong>{uploadSignedModal.type === 'invoice' ? 'Invoice' : 'Surat Tanda Terima (STT)'}</strong> yang sudah tertandatangan oleh customer.
+            </p>
+
+            <div style={{ marginBottom:'30px' }}>
+              <div 
+                style={{ height:'150px', border:'2px dashed var(--glass-border)', borderRadius:'12px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', background:'rgba(255,255,255,0.02)', cursor:'pointer' }}
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = async (readerEvent) => {
+                        const base64 = readerEvent.target.result;
+                        try {
+                          const updateData = uploadSignedModal.type === 'invoice' 
+                            ? { signedInvoicePhoto: base64 } 
+                            : { signedReceiptPhoto: base64 };
+                          
+                          await updateInvoice(uploadSignedModal.invId, updateData);
+                          setUploadSignedModal(null);
+                          alert("Dokumen berhasil diupload!");
+                        } catch (err) {
+                          alert("Gagal upload dokumen: " + err.message);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  };
+                  input.click();
+                }}
+              >
+                <div style={{ background:'var(--secondary-glass)', p:2, borderRadius:'50%' }}>
+                  <Image size={32} style={{ color:'var(--secondary)' }}/>
+                </div>
+                <div style={{ fontWeight:'700', fontSize:'0.9rem' }}>Klik untuk Pilih Foto</div>
+                <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Format: JPG, PNG, WEBP</div>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => setUploadSignedModal(null)} 
+              className="btn" 
+              style={{ width:'100%', padding:'12px' }}
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bank Selection Modal for Invoice Issuance */}
+      {issuingInvoiceJoId && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'500px', padding:'35px', textAlign:'center' }}>
+            <h3 style={{ color:'var(--secondary)', marginBottom:'20px' }}>Pilih Rekening untuk Invoice</h3>
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>
+              Silakan pilih rekening bank yang akan dicantumkan pada Invoice untuk Job Order: <strong>{issuingInvoiceJoId}</strong>
+            </p>
+            
+            <div style={{ marginBottom:'30px' }}>
+              <select 
+                value={selectedBankId} 
+                onChange={(e) => setSelectedBankId(e.target.value)}
+                style={{ width:'100%', padding:'12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--text)', fontSize:'1rem' }}
+              >
+                {companyBankAccounts.map(bank => (
+                  <option key={bank.id} value={bank.id}>
+                    {bank.bankName} - {bank.accountNo} ({bank.name})
+                  </option>
+                ))}
+                {companyBankAccounts.length === 0 && <option value="">Belum ada rekening terdaftar</option>}
+              </select>
+              {companyBankAccounts.length === 0 && (
+                <p style={{ color:'#ef4444', fontSize:'0.75rem', marginTop:'10px' }}>
+                  Mohon tambahkan rekening perusahaan di menu Settings terlebih dahulu.
+                </p>
+              )}
+            </div>
+
+            <div style={{ display:'flex', gap:'12px', justifyContent:'center' }}>
+              <button 
+                onClick={() => setIssuingInvoiceJoId(null)} 
+                className="btn" 
+                style={{ flex:1, padding:'12px', background:'rgba(255,255,255,0.05)', color:'var(--text)' }}
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => {
+                  const bank = companyBankAccounts.find(b => b.id === selectedBankId);
+                  if (bank) {
+                    handleIssueInvoice(issuingInvoiceJoId, bank);
+                  } else {
+                    alert("Silakan pilih rekening bank yang valid.");
+                  }
+                }} 
+                className="btn btn-gold" 
+                style={{ flex:2, padding:'12px', fontWeight:'700' }}
+                disabled={companyBankAccounts.length === 0}
+              >
+                Konfirmasi & Terbitkan
+              </button>
             </div>
           </div>
         </div>

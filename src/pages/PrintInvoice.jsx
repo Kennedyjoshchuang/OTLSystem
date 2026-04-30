@@ -14,7 +14,7 @@ const PrintInvoice = () => {
     </div>
   );
 
-  const { invoice, jo, quotation } = data;
+  const { invoice, jo, quotation, bankAccount } = data;
   const extraCharges = Array.isArray(invoice?.extra_charges) ? invoice.extra_charges : [];
   const photos = Array.isArray(jo?.photos) ? jo.photos : [];
 
@@ -203,7 +203,11 @@ const PrintInvoice = () => {
         <div style={{ padding: '14px 18px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', marginBottom: '20px' }}>
           <p style={{ margin: '0 0 8px 0', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Informasi Pembayaran</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 20px', fontSize: '0.85rem' }}>
-            {[['Bank', 'Bank Mandiri (IDR)'], ['No. Rekening', '164-00-0255502-3'], ['Atas Nama', 'PT. Omega Trust Logistik']].map(([l, v]) => (
+            {[
+              ['Bank', bankAccount?.bankName || 'Bank Mandiri (IDR)'], 
+              ['No. Rekening', bankAccount?.accountNo || '164-00-0255502-3'], 
+              ['Atas Nama', bankAccount?.name || 'PT. Omega Trust Logistik']
+            ].map(([l, v]) => (
               <React.Fragment key={l}>
                 <span style={{ color: '#64748b', fontWeight: '700' }}>{l}:</span>
                 <span style={{ fontWeight: '800', color: '#1e293b' }}>{v}</span>

@@ -1,13 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Truck, Camera, CheckCircle2, Package, History, PlayCircle, X, Search, FileSpreadsheet, Plus, FileText, Printer } from 'lucide-react';
+import { Truck, Camera, CheckCircle2, Package, History, PlayCircle, X, Search, FileSpreadsheet, Plus, FileText, Printer, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 
 const Executor = () => {
-  const { jobOrders, updateJOStatus, completeJO, t } = useApp();
+  const { jobOrders, updateJOStatus, completeJO, deleteJO, t } = useApp();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'records'
   const fileInputRef = useRef(null);
@@ -15,6 +15,10 @@ const Executor = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [joToDelete, setJoToDelete] = useState(null);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyError, setVerifyError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handlePrint = () => {
     window.print();
@@ -86,22 +90,36 @@ const Executor = () => {
     updateJOStatus(joId, { [field]: updated });
   };
 
-  const handlePhotoUpload = (e) => {
+  const handlePhotoUpload = async (e) => {
     const files = e.target.files;
     if (!files || !uploadingForId) return;
 
     const jo = jobOrders.find(j => j.id === uploadingForId);
-    const currentPhotos = jo.photos || [];
+    if (!jo) return;
 
-    Array.from(files).forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const photoUrl = event.target.result;
-        updateJOStatus(uploadingForId, { photos: [...currentPhotos, photoUrl] });
-      };
-      reader.readAsDataURL(file);
+    const currentPhotos = Array.isArray(jo.photos) ? jo.photos : [];
+    
+    // Use Promise.all to read all files in parallel before uploading
+    const readFilesPromises = Array.from(files).map(file => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
     });
-    setUploadingForId(null);
+
+    try {
+      const newPhotoUrls = await Promise.all(readFilesPromises);
+      // Update database once with all new photos
+      await updateJOStatus(uploadingForId, { photos: [...currentPhotos, ...newPhotoUrls] });
+    } catch (err) {
+      console.error("Photo upload error:", err);
+      alert("Gagal mengunggah foto. Pastikan ukuran file tidak terlalu besar.");
+    } finally {
+      // Reset input value to allow re-uploading same files if needed
+      e.target.value = '';
+    }
   };
 
   const removePhoto = (joId, photoIndex) => {
@@ -131,6 +149,78 @@ const Executor = () => {
         style={{ display: 'none' }} 
         onChange={handlePhotoUpload} 
       />
+
+      {/* Delete JO Verification Modal */}
+      <AnimatePresence>
+        {joToDelete && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)',
+              zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
+              className="glass-card"
+              style={{ padding: '40px', maxWidth: '480px', width: '100%', textAlign: 'center' }}
+            >
+              <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🗑️</div>
+              <h3 style={{ color: '#ef4444', marginBottom: '8px' }}>Hapus Job Order?</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '6px' }}>
+                <strong style={{ color: 'var(--text)' }}>{joToDelete.id}</strong> — {joToDelete.customerName}
+              </p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '20px' }}>
+                Data JO ini akan dihapus secara permanen dan tidak dapat dikembalikan.
+              </p>
+              <div className="input-group" style={{ textAlign: 'left', marginBottom: '8px' }}>
+                <label style={{ color: 'var(--secondary)', fontWeight: '700' }}>
+                  Ketik <strong style={{ color: '#ef4444' }}>{joToDelete.id}</strong> untuk konfirmasi:
+                </label>
+                <input
+                  type="text"
+                  value={verifyCode}
+                  onChange={e => { setVerifyCode(e.target.value); setVerifyError(''); }}
+                  placeholder={`Ketik ${joToDelete.id} di sini...`}
+                  style={{ background: 'var(--input-bg)', border: `1px solid ${verifyError ? '#ef4444' : 'var(--border)'}`, borderRadius: '10px', color: 'var(--text)', padding: '12px', width: '100%' }}
+                />
+                {verifyError && <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '4px' }}>{verifyError}</p>}
+              </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                <button
+                  className="btn"
+                  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                  onClick={() => { setJoToDelete(null); setVerifyCode(''); setVerifyError(''); }}
+                  disabled={isDeleting}
+                >
+                  Batal
+                </button>
+                <ButtonWithLoading
+                  className="btn"
+                  style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none' }}
+                  onClick={async () => {
+                    if (verifyCode !== joToDelete.id) {
+                      setVerifyError('Kode verifikasi tidak sesuai!');
+                      return;
+                    }
+                    setIsDeleting(true);
+                    try {
+                      await deleteJO(joToDelete.id);
+                      setJoToDelete(null);
+                      setVerifyCode('');
+                    } catch (err) {
+                      setVerifyError('Gagal menghapus, coba lagi.');
+                    }
+                    setIsDeleting(false);
+                  }}
+                >
+                  Ya, Hapus
+                </ButtonWithLoading>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
         <div>
@@ -271,7 +361,17 @@ const Executor = () => {
                           onClick={(e) => { e.stopPropagation(); setUploadingForId(uploadingForId === jo.id ? null : jo.id); }}
                           title="Edit Data Records"
                         >
-                          <Edit2 size={20} />
+                          <FileText size={20} />
+                        </button>
+                      )}
+                      {activeTab === 'records' && (
+                        <button
+                          className="btn-icon"
+                          style={{ width: '38px', height: '38px', color: '#ef4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
+                          onClick={(e) => { e.stopPropagation(); setJoToDelete(jo); setVerifyCode(''); setVerifyError(''); }}
+                          title="Hapus JO Record"
+                        >
+                          <Trash2 size={18} />
                         </button>
                       )}
                     </div>
@@ -294,42 +394,54 @@ const Executor = () => {
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
                                 {/* Multi Container */}
                                 <div className="input-group">
-                                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    Container Number
-                                    <Plus size={14} onClick={() => addListItem(jo.id, 'containerNo')} style={{ cursor: 'pointer' }} />
-                                  </label>
-                                  {(Array.isArray(jo.containerNo) ? jo.containerNo : [jo.containerNo || '']).map((c, i) => (
+                                  <label>Container Number</label>
+                                  {(Array.isArray(jo.containerNo) ? jo.containerNo : [jo.containerNo || '']).map((c, i, arr) => (
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input type="text" value={c} onChange={e => handleListItemUpdate(jo.id, 'containerNo', i, e.target.value)} placeholder="CONT-123456" />
-                                      <button className="btn-icon" onClick={() => removeListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto' }}><X size={12} /></button>
+                                      {arr.length > 1 && (
+                                        <button className="btn-icon" onClick={() => removeListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
+                                          <X size={12} />
+                                        </button>
+                                      )}
+                                      <button className="btn-icon" onClick={() => addListItem(jo.id, 'containerNo')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Container">
+                                        <Plus size={12} />
+                                      </button>
                                     </div>
                                   ))}
                                 </div>
                                 
                                 {/* Multi Vehicle */}
                                 <div className="input-group">
-                                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    Vehicle Number
-                                    <Plus size={14} onClick={() => addListItem(jo.id, 'vehicleNo')} style={{ cursor: 'pointer' }} />
-                                  </label>
-                                  {(Array.isArray(jo.vehicleNo) ? jo.vehicleNo : [jo.vehicleNo || '']).map((v, i) => (
+                                  <label>Vehicle Number</label>
+                                  {(Array.isArray(jo.vehicleNo) ? jo.vehicleNo : [jo.vehicleNo || '']).map((v, i, arr) => (
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input type="text" value={v} onChange={e => handleListItemUpdate(jo.id, 'vehicleNo', i, e.target.value)} placeholder="B 1234 ABC" />
-                                      <button className="btn-icon" onClick={() => removeListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto' }}><X size={12} /></button>
+                                      {arr.length > 1 && (
+                                        <button className="btn-icon" onClick={() => removeListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
+                                          <X size={12} />
+                                        </button>
+                                      )}
+                                      <button className="btn-icon" onClick={() => addListItem(jo.id, 'vehicleNo')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Kendaraan">
+                                        <Plus size={12} />
+                                      </button>
                                     </div>
                                   ))}
                                 </div>
 
                                 {/* Multi Driver */}
                                 <div className="input-group">
-                                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    Driver Name
-                                    <Plus size={14} onClick={() => addListItem(jo.id, 'driverName')} style={{ cursor: 'pointer' }} />
-                                  </label>
-                                  {(Array.isArray(jo.driverName) ? jo.driverName : [jo.driverName || '']).map((d, i) => (
+                                  <label>Driver Name</label>
+                                  {(Array.isArray(jo.driverName) ? jo.driverName : [jo.driverName || '']).map((d, i, arr) => (
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input type="text" value={d} onChange={e => handleListItemUpdate(jo.id, 'driverName', i, e.target.value)} placeholder="Nama Sopir" />
-                                      <button className="btn-icon" onClick={() => removeListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto' }}><X size={12} /></button>
+                                      {arr.length > 1 && (
+                                        <button className="btn-icon" onClick={() => removeListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
+                                          <X size={12} />
+                                        </button>
+                                      )}
+                                      <button className="btn-icon" onClick={() => addListItem(jo.id, 'driverName')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Driver">
+                                        <Plus size={12} />
+                                      </button>
                                     </div>
                                   ))}
                                 </div>
