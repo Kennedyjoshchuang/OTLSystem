@@ -20,6 +20,9 @@ export const AppProvider = ({ children }) => {
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [salaries, setSalaries] = useState([]);
   const [otherExpenses, setOtherExpenses] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [employeeAccounts, setEmployeeAccounts] = useState([]);
+  const [companyBankAccounts, setCompanyBankAccounts] = useState([]);
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('omega_user') || 'null'));
   const [theme, setTheme] = useState(() => localStorage.getItem('omega_theme') || 'dark');
   const [loading, setLoading] = useState(true);
@@ -41,23 +44,38 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('omega_theme', newTheme);
   };
 
-  const login = (roleId, password) => {
-    if (password !== '1234') return false;
-
+  const login = (username, password) => {
+    // 1. Check hardcoded/admin accounts
     const rolesMap = {
-      'owner': { name: 'Owner', role: 'owner' },
-      'marketing': { name: 'Marketing', role: 'marketing' },
-      'admin': { name: 'Admin Office', role: 'admin' },
-      'executor': { name: 'Executor', role: 'executor' },
-      'accounting': { name: 'Accounting', role: 'accounting' }
+      'owner': { name: 'Owner', role: 'owner', key: '1234' },
+      'marketing': { name: 'Marketing', role: 'marketing', key: '1234' },
+      'admin': { name: 'Admin Office', role: 'admin', key: '1234' },
+      'executor': { name: 'Executor', role: 'executor', key: '1234' },
+      'accounting': { name: 'Accounting', role: 'accounting', key: '1234' }
     };
 
-    const userMatch = rolesMap[roleId];
-    if (userMatch) {
-      setUser(userMatch);
-      localStorage.setItem('omega_user', JSON.stringify(userMatch));
+    const userMatch = rolesMap[username];
+    if (userMatch && password === userMatch.key) {
+      const userData = { name: userMatch.name, role: userMatch.role };
+      setUser(userData);
+      localStorage.setItem('omega_user', JSON.stringify(userData));
       return true;
     }
+
+    // 2. Check custom employee accounts
+    const empAccount = employeeAccounts.find(acc => acc.username === username && acc.password === password);
+    if (empAccount) {
+      const employee = employees.find(e => e.id === empAccount.id);
+      const userData = { 
+        name: employee?.name || empAccount.username, 
+        role: empAccount.role,
+        employeeId: empAccount.id 
+      };
+      setUser(userData);
+      localStorage.setItem('omega_user', JSON.stringify(userData));
+      return true;
+    }
+
     return false;
   };
 
@@ -79,6 +97,9 @@ export const AppProvider = ({ children }) => {
         'purchase-orders',
         'salaries',
         'other-expenses',
+        'employees',
+        'employee-accounts',
+        'company-bank-accounts'
       ];
       const dataPromises = endpoints.map((endpoint) =>
         apiRequest(endpoint).catch((err) => {
@@ -96,6 +117,9 @@ export const AppProvider = ({ children }) => {
         poData,
         salData,
         expData,
+        empData,
+        accData,
+        bankData
       ] = await Promise.all(dataPromises);
       setProspects(Array.isArray(prosData) ? prosData : []);
       setQuotations(Array.isArray(quoData) ? quoData : []);
@@ -106,6 +130,9 @@ export const AppProvider = ({ children }) => {
       setPurchaseOrders(Array.isArray(poData) ? poData : []);
       setSalaries(Array.isArray(salData) ? salData : []);
       setOtherExpenses(Array.isArray(expData) ? expData : []);
+      setEmployees(Array.isArray(empData) ? empData : []);
+      setEmployeeAccounts(Array.isArray(accData) ? accData : []);
+      setCompanyBankAccounts(Array.isArray(bankData) ? bankData : []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -263,7 +290,10 @@ export const AppProvider = ({ children }) => {
       tax: 0,
       date: new Date().toISOString(),
       status: 'unpaid',
-      extra_charges: []
+      extra_charges: [],
+      signedReceiptPhoto: null,
+      signedInvoicePhoto: null,
+      deliveryStatus: 'not_sent'
     };
     
     try {
@@ -286,12 +316,18 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const settleInvoice = async (invoiceId) => {
-    await fetch(`${API_URL}/invoices/${invoiceId}/settle`, { method: 'PUT' });
+  const settleInvoice = async (invoiceId, paymentProofPhoto) => {
+    await fetch(`${API_URL}/invoices/${invoiceId}/settle`, { 
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentProofPhoto })
+    });
     setInvoices(prev => prev.map(inv => 
       inv.id === invoiceId ? { ...inv, status: 'paid' } : inv
     ));
-    setReceivables(prev => prev.filter(r => r.id !== invoiceId && r.invoiceId !== invoiceId));
+    setReceivables(prev => prev.map(r => 
+      r.id === invoiceId || r.invoiceId === invoiceId ? { ...r, status: 'paid', balance: 0, paymentProofPhoto } : r
+    ));
   };
 
   const settleReceivable = async (invoiceId) => {
@@ -486,6 +522,59 @@ export const AppProvider = ({ children }) => {
     });
   };
 
+  // --- EMPLOYEE METHODS ---
+  const addEmployee = async (employee) => {
+    const newEmployee = { ...employee, id: `EMP-${Date.now().toString().slice(-6)}` };
+    await fetch(`${API_URL}/employees`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newEmployee)
+    });
+    setEmployees(prev => [...prev, newEmployee]);
+    return newEmployee;
+  };
+
+  const updateEmployee = async (id, updates) => {
+    await fetch(`${API_URL}/employees/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    setEmployees(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
+  };
+
+  const deleteEmployee = async (id) => {
+    await fetch(`${API_URL}/employees/${id}`, { method: 'DELETE' });
+    setEmployees(prev => prev.filter(e => e.id !== id));
+    setEmployeeAccounts(prev => prev.filter(a => a.id !== id));
+  };
+
+  const addEmployeeAccount = async (account) => {
+    await fetch(`${API_URL}/employee-accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(account)
+    });
+    setEmployeeAccounts(prev => [...prev, account]);
+  };
+
+  const updateCompanyBank = async (account) => {
+    await fetch(`${API_URL}/company-bank-accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(account)
+    });
+    setCompanyBankAccounts(prev => {
+      const idx = prev.findIndex(a => a.id === account.id);
+      if (idx > -1) {
+        const next = [...prev];
+        next[idx] = account;
+        return next;
+      }
+      return [...prev, account];
+    });
+  };
+
   return (
     <AppContext.Provider value={{
       user, login, logout,
@@ -502,6 +591,9 @@ export const AppProvider = ({ children }) => {
       receivables, settleReceivable,
       salaries, addSalary, deleteSalary,
       otherExpenses, addOtherExpense, deleteOtherExpense,
+      employees, addEmployee, updateEmployee, deleteEmployee,
+      employeeAccounts, addEmployeeAccount,
+      companyBankAccounts, updateCompanyBank,
       clearAllData,
       getSystemConfig, updateSystemConfig
     }}>

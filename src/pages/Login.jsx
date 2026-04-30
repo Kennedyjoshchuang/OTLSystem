@@ -119,15 +119,13 @@ const Login = () => {
             <div className="input-group" style={{ textAlign: 'left' }}>
               <label>{t('accessPortal')}</label>
               <div style={{ position: 'relative' }}>
-                <select 
+                <input 
+                  type="text" 
                   value={role} 
                   onChange={e => setRole(e.target.value)}
-                  style={{ paddingLeft: '48px', appearance: 'none', background: 'var(--input-bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
-                >
-                  {accounts.map(acc => (
-                    <option key={acc.id} value={acc.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>{acc.name}</option>
-                  ))}
-                </select>
+                  placeholder="Username / Department"
+                  style={{ paddingLeft: '48px', background: 'var(--input-bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                />
                 <UserCircle size={18} color="var(--secondary)" style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)', opacity: 0.6 }} />
               </div>
             </div>

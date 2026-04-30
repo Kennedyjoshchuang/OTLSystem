@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, DollarSign, Search, FileSpreadsheet, RotateCcw, Edit3, Save, Image, ChevronDown, ChevronUp, User, Briefcase, Banknote, Calendar, FileText, Trash2 } from 'lucide-react';
+import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, DollarSign, Search, FileSpreadsheet, RotateCcw, Edit3, Save, Image, ChevronDown, ChevronUp, User, Briefcase, Banknote, Calendar, FileText, Trash2, Settings, ExternalLink, ShieldCheck } from 'lucide-react';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 
@@ -56,6 +56,9 @@ const Accounting = () => {
   const [paymentProofModal, setPaymentProofModal] = useState(null);
   const [modalPhotos, setModalPhotos] = useState([]);
   const [batchPrintInvoices, setBatchPrintInvoices] = useState(null);
+  const [bankModal, setBankModal] = useState(null); // { id, name, accountNo, bankName }
+  const [showBankSettings, setShowBankSettings] = useState(false);
+  const [receivableProofModal, setReceivableProofModal] = useState(null); // invoice to upload proof for
 
   const { 
     jobOrders = [], invoices = [], createInvoice, settleInvoice, deleteInvoice, updateInvoice, 
@@ -63,6 +66,7 @@ const Accounting = () => {
     quotations = [],
     salaries = [], addSalary, deleteSalary,
     otherExpenses = [], addOtherExpense, deleteOtherExpense,
+    employees = [], companyBankAccounts = [], updateCompanyBank,
     loading 
   } = context || {};
 
@@ -352,25 +356,39 @@ const Accounting = () => {
         : null;
 
       // Store data for the print page
-      localStorage.setItem('print_invoice_data', JSON.stringify({
+      const printData = {
         invoice: newInv,
         jo: linkedJO || null,
         quotation: linkedQuo || null,
-      }));
+      };
+      localStorage.setItem('print_invoice_data', JSON.stringify(printData));
 
-      // Open draft in new tab
+      // Open 3 tabs as requested
+      // 1. Invoice
       window.open('/print/invoice', '_blank');
-
-      // If there are photos, open attachment in another tab
+      
+      // 2. Attachment (Operational Photos)
       if (linkedJO && linkedJO.photos && linkedJO.photos.length > 0) {
         window.open('/print/invoice-attachment', '_blank');
       }
+
+      // 3. Receipt Draft
+      window.open('/print/invoice-receipt', '_blank');
 
       // Also update billing tab state
       setActiveTab('billing');
       setIsIssuedCollapsed(false);
     } catch (err) {
       alert("Error issuing invoice: " + err.message);
+    }
+  };
+
+  const handleUploadReceivableProof = async (invId, photos) => {
+    try {
+      await updateInvoice(invId, { paymentProofPhoto: photos });
+      setReceivableProofModal(null);
+    } catch (err) {
+      alert("Gagal upload bukti: " + err.message);
     }
   };
 
@@ -1077,6 +1095,20 @@ const Accounting = () => {
         >
           <FileText size={17} /> Detail Report
         </button>
+
+        <button
+          onClick={() => setShowBankSettings(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '11px 22px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', transition: 'all 0.2s',
+            background: 'rgba(255,255,255,0.05)',
+            color: 'var(--text-muted)',
+            border: '1px solid var(--glass-border)',
+            marginLeft: 'auto'
+          }}
+        >
+          <Settings size={17} /> Bank Accounts
+        </button>
       </div>
 
       {/* Filter Bar */}
@@ -1319,6 +1351,8 @@ const Accounting = () => {
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'right' }}>Revenue (INV)</th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'right' }}>Total Cost</th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'right' }}>Profit/Loss</th>
+                  <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>Signed Doc</th>
+                  <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>Delivery</th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>Status</th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'center' }}>Action</th>
                 </tr>
@@ -1332,66 +1366,102 @@ const Accounting = () => {
                     const term = searchTerm.toLowerCase();
                     return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
                   })
-                  .map(inv => (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
-                    <td style={{ padding: '15px' }}>
-                      <div style={{ fontWeight: '800', color: 'var(--secondary)' }}>{inv.id}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {inv.joId}</div>
-                    </td>
-                    <td style={{ padding: '15px', fontWeight: '600' }}>{inv.customerName}</td>
-                    <td style={{ padding: '15px', fontSize: '0.85rem' }}>{new Date(inv.date).toLocaleDateString()}</td>
-                    <td 
-                      style={{ padding: '15px', textAlign: 'right', fontWeight: '700', color: '#10b981', fontSize: '1rem', cursor: 'pointer' }}
-                      onClick={() => { setActiveTab('costing'); setSearchTerm(inv.joId); }}
-                      title="Lihat Detail di JO Records"
-                    >
-                      Rp {(inv.subtotal || inv.amount).toLocaleString('id-ID')}
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>
-                      {(() => {
-                        const jo = jobOrders.find(j => j.id === inv.joId);
-                        if (!jo) return '—';
-                        const manualCost = Array.isArray(jo.costs) ? jo.costs.reduce((s,c)=>s+(c.total||0),0) : 0;
-                        const poCost = (purchaseOrders || []).filter(po => po.joId === jo.id).reduce((s,p)=>s+(p.grandTotal||0),0);
-                        const totalCost = manualCost + poCost;
-                        return totalCost > 0 ? `Rp ${totalCost.toLocaleString('id-ID')}` : '—';
-                      })()}
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'right', fontWeight: '800' }}>
-                      {(() => {
-                        const jo = jobOrders.find(j => j.id === inv.joId);
-                        if (!jo) return '—';
-                        const manualCost = Array.isArray(jo.costs) ? jo.costs.reduce((s,c)=>s+(c.total||0),0) : 0;
-                        const poCost = (purchaseOrders || []).filter(po => po.joId === jo.id).reduce((s,p)=>s+(p.grandTotal||0),0);
-                        const totalCost = manualCost + poCost;
-                        const revenue = inv.subtotal || inv.amount;
-                        const profit = revenue - totalCost;
-                        return (
-                          <span style={{ color: profit > 0 ? '#10b981' : profit < 0 ? '#ef4444' : 'inherit' }}>
-                            Rp {profit.toLocaleString('id-ID')}
-                          </span>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <span className={`badge badge-${inv.status}`} style={{ fontSize: '0.7rem' }}>{inv.status}</span>
-                    </td>
-                    <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px' }} onClick={() => handleDownloadInvoice(inv)}>
-                          <Download size={14} /> View
-                        </button>
-                        <button 
-                          className="btn" 
-                          style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} 
-                          onClick={() => setEditingInvoice({...inv, extra_charges: inv.extra_charges || []})}
-                        >
-                          <Edit3 size={14} /> Edit
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                  .map(inv => {
+                    const linkedJO = jobOrders.find(j => j.id === inv.joId);
+                    return (
+                    <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
+                      <td style={{ padding: '15px' }}>
+                        <div style={{ fontWeight: '800', color: 'var(--secondary)' }}>{inv.id}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {inv.joId}</div>
+                      </td>
+                      <td style={{ padding: '15px', fontWeight: '600' }}>{inv.customerName}</td>
+                      <td style={{ padding: '15px', fontSize: '0.85rem' }}>{new Date(inv.date).toLocaleDateString()}</td>
+                      <td 
+                        style={{ padding: '15px', textAlign: 'right', fontWeight: '700', color: '#10b981', fontSize: '1rem', cursor: 'pointer' }}
+                        onClick={() => { setActiveTab('costing'); setSearchTerm(inv.joId); }}
+                        title="Lihat Detail di JO Records"
+                      >
+                        Rp {(inv.subtotal || inv.amount).toLocaleString('id-ID')}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>
+                        {(() => {
+                          const jo = jobOrders.find(j => j.id === inv.joId);
+                          if (!jo) return '—';
+                          const manualCost = Array.isArray(jo.costs) ? jo.costs.reduce((s,c)=>s+(c.total||0),0) : 0;
+                          const poCost = (purchaseOrders || []).filter(po => po.joId === jo.id).reduce((s,p)=>s+(p.grandTotal||0),0);
+                          const totalCost = manualCost + poCost;
+                          return totalCost > 0 ? `Rp ${totalCost.toLocaleString('id-ID')}` : '—';
+                        })()}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'right', fontWeight: '800' }}>
+                        {(() => {
+                          const jo = jobOrders.find(j => j.id === inv.joId);
+                          if (!jo) return '—';
+                          const manualCost = Array.isArray(jo.costs) ? jo.costs.reduce((s,c)=>s+(c.total||0),0) : 0;
+                          const poCost = (purchaseOrders || []).filter(po => po.joId === jo.id).reduce((s,p)=>s+(p.grandTotal||0),0);
+                          const totalCost = manualCost + poCost;
+                          const revenue = inv.subtotal || inv.amount;
+                          const profit = revenue - totalCost;
+                          return (
+                            <span style={{ color: profit > 0 ? '#10b981' : profit < 0 ? '#ef4444' : 'inherit' }}>
+                              Rp {profit.toLocaleString('id-ID')}
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                         {inv.signedInvoicePhoto ? (
+                           <button onClick={() => setPhotoViewer({ title: `Signed Invoice - ${inv.id}`, photos: [inv.signedInvoicePhoto] })} style={{ background:'none', border:'none', color:'#10b981', cursor:'pointer' }}><ShieldCheck size={18}/></button>
+                         ) : <span style={{ color:'var(--text-muted)', fontSize:'0.7rem' }}>Pending</span>}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                         <select 
+                           value={inv.deliveryStatus || 'not_sent'} 
+                           onChange={(e) => updateInvoice(inv.id, { deliveryStatus: e.target.value })}
+                           style={{ background:'var(--input-bg)', border:'1px solid var(--glass-border)', color:'var(--text)', fontSize:'0.7rem', padding:'4px', borderRadius:'4px' }}
+                         >
+                           <option value="not_sent">Belum Dikirim</option>
+                           <option value="on_process">Proses Kirim</option>
+                           <option value="delivered">Diterima</option>
+                         </select>
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        <span className={`badge badge-${inv.status}`} style={{ fontSize: '0.7rem' }}>{inv.status}</span>
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <button className="btn btn-primary" style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px' }} onClick={() => handleDownloadInvoice(inv)}>
+                            <Download size={14} /> View
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} 
+                            onClick={() => {
+                              const linkedJO = jobOrders.find(j => j.id === inv.joId);
+                              const linkedQuo = linkedJO ? quotations.find(q => q.id === linkedJO.quotationId) : null;
+                              localStorage.setItem('print_invoice_data', JSON.stringify({ invoice: inv, jo: linkedJO, quotation: linkedQuo }));
+                              window.open('/print/invoice-receipt', '_blank');
+                            }}
+                          >
+                            <FileText size={14} /> Receipt
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }} 
+                            onClick={() => {
+                              if (linkedJO && linkedJO.photos && linkedJO.photos.length > 0) {
+                                setPhotoViewer({ title: `JO Photos - ${inv.joId}`, photos: linkedJO.photos });
+                              } else {
+                                alert("Tidak ada lampiran operasional.");
+                              }
+                            }}
+                          >
+                            <Image size={14} /> Ops
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )})}
                 {invoices.length === 0 && (
                   <tr>
                     <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No invoices found.</td>
@@ -1513,6 +1583,39 @@ const Accounting = () => {
                       </td>
                       <td style={{ padding: '15px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                            onClick={() => {
+                              const jo = jobOrders.find(j => j.id === item.joId);
+                              if (jo && jo.photos && jo.photos.length > 0) {
+                                setPhotoViewer({ title: `Signed Document - ${item.id}`, photos: jo.photos });
+                              } else {
+                                alert("Dokumen tertanda belum diupload oleh operasional.");
+                              }
+                            }}
+                          >
+                            <ShieldCheck size={14} /> Doc
+                          </button>
+                          
+                          {item.paymentProofPhoto ? (
+                            <button 
+                              className="btn" 
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}
+                              onClick={() => setPhotoViewer({ title: `Bukti Pembayaran - ${item.id}`, photos: item.paymentProofPhoto })}
+                            >
+                              <Image size={14} /> Proof
+                            </button>
+                          ) : (
+                            <button 
+                              className="btn" 
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}
+                              onClick={() => setReceivableProofModal(item)}
+                            >
+                              <Plus size={14} /> Upload
+                            </button>
+                          )}
+
                           {receivableSubTab === 'outstanding' ? (
                             <ButtonWithLoading className="btn btn-gold" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => handleSettle(item.id)}>
                               Mark as Settled
@@ -2088,12 +2191,33 @@ const Accounting = () => {
             
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
               <div>
-                <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Nama Lengkap</label>
-                <input type="text" value={salaryForm.name} onChange={e => setSalaryForm({...salaryForm, name: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Pilih Karyawan</label>
+                <select 
+                  value={salaryForm.employeeId || ''} 
+                  onChange={e => {
+                    const emp = employees.find(emp => emp.id === e.target.value);
+                    if (emp) {
+                      setSalaryForm({
+                        ...salaryForm,
+                        employeeId: emp.id,
+                        name: emp.name,
+                        position: emp.position,
+                        bankAccount: emp.bankAccount || '',
+                        bankName: emp.bankName || '',
+                        nik: emp.nik || '',
+                        npwp: emp.npwp || ''
+                      });
+                    }
+                  }} 
+                  style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
+                >
+                  <option value="">-- Pilih Karyawan --</option>
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>)}
+                </select>
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Jabatan</label>
-                <input type="text" value={salaryForm.position} onChange={e => setSalaryForm({...salaryForm, position: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <input type="text" readOnly value={salaryForm.position} style={{ width:'100%', padding:'10px', background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text-muted)' }} />
               </div>
             </div>
 
@@ -2191,12 +2315,31 @@ const Accounting = () => {
 
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
               <div>
-                <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Nama Karyawan</label>
-                <input type="text" value={otherExpenseForm.employeeName} onChange={e => setOtherExpenseForm({...otherExpenseForm, employeeName: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Pilih Karyawan</label>
+                <select 
+                  value={otherExpenseForm.employeeId || ''} 
+                  onChange={e => {
+                    const emp = employees.find(emp => emp.id === e.target.value);
+                    if (emp) {
+                      setOtherExpenseForm({
+                        ...otherExpenseForm,
+                        employeeId: emp.id,
+                        employeeName: emp.name,
+                        position: emp.position,
+                        bankAccount: emp.bankAccount || '',
+                        bankName: emp.bankName || ''
+                      });
+                    }
+                  }} 
+                  style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
+                >
+                  <option value="">-- Pilih Karyawan --</option>
+                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>)}
+                </select>
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Jabatan</label>
-                <input type="text" value={otherExpenseForm.position} onChange={e => setOtherExpenseForm({...otherExpenseForm, position: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <input type="text" readOnly value={otherExpenseForm.position} style={{ width:'100%', padding:'10px', background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text-muted)' }} />
               </div>
             </div>
 
@@ -2580,6 +2723,89 @@ const Accounting = () => {
 
             <div style={{ marginTop:'50px', borderTop:'1px dashed #ccc', paddingTop:'20px', textAlign:'center', color:'#999', fontSize:'0.7rem' }}>
                Confidential - For Internal Use Only. This document is electronically generated and verified by the ALP Integrated Logistics System.
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Receivable Proof Modal */}
+      {receivableProofModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'600px', padding:'35px', textAlign:'center', maxHeight:'90vh', overflowY:'auto' }}>
+            <button onClick={() => { setReceivableProofModal(null); setModalPhotos([]); }} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
+            <h3 style={{ color:'#10b981', marginBottom:'20px' }}>Upload Bukti Pembayaran (Piutang)</h3>
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Invoice: <strong>{receivableProofModal.id}</strong> - {receivableProofModal.customerName}</p>
+            
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', marginBottom:'25px' }}>
+              {modalPhotos.map((p, i) => (
+                <div key={i} style={{ position:'relative', height:'100px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                  <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                  <button onClick={() => setModalPhotos(prev => prev.filter((_, idx) => idx !== i))} style={{ position:'absolute', top:'5px', right:'5px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'20px', height:'20px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={12}/></button>
+                </div>
+              ))}
+              <label htmlFor="rec-proof-upload" style={{ height:'100px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)' }}>
+                <Plus size={24}/>
+                <span style={{ fontSize:'0.7rem', marginTop:'5px' }}>Add Photo</span>
+              </label>
+            </div>
+            <input type="file" multiple onChange={e => {
+              const files = Array.from(e.target.files);
+              files.forEach(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => setModalPhotos(prev => [...prev, reader.result]);
+                reader.readAsDataURL(file);
+              });
+            }} style={{ display:'none' }} id="rec-proof-upload" />
+            
+            <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
+              <button onClick={() => { setReceivableProofModal(null); setModalPhotos([]); }} className="btn">Cancel</button>
+              <ButtonWithLoading onClick={() => handleUploadReceivableProof(receivableProofModal.id, modalPhotos)} className="btn" style={{ background:'#10b981', color:'white' }}>Save Bukti</ButtonWithLoading>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bank Settings Modal */}
+      {showBankSettings && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'800px', padding:'35px', maxHeight:'90vh', overflowY:'auto' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'30px' }}>
+              <h3 style={{ color:'var(--secondary)', display:'flex', alignItems:'center', gap:'10px' }}><Settings size={22}/> Pengaturan Rekening Perusahaan</h3>
+              <button onClick={() => setShowBankSettings(false)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={24}/></button>
+            </div>
+
+            <div style={{ background:'rgba(255,255,255,0.02)', borderRadius:'12px', padding:'20px', border:'1px solid var(--glass-border)', marginBottom:'30px' }}>
+              <h4 style={{ fontSize:'0.9rem', marginBottom:'20px', color:'var(--text-muted)' }}>Tambah / Edit Rekening</h4>
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'15px', marginBottom:'15px' }}>
+                <input type="text" placeholder="Nama Bank (e.g. Mandiri IDR)" value={bankModal?.bankName || ''} onChange={e => setBankModal({...bankModal, bankName: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <input type="text" placeholder="Nomor Rekening" value={bankModal?.accountNo || ''} onChange={e => setBankModal({...bankModal, accountNo: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <input type="text" placeholder="Atas Nama" value={bankModal?.name || ''} onChange={e => setBankModal({...bankModal, name: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+              </div>
+              <button 
+                className="btn btn-primary" 
+                style={{ width:'100%' }}
+                onClick={async () => {
+                  if (!bankModal?.bankName || !bankModal?.accountNo) return alert('Data tidak lengkap');
+                  await updateCompanyBank({ ...bankModal, id: bankModal.id || `BANK-${Date.now()}` });
+                  setBankModal(null);
+                }}
+              >
+                <Save size={18}/> Simpan Rekening
+              </button>
+            </div>
+
+            <div style={{ display:'grid', gap:'15px' }}>
+              {companyBankAccounts.map(bank => (
+                <div key={bank.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'rgba(255,255,255,0.05)', borderRadius:'10px', border:'1px solid var(--glass-border)' }}>
+                  <div>
+                    <div style={{ fontWeight:'700', fontSize:'1rem' }}>{bank.bankName}</div>
+                    <div style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>{bank.accountNo} - {bank.name}</div>
+                  </div>
+                  <div style={{ display:'flex', gap:'10px' }}>
+                    <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(59, 130, 246, 0.1)', color:'#3b82f6' }} onClick={() => setBankModal(bank)}><Edit3 size={14}/> Edit</button>
+                  </div>
+                </div>
+              ))}
+              {companyBankAccounts.length === 0 && <div style={{ textAlign:'center', color:'var(--text-muted)', padding:'20px' }}>Belum ada rekening terdaftar.</div>}
             </div>
           </div>
         </div>

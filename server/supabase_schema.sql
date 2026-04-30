@@ -69,9 +69,9 @@ CREATE TABLE IF NOT EXISTS job_orders (
     status TEXT,
     quantity INTEGER,
     issueQuantity INTEGER DEFAULT 0,
-    containerNo TEXT,
-    vehicleNo TEXT,
-    driverName TEXT,
+    containerNo JSONB DEFAULT '[]'::jsonb,
+    vehicleNo JSONB DEFAULT '[]'::jsonb,
+    driverName JSONB DEFAULT '[]'::jsonb,
     activityStatus TEXT,
     photos JSONB DEFAULT '[]'::jsonb,
     costs JSONB DEFAULT '[]'::jsonb,
@@ -92,7 +92,10 @@ CREATE TABLE IF NOT EXISTS invoices (
     tax NUMERIC,
     extra_charges JSONB DEFAULT '[]'::jsonb,
     date TEXT,
-    status TEXT
+    status TEXT,
+    signedReceiptPhoto TEXT,
+    signedInvoicePhoto TEXT,
+    deliveryStatus TEXT DEFAULT 'not_sent'
 );
 
 -- 7. Receivables
@@ -105,7 +108,8 @@ CREATE TABLE IF NOT EXISTS receivables (
     tax NUMERIC,
     extra_charges JSONB DEFAULT '[]'::jsonb,
     balance NUMERIC,
-    status TEXT
+    status TEXT,
+    paymentProofPhoto TEXT
 );
 
 -- 8. Vendors
@@ -182,4 +186,37 @@ CREATE TABLE IF NOT EXISTS other_expenses (
     expenseDate TEXT,
     totalAfterTax NUMERIC,
     date TEXT
+);
+
+-- 13. Employees
+CREATE TABLE IF NOT EXISTS employees (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    address TEXT,
+    phone TEXT,
+    nik TEXT,
+    npwp TEXT,
+    position TEXT,
+    email TEXT,
+    accountNumber TEXT,
+    bankName TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 14. Employee Accounts (System Access)
+CREATE TABLE IF NOT EXISTS employee_accounts (
+    id TEXT PRIMARY KEY REFERENCES employees(id) ON DELETE CASCADE,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    role TEXT DEFAULT 'staff',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 15. Company Bank Accounts
+CREATE TABLE IF NOT EXISTS company_bank_accounts (
+    id TEXT PRIMARY KEY,
+    bankName TEXT NOT NULL,
+    accountNumber TEXT NOT NULL,
+    accountName TEXT NOT NULL,
+    isDefault BOOLEAN DEFAULT false
 );

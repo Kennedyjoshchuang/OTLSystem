@@ -145,7 +145,8 @@ app.post('/api/job-orders', async (req, res) => {
       id, quotationId, customerName, instruction: jobDescription,
       status: 'pending', quantity, issueQuantity: 0,
       phone, email, rate, quoteValidity, date,
-      photos: [], costs: []
+      photos: [], costs: [],
+      containerNo: [], vehicleNo: [], driverName: []
     });
     if (error) return handleError(res, error, 'POST job_orders');
     res.status(201).json({ id });
@@ -176,17 +177,19 @@ app.get('/api/invoices', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-  const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status } = req.body;
+  const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status, signedReceiptPhoto, signedInvoicePhoto, deliveryStatus } = req.body;
   const { error: invErr } = await supabase.from('invoices').insert({
     id, joId, customerName, amount, subtotal, tax,
-    extra_charges: extra_charges || [], date, status
+    extra_charges: extra_charges || [], date, status,
+    signedReceiptPhoto, signedInvoicePhoto, deliveryStatus: deliveryStatus || 'not_sent'
   });
   if (invErr) return handleError(res, invErr, 'POST invoices');
 
   // Also create receivable
   const { error: recErr } = await supabase.from('receivables').insert({
     id, invoiceId: id, customerName, amount, subtotal, tax,
-    extra_charges: extra_charges || [], balance: amount, status: 'unpaid'
+    extra_charges: extra_charges || [], balance: amount, status: 'unpaid',
+    paymentProofPhoto: null
   });
   if (recErr) console.error('Failed to create receivable:', recErr.message);
 
@@ -205,8 +208,20 @@ app.put('/api/invoices/:id', async (req, res) => {
 });
 
 app.put('/api/invoices/:id/settle', async (req, res) => {
-  await supabase.from('invoices').update({ status: 'paid' }).eq('id', req.params.id);
-  await supabase.from('receivables').delete().eq('invoiceId', req.params.id);
+  const { paymentProofPhoto } = req.body;
+  
+  // 1. Update Invoice status
+  const { error: invErr } = await supabase.from('invoices').update({ status: 'paid' }).eq('id', req.params.id);
+  if (invErr) return handleError(res, invErr, 'Settle Invoice (Invoices)');
+  
+  // 2. Update Receivable status and add proof photo
+  const { error: recErr } = await supabase.from('receivables').update({ 
+    status: 'paid', 
+    balance: 0,
+    paymentProofPhoto 
+  }).eq('invoiceId', req.params.id);
+  if (recErr) return handleError(res, recErr, 'Settle Invoice (Receivables)');
+  
   res.sendStatus(200);
 });
 
@@ -380,7 +395,64 @@ app.post('/api/system/clear', async (req, res) => {
   await supabase.from('quotations').delete().neq('id', '');
   await supabase.from('prospects').delete().neq('id', '');
   await supabase.from('customers').delete().neq('id', '');
+  await supabase.from('employees').delete().neq('id', '');
+  await supabase.from('company_bank_accounts').delete().neq('id', '');
   res.sendStatus(200);
+});
+
+// --- EMPLOYEES ---
+app.get('/api/employees', async (req, res) => {
+  const { data, error } = await supabase.from('employees').select('*');
+  if (error) return handleError(res, error, 'GET employees');
+  res.json(data);
+});
+
+app.post('/api/employees', async (req, res) => {
+  const employee = req.body;
+  const { error } = await supabase.from('employees').insert(employee);
+  if (error) return handleError(res, error, 'POST employees');
+  res.status(201).json({ id: employee.id });
+});
+
+app.put('/api/employees/:id', async (req, res) => {
+  const updates = req.body;
+  const { error } = await supabase.from('employees').update(updates).eq('id', req.params.id);
+  if (error) return handleError(res, error, 'PUT employees');
+  res.sendStatus(200);
+});
+
+app.delete('/api/employees/:id', async (req, res) => {
+  const { error } = await supabase.from('employees').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error, 'DELETE employees');
+  res.sendStatus(204);
+});
+
+// --- EMPLOYEE ACCOUNTS ---
+app.get('/api/employee-accounts', async (req, res) => {
+  const { data, error } = await supabase.from('employee_accounts').select('*');
+  if (error) return handleError(res, error, 'GET employee-accounts');
+  res.json(data);
+});
+
+app.post('/api/employee-accounts', async (req, res) => {
+  const account = req.body;
+  const { error } = await supabase.from('employee_accounts').insert(account);
+  if (error) return handleError(res, error, 'POST employee-accounts');
+  res.status(201).json({ id: account.id });
+});
+
+// --- COMPANY BANK ACCOUNTS ---
+app.get('/api/company-bank-accounts', async (req, res) => {
+  const { data, error } = await supabase.from('company_bank_accounts').select('*');
+  if (error) return handleError(res, error, 'GET company-bank-accounts');
+  res.json(data);
+});
+
+app.post('/api/company-bank-accounts', async (req, res) => {
+  const account = req.body;
+  const { error } = await supabase.from('company_bank_accounts').upsert(account);
+  if (error) return handleError(res, error, 'POST company-bank-accounts');
+  res.status(200).json({ id: account.id });
 });
 
 app.listen(PORT, () => {

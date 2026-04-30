@@ -13,7 +13,8 @@ import {
   Moon,
   ShieldAlert,
   FileText,
-  ShoppingCart
+  ShoppingCart,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,6 +29,7 @@ const Layout = ({ children }) => {
     { path: '/procurement', label: 'Procurement', icon: ShoppingCart, roles: ['owner', 'admin'] },
     { path: '/executor', label: t('executor'), icon: PlayCircle, roles: ['owner', 'executor'] },
     { path: '/accounting', label: t('accounting'), icon: CreditCard, roles: ['owner', 'accounting'] },
+    { path: '/hrd', label: 'HRD', icon: UserCheck, roles: ['owner', 'hrd'] },
     { path: '/system-control', label: t('systemControl'), icon: ShieldAlert, roles: ['owner'] },
   ].filter(item => item.roles.includes(user?.role));
 

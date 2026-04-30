@@ -22,6 +22,7 @@ const AdminHub = () => {
   const [poVendorId, setPoVendorId] = useState('');
   const [poItems, setPoItems] = useState([{ serviceIdx: '', qty: 1 }]);
   const [poJoSearch, setPoJoSearch] = useState('');
+  const [poVendorSearch, setPoVendorSearch] = useState('');
 
   const [isPOListMinimized, setIsPOListMinimized] = useState(false);
   const [deleteJOConfirm, setDeleteJOConfirm] = useState(null);
@@ -160,6 +161,7 @@ const AdminHub = () => {
     setPoVendorId('');
     setPoItems([{ serviceIdx: '', qty: 1 }]);
     setPoJoSearch('');
+    setPoVendorSearch('');
     setPoNotes('');
   };
 
@@ -418,9 +420,27 @@ const AdminHub = () => {
                 {/* Step 2: Select Vendor */}
                 <div className="input-group" style={{marginBottom:'20px'}}>
                   <label style={{color:'var(--secondary)',fontWeight:'600'}}>2. Pilih Vendor</label>
-                  <select required value={poVendorId} onChange={e=>{setPoVendorId(e.target.value);setPoItems([{serviceIdx:'',qty:1}]);}} style={{width:'100%',padding:'12px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'10px',color:'var(--secondary)',fontWeight:'700'}}>
+                  <div style={{ position: 'relative', marginBottom: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Cari nama vendor..." 
+                      value={poVendorSearch} 
+                      onChange={e => setPoVendorSearch(e.target.value)} 
+                      style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} 
+                    />
+                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  </div>
+                  <select 
+                    required 
+                    value={poVendorId} 
+                    onChange={e=>{setPoVendorId(e.target.value);setPoItems([{serviceIdx:'',qty:1}]);}} 
+                    style={{width:'100%',padding:'12px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'10px',color:'var(--secondary)',fontWeight:'700'}}
+                  >
                     <option value="" style={{color:'var(--text-muted)'}}>-- Pilih Vendor --</option>
-                    {vendorList.map(v=><option key={v.id} value={v.id} style={{color:'var(--text)',background:'var(--bg)'}}>{v.name}</option>)}
+                    {vendorList
+                      .filter(v => v.name.toLowerCase().includes(poVendorSearch.toLowerCase()))
+                      .map(v=><option key={v.id} value={v.id} style={{color:'var(--text)',background:'var(--bg)'}}>{v.name}</option>)
+                    }
                   </select>
                 </div>
 

@@ -51,6 +51,7 @@ const Marketing = () => {
     prospects = [], addProspect, updateProspectStatus, deleteProspect,
     prospectDrafts = [], generateProspectDraft,
     quotations = [], createQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
+    employees = [],
     user,
     t,
     loading
@@ -690,7 +691,25 @@ const Marketing = () => {
               </div>
               <div className="input-group">
                 <label>Nama Marketing</label>
-                <input required type="text" value={prospectData.marketingName} onChange={e => setProspectData({ ...prospectData, marketingName: e.target.value })} placeholder="Nama staff marketing" />
+                <select 
+                  required 
+                  value={prospectData.marketingName} 
+                  onChange={e => {
+                    const emp = employees.find(emp => emp.name === e.target.value);
+                    setProspectData({ 
+                      ...prospectData, 
+                      marketingName: e.target.value,
+                      marketingPhone: emp?.phone || '',
+                      marketingEmail: emp?.email || ''
+                    });
+                  }}
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px' }}
+                >
+                  <option value="">-- Pilih Marketing --</option>
+                  {employees.filter(e => e.position?.toLowerCase().includes('marketing')).map(e => (
+                    <option key={e.id} value={e.name}>{e.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="input-group">
                 <label>Nomor Telpon Marketing</label>
@@ -896,6 +915,14 @@ const Marketing = () => {
                               <XCircle size={16} />
                             </ButtonWithLoading>
                           )}
+                          <button
+                            className="btn-icon"
+                            style={{ color: 'var(--secondary)', background: 'rgba(212, 175, 55, 0.1)' }}
+                            onClick={() => handleDownload(quote)}
+                            title="Print Draft Quotation"
+                          >
+                            <FileText size={16} />
+                          </button>
                           {user?.role === 'owner' && (
                             <button
                               className="btn-icon"

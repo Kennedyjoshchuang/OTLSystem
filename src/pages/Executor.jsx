@@ -66,6 +66,26 @@ const Executor = () => {
     updateJOStatus(joId, { [field]: value });
   };
 
+  const handleListItemUpdate = (joId, field, index, value) => {
+    const jo = jobOrders.find(j => j.id === joId);
+    const current = Array.isArray(jo[field]) ? [...jo[field]] : [];
+    current[index] = value;
+    updateJOStatus(joId, { [field]: current });
+  };
+
+  const addListItem = (joId, field) => {
+    const jo = jobOrders.find(j => j.id === joId);
+    const current = Array.isArray(jo[field]) ? [...jo[field]] : [];
+    updateJOStatus(joId, { [field]: [...current, ''] });
+  };
+
+  const removeListItem = (joId, field, index) => {
+    const jo = jobOrders.find(j => j.id === joId);
+    const current = Array.isArray(jo[field]) ? [...jo[field]] : [];
+    const updated = current.filter((_, i) => i !== index);
+    updateJOStatus(joId, { [field]: updated });
+  };
+
   const handlePhotoUpload = (e) => {
     const files = e.target.files;
     if (!files || !uploadingForId) return;
@@ -194,8 +214,12 @@ const Executor = () => {
                     {jo.jobDescription}
                   </td>
                   <td style={{ padding: '15px' }}>
-                    <div style={{ fontSize: '0.85rem' }}><span style={{ color: 'var(--text-muted)' }}>C:</span> {jo.containerNo || '-'}</div>
-                    <div style={{ fontSize: '0.85rem' }}><span style={{ color: 'var(--text-muted)' }}>V:</span> {jo.vehicleNo || '-'}</div>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>C:</span> {Array.isArray(jo.containerNo) ? jo.containerNo.join(', ') : jo.containerNo || '-'}
+                    </div>
+                    <div style={{ fontSize: '0.85rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>V:</span> {Array.isArray(jo.vehicleNo) ? jo.vehicleNo.join(', ') : jo.vehicleNo || '-'}
+                    </div>
                   </td>
                   <td style={{ padding: '15px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -240,6 +264,16 @@ const Executor = () => {
                       >
                         <Printer size={20} />
                       </button>
+                      {activeTab === 'records' && (
+                        <button 
+                          className="btn-icon" 
+                          style={{ width: '38px', height: '38px', color: 'var(--gold-metallic)', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)' }}
+                          onClick={(e) => { e.stopPropagation(); setUploadingForId(uploadingForId === jo.id ? null : jo.id); }}
+                          title="Edit Data Records"
+                        >
+                          <Edit2 size={20} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -258,17 +292,46 @@ const Executor = () => {
                           <div style={{ padding: '25px', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
                             <div style={{ display: 'grid', gap: '20px' }}>
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                                {/* Multi Container */}
                                 <div className="input-group">
-                                  <label>Container Number</label>
-                                  <input type="text" value={jo.containerNo || ''} onChange={e => handleUpdate(jo.id, 'containerNo', e.target.value)} placeholder="CONT-123456" disabled={activeTab !== 'active'} />
+                                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    Container Number
+                                    <Plus size={14} onClick={() => addListItem(jo.id, 'containerNo')} style={{ cursor: 'pointer' }} />
+                                  </label>
+                                  {(Array.isArray(jo.containerNo) ? jo.containerNo : [jo.containerNo || '']).map((c, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+                                      <input type="text" value={c} onChange={e => handleListItemUpdate(jo.id, 'containerNo', i, e.target.value)} placeholder="CONT-123456" />
+                                      <button className="btn-icon" onClick={() => removeListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto' }}><X size={12} /></button>
+                                    </div>
+                                  ))}
                                 </div>
+                                
+                                {/* Multi Vehicle */}
                                 <div className="input-group">
-                                  <label>Vehicle Number</label>
-                                  <input type="text" value={jo.vehicleNo || ''} onChange={e => handleUpdate(jo.id, 'vehicleNo', e.target.value)} placeholder="B 1234 ABC" disabled={activeTab !== 'active'} />
+                                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    Vehicle Number
+                                    <Plus size={14} onClick={() => addListItem(jo.id, 'vehicleNo')} style={{ cursor: 'pointer' }} />
+                                  </label>
+                                  {(Array.isArray(jo.vehicleNo) ? jo.vehicleNo : [jo.vehicleNo || '']).map((v, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+                                      <input type="text" value={v} onChange={e => handleListItemUpdate(jo.id, 'vehicleNo', i, e.target.value)} placeholder="B 1234 ABC" />
+                                      <button className="btn-icon" onClick={() => removeListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto' }}><X size={12} /></button>
+                                    </div>
+                                  ))}
                                 </div>
+
+                                {/* Multi Driver */}
                                 <div className="input-group">
-                                  <label>Driver Name</label>
-                                  <input type="text" value={jo.driverName || ''} onChange={e => handleUpdate(jo.id, 'driverName', e.target.value)} placeholder="Nama Sopir" disabled={activeTab !== 'active'} />
+                                  <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    Driver Name
+                                    <Plus size={14} onClick={() => addListItem(jo.id, 'driverName')} style={{ cursor: 'pointer' }} />
+                                  </label>
+                                  {(Array.isArray(jo.driverName) ? jo.driverName : [jo.driverName || '']).map((d, i) => (
+                                    <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
+                                      <input type="text" value={d} onChange={e => handleListItemUpdate(jo.id, 'driverName', i, e.target.value)} placeholder="Nama Sopir" />
+                                      <button className="btn-icon" onClick={() => removeListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto' }}><X size={12} /></button>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                               <div className="input-group">

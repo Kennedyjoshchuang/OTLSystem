@@ -15,6 +15,8 @@ import SuratJalanDetail from './pages/SuratJalanDetail';
 import PrintQuotation from './pages/PrintQuotation';
 import PrintInvoice from './pages/PrintInvoice';
 import PrintInvoiceAttachment from './pages/PrintInvoiceAttachment';
+import HRD from './pages/HRD';
+import PrintInvoiceReceipt from './pages/PrintInvoiceReceipt';
 
 const ProtectedRoute = ({ children, allowedRoles, useLayout = true }) => {
   const { user } = useApp();
@@ -40,6 +42,7 @@ function AppRoutes() {
         <Route path="/executor" element={<ProtectedRoute allowedRoles={['owner', 'executor']}><Executor /></ProtectedRoute>} />
         <Route path="/accounting" element={<ProtectedRoute allowedRoles={['owner', 'accounting']}><Accounting /></ProtectedRoute>} />
         <Route path="/procurement" element={<ProtectedRoute allowedRoles={['owner', 'admin']}><Procurement /></ProtectedRoute>} />
+        <Route path="/hrd" element={<ProtectedRoute allowedRoles={['owner', 'hrd']}><HRD /></ProtectedRoute>} />
         <Route path="/system-control" element={<ProtectedRoute allowedRoles={['owner']}><SystemControl /></ProtectedRoute>} />
         
         {/* Standalone Pages (No Sidebar) */}
@@ -47,6 +50,7 @@ function AppRoutes() {
         <Route path="/print/quotation" element={<ProtectedRoute useLayout={false}><PrintQuotation /></ProtectedRoute>} />
         <Route path="/print/invoice" element={<ProtectedRoute useLayout={false}><PrintInvoice /></ProtectedRoute>} />
         <Route path="/print/invoice-attachment" element={<ProtectedRoute useLayout={false}><PrintInvoiceAttachment /></ProtectedRoute>} />
+        <Route path="/print/invoice-receipt" element={<ProtectedRoute useLayout={false}><PrintInvoiceReceipt /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" />} />
