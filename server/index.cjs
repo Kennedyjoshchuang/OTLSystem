@@ -180,8 +180,8 @@ app.post('/api/invoices', async (req, res) => {
   const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status } = req.body;
   
   try {
-    // 1. Create Invoice — only send columns that exist in the DB
-    const { error: invErr } = await supabase.from('invoices').insert({
+    // 1. Create Invoice — try with all columns, fallback if schema is old
+    const invoiceData = {
       id, joId, customerName,
       amount: parseFloat(amount) || 0,
       subtotal: parseFloat(subtotal) || 0,
@@ -191,11 +191,42 @@ app.post('/api/invoices', async (req, res) => {
       signedReceiptPhoto: req.body.signedReceiptPhoto || null,
       signedInvoicePhoto: req.body.signedInvoicePhoto || null,
       deliveryStatus: req.body.deliveryStatus || 'not_sent'
-    });
-    if (invErr) return handleError(res, invErr, 'POST invoices');
+    };
 
-    // 2. Create Receivable — only send columns that exist in the DB
-    const { error: recErr } = await supabase.from('receivables').insert({
+    console.log(`[POST /invoices] Attempting insert for ${id} with keys: ${Object.keys(invoiceData).join(', ')}`);
+    let { error: invErr } = await supabase.from('invoices').insert(invoiceData);
+    
+    // Catch schema mismatch (missing columns)
+    if (invErr && (
+      invErr.message.toLowerCase().includes('column') || 
+      invErr.message.toLowerCase().includes('schema cache') || 
+      invErr.code === '42703' || 
+      invErr.code === 'PGRST204'
+    )) {
+      console.warn(`[POST /invoices] Schema mismatch for ${id} (Code: ${invErr.code}). Retrying without tracking columns...`);
+      const { signedReceiptPhoto, signedInvoicePhoto, deliveryStatus, ...legacyData } = invoiceData;
+      console.log(`[POST /invoices] Retrying with keys: ${Object.keys(legacyData).join(', ')}`);
+      const { error: retryErr } = await supabase.from('invoices').insert(legacyData);
+      invErr = retryErr;
+
+      // Secondary fallback if still failing (e.g. missing subtotal/tax)
+      if (invErr && (invErr.message.toLowerCase().includes('column') || invErr.code === 'PGRST204')) {
+        console.warn(`[POST /invoices] Secondary schema mismatch. Retrying with bare minimum...`);
+        const bareData = { id, joId, customerName, amount: invoiceData.amount, date: invoiceData.date, status: invoiceData.status };
+        const { error: bareErr } = await supabase.from('invoices').insert(bareData);
+        invErr = bareErr;
+      }
+    }
+
+    if (invErr) {
+      console.error(`[POST /invoices] Final failure for ${id}:`, invErr.code, invErr.message);
+      return handleError(res, invErr, 'POST invoices (Final)');
+    }
+
+    console.log(`[POST /invoices] Success for ${id}. Creating receivable...`);
+
+    // 2. Create Receivable
+    const recData = {
       id, invoiceId: id, customerName,
       amount: parseFloat(amount) || 0,
       subtotal: parseFloat(subtotal) || 0,
@@ -203,19 +234,34 @@ app.post('/api/invoices', async (req, res) => {
       extra_charges: extra_charges || [],
       balance: parseFloat(amount) || 0,
       status: 'unpaid'
-    });
+    };
+
+    let { error: recErr } = await supabase.from('receivables').insert(recData);
+    
+    if (recErr && (
+      recErr.message.toLowerCase().includes('column') || 
+      recErr.message.toLowerCase().includes('schema cache') || 
+      recErr.code === '42703' || 
+      recErr.code === 'PGRST204'
+    )) {
+      console.warn(`[POST /invoices] Receivable schema mismatch for ${id}. Retrying with bare minimum...`);
+      const bareRecData = { id, invoiceId: id, customerName, amount: recData.amount, balance: recData.balance, status: 'unpaid' };
+      const { error: retryRecErr } = await supabase.from('receivables').insert(bareRecData);
+      recErr = retryRecErr;
+    }
+
     if (recErr) {
-      console.error('Failed to create receivable:', recErr.message);
+      console.error(`[POST /invoices] Final receivable failure for ${id}:`, recErr.message);
       // We don't fail the whole request but log it
     }
 
     // 3. Update Job Order status to 'invoiced'
     const { error: joErr } = await supabase.from('job_orders').update({ status: 'invoiced' }).eq('id', joId);
     if (joErr) {
-      console.error('Failed to update JO status:', joErr.message);
-      // We don't fail the whole request but log it
+      console.error(`[POST /invoices] JO Update error for ${joId}:`, joErr.message);
     }
 
+    console.log(`[POST /invoices] Everything complete for ${id}`);
     res.status(201).json({ id });
   } catch (err) {
     console.error('Invoice issuance exception:', err);
@@ -235,21 +281,60 @@ app.put('/api/invoices/:id', async (req, res) => {
 });
 
 app.put('/api/invoices/:id/settle', async (req, res) => {
-  const { paymentProofPhoto } = req.body;
+  const { paymentProofPhoto, taxesDeducted, taxDeductionProof } = req.body;
   
-  // 1. Update Invoice status
-  const { error: invErr } = await supabase.from('invoices').update({ status: 'paid' }).eq('id', req.params.id);
-  if (invErr) return handleError(res, invErr, 'Settle Invoice (Invoices)');
+  // Calculate total tax from the array
+  const taxesArr = Array.isArray(taxesDeducted) ? taxesDeducted : [];
+  const totalTax = taxesArr.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0);
+  const taxesJson = JSON.stringify(taxesArr);
   
-  // 2. Update Receivable status and add proof photo
-  const { error: recErr } = await supabase.from('receivables').update({ 
-    status: 'paid', 
-    balance: 0,
-    paymentProofPhoto 
-  }).eq('invoiceId', req.params.id);
-  if (recErr) return handleError(res, recErr, 'Settle Invoice (Receivables)');
-  
-  res.sendStatus(200);
+  try {
+    // 1. Update Invoice status
+    const { error: invErr } = await supabase.from('invoices').update({ 
+      status: 'paid',
+      tax_deduction: totalTax,
+      taxes_deducted: taxesJson,
+      tax_deduction_proof: taxDeductionProof
+    }).eq('id', req.params.id);
+    
+    if (invErr) {
+      console.warn(`[SETTLE] Invoice update failed for ${req.params.id}: ${invErr.message}`);
+      // Fallback if taxes_deducted column is missing
+      if (invErr.message.includes('column') || invErr.code === '42703') {
+        await supabase.from('invoices').update({ 
+          status: 'paid', 
+          tax_deduction: totalTax 
+        }).eq('id', req.params.id);
+      }
+    }
+    
+    // 2. Update Receivable status and add proof photo + tax info
+    const { error: recErr } = await supabase.from('receivables').update({ 
+      status: 'paid', 
+      balance: 0,
+      paymentProofPhoto,
+      tax_deduction: totalTax,
+      taxes_deducted: taxesJson,
+      tax_deduction_proof: taxDeductionProof
+    }).eq('invoiceId', req.params.id);
+    
+    if (recErr) {
+      console.warn(`[SETTLE] Receivable update failed for ${req.params.id}: ${recErr.message}`);
+      if (recErr.message.includes('column') || recErr.code === '42703') {
+        await supabase.from('receivables').update({ 
+          status: 'paid', 
+          balance: 0,
+          paymentProofPhoto,
+          tax_deduction: totalTax
+        }).eq('invoiceId', req.params.id);
+      }
+    }
+    
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Settle Invoice Exception:', err);
+    res.status(500).json({ error: 'Internal server error during settlement' });
+  }
 });
 
 app.put('/api/invoices/:id', async (req, res) => {
@@ -373,6 +458,13 @@ app.post('/api/salaries', async (req, res) => {
   res.status(201).json({ id });
 });
 
+app.put('/api/salaries/:id', async (req, res) => {
+  const updates = req.body;
+  const { error } = await supabase.from('salaries').update(updates).eq('id', req.params.id);
+  if (error) return handleError(res, error, 'PUT salaries');
+  res.sendStatus(200);
+});
+
 app.delete('/api/salaries/:id', async (req, res) => {
   const { error } = await supabase.from('salaries').delete().eq('id', req.params.id);
   if (error) return handleError(res, error, 'DELETE salaries');
@@ -394,6 +486,13 @@ app.post('/api/other-expenses', async (req, res) => {
   });
   if (error) return handleError(res, error, 'POST other_expenses');
   res.status(201).json({ id });
+});
+
+app.put('/api/other-expenses/:id', async (req, res) => {
+  const updates = req.body;
+  const { error } = await supabase.from('other_expenses').update(updates).eq('id', req.params.id);
+  if (error) return handleError(res, error, 'PUT other_expenses');
+  res.sendStatus(200);
 });
 
 app.delete('/api/other-expenses/:id', async (req, res) => {
@@ -421,6 +520,8 @@ app.post('/api/system/config', async (req, res) => {
 });
 
 app.post('/api/system/clear', async (req, res) => {
+  await supabase.from('other_expenses').delete().neq('id', '');
+  await supabase.from('salaries').delete().neq('id', '');
   await supabase.from('receivables').delete().neq('id', '');
   await supabase.from('invoices').delete().neq('id', '');
   await supabase.from('purchase_orders').delete().neq('id', '');
@@ -473,6 +574,19 @@ app.post('/api/employee-accounts', async (req, res) => {
   const { error } = await supabase.from('employee_accounts').insert(account);
   if (error) return handleError(res, error, 'POST employee-accounts');
   res.status(201).json({ id: account.id });
+});
+
+app.put('/api/employee-accounts/:id', async (req, res) => {
+  const updates = req.body;
+  const { error } = await supabase.from('employee_accounts').update(updates).eq('id', req.params.id);
+  if (error) return handleError(res, error, 'PUT employee-accounts');
+  res.sendStatus(200);
+});
+
+app.delete('/api/employee-accounts/:id', async (req, res) => {
+  const { error } = await supabase.from('employee_accounts').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error, 'DELETE employee-accounts');
+  res.sendStatus(204);
 });
 
 // --- COMPANY BANK ACCOUNTS ---

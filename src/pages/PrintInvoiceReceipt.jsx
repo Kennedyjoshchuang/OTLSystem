@@ -178,3 +178,4 @@ const PrintInvoiceReceipt = () => {
 };
 
 export default PrintInvoiceReceipt;
+

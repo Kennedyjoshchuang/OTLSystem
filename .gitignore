@@ -32,3 +32,4 @@ dist-ssr
 *.sqlite
 *.db
 server/omega_trust.db
+scratch/

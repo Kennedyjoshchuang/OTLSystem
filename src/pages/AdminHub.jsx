@@ -23,6 +23,7 @@ const AdminHub = () => {
   const [poItems, setPoItems] = useState([{ serviceIdx: '', qty: 1 }]);
   const [poJoSearch, setPoJoSearch] = useState('');
   const [poVendorSearch, setPoVendorSearch] = useState('');
+  const [quoteSearchTerm, setQuoteSearchTerm] = useState('');
 
   const [isPOListMinimized, setIsPOListMinimized] = useState(false);
   const [deleteJOConfirm, setDeleteJOConfirm] = useState(null);
@@ -258,7 +259,7 @@ const AdminHub = () => {
                   <div style={{color:'#666',marginTop:'5px'}}>Ref: {printPO.id}</div>
                 </div>
                 <div style={{textAlign:'right'}}>
-                  <div style={{fontWeight:'bold'}}>OTL Freight Management</div>
+                  <div style={{fontWeight:'bold'}}>PT. Omega Trust Logistik</div>
                   <div>Jakarta, Indonesia</div>
                   <div style={{marginTop:'5px',fontSize:'0.8rem'}}>Date: {formatDate(printPO.date)}</div>
                 </div>
@@ -582,6 +583,24 @@ const AdminHub = () => {
               <form onSubmit={handleModalSubmit}>
                 <div className="input-group" style={{ marginBottom: '25px' }}>
                   <label>Select Approved Activity</label>
+                  <div style={{ position: 'relative', marginBottom: '10px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="Cari Penawaran (ID, Customer, atau Deskripsi)..." 
+                      value={quoteSearchTerm} 
+                      onChange={e => setQuoteSearchTerm(e.target.value)} 
+                      style={{ 
+                        width: '100%', 
+                        padding: '10px 15px 10px 40px', 
+                        borderRadius: '10px', 
+                        background: 'var(--input-bg)', 
+                        border: '1px solid var(--border)', 
+                        color: 'var(--text)',
+                        fontSize: '0.9rem'
+                      }} 
+                    />
+                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  </div>
                   <select
                     required
                     value={selectedQuoteId}
@@ -608,7 +627,13 @@ const AdminHub = () => {
                     }}
                   >
                     <option value="" style={{ color: 'black' }}>-- Choose Approved Quotation --</option>
-                    {approvedQuotes
+                    {quotations
+                      .filter(q => q.status === 'approved')
+                      .filter(q => 
+                        q.id.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
+                        q.customerName.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
+                        (q.items?.[0]?.description || q.jobDescription || '').toLowerCase().includes(quoteSearchTerm.toLowerCase())
+                      )
                       .map(quote => {
                         const label = Array.isArray(quote.items) && quote.items.length > 0
                           ? quote.items[0].description
@@ -894,3 +919,4 @@ const AdminHub = () => {
 };
 
 export default AdminHub;
+

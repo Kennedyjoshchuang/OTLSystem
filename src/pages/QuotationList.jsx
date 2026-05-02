@@ -98,7 +98,8 @@ const QuotationList = () => {
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                     <img src="/assets/logo.png" alt="Logo" style={{ width: '70px', height: '70px', objectFit: 'contain' }} />
                     <div>
-                      <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Logistics & Freight Forwarding</h4>
+                      <h3 style={{ margin: 0, fontWeight: '950', fontSize: '1.4rem', color: '#0f172a', letterSpacing: '-0.5px' }}>PT. OMEGA TRUST LOGISTIK</h3>
+                      <h4 style={{ margin: '1px 0 0 0', fontWeight: '800', fontSize: '0.85rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Logistics & Freight Forwarding</h4>
                       <div style={{ fontSize: '0.7rem', color: '#64748b', lineHeight: '1.2', marginTop: '3px', maxWidth: '250px' }}>
                         Green Sedayu Bizpark DM 11 No. 51, Kalideres, Jakarta Barat<br />
                         Tel: +62 21 2252 2333 | Email: info@omegatrust.co.id
@@ -295,3 +296,4 @@ const QuotationList = () => {
 };
 
 export default QuotationList;
+

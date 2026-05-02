@@ -64,13 +64,15 @@ const Accounting = () => {
   const [issuingInvoiceJoId, setIssuingInvoiceJoId] = useState(null);
   const [selectedBankId, setSelectedBankId] = useState('');
   const [receivableProofModal, setReceivableProofModal] = useState(null); // invoice to upload proof for
+  const [settleModal, setSettleModal] = useState(null); // { id, amount, ... }
+  const [settleForm, setSettleForm] = useState({ paymentProof: '', taxes: [{ name: '', amount: 0 }], taxProof: '' });
 
   const { 
     jobOrders = [], invoices = [], createInvoice, settleInvoice, deleteInvoice, updateInvoice, 
     receivables = [], vendors = [], purchaseOrders = [], updateJOStatus, updatePurchaseOrder,
     quotations = [],
-    salaries = [], addSalary, deleteSalary,
-    otherExpenses = [], addOtherExpense, deleteOtherExpense,
+    salaries = [], addSalary, deleteSalary, updateSalary,
+    otherExpenses = [], addOtherExpense, deleteOtherExpense, updateOtherExpense,
     employees = [], companyBankAccounts = [], updateCompanyBank,
     loading 
   } = context || {};
@@ -380,27 +382,13 @@ const Accounting = () => {
       
       localStorage.setItem('print_invoice_data', JSON.stringify(printData));
 
-      // Open multiple tabs as requested
-      // Note: Browsers might block multiple popups. User needs to "Always allow pop-ups from this site".
-      
-      // 1. Main Invoice
-      window.open('/print/invoice', '_blank');
-      
-      // 2. Attachment (Operational Photos) - Only if photos exist
-      if (linkedJO && Array.isArray(linkedJO.photos) && linkedJO.photos.length > 0) {
-        window.open('/print/invoice-attachment', '_blank');
-      }
-
-      // 3. Receipt Draft
-      window.open('/print/invoice-receipt', '_blank');
-
       // Update UI state
       setActiveTab('billing');
       setIsIssuedCollapsed(false);
       setIssuingInvoiceJoId(null); // Reset modal
       
-      // Success Notification
-      alert(`Invoice ${newInv.id} berhasil diterbitkan! Pastikan popup browser diizinkan untuk melihat semua dokumen.`);
+      // Redirect to print page (arahkan page)
+      window.location.href = '/print/invoice';
       
     } catch (err) {
       console.error("Issue Invoice error:", err);
@@ -442,9 +430,21 @@ const Accounting = () => {
     window.print();
   };
 
-  const handleSettle = async (invId) => {
+  const handleSettle = (inv) => {
+    setSettleModal(inv);
+    const existingTaxes = Array.isArray(inv.taxes_deducted) ? inv.taxes_deducted : (inv.tax_deduction > 0 ? [{ name: 'PPh 23', amount: inv.tax_deduction }] : [{ name: '', amount: 0 }]);
+    setSettleForm({ 
+      paymentProof: inv.paymentProofPhoto || '', 
+      taxes: existingTaxes, 
+      taxProof: inv.tax_deduction_proof || '' 
+    });
+  };
+
+  const confirmSettle = async () => {
+    if (!settleModal) return;
     try {
-      await settleInvoice(invId);
+      await settleInvoice(settleModal.id, settleForm.paymentProof, settleForm.taxes, settleForm.taxProof);
+      setSettleModal(null);
       alert('Payment settled! Invoice moved to Lunas Records.');
     } catch (err) {
       alert('Gagal settle pembayaran: ' + err.message);
@@ -548,8 +548,7 @@ const Accounting = () => {
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
                     <img src="/assets/logo.png" alt="Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                     <div>
-                      <h2 style={{ color: '#065f46', background: 'none', webkitTextFillColor: 'initial', margin: 0, fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-1px' }}>ALP LOGISTICS</h2>
-                      <p style={{ margin: 0, color: '#64748b', fontWeight: '700', fontSize: '0.9rem', letterSpacing: '2px', textTransform: 'uppercase' }}>ALP LOGISTICS PRAKARSA</p>
+                      <h2 style={{ color: '#065f46', background: 'none', webkitTextFillColor: 'initial', margin: 0, fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-1px' }}>PT. OMEGA TRUST LOGISTIK</h2>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
@@ -575,7 +574,7 @@ const Accounting = () => {
                       <div style={{ fontSize: '0.95rem', color: '#0f172a', fontWeight: '700', lineHeight: '1.5' }}>
                         Bank Mandiri (IDR)<br />
                         Acc No: 164-00-0255502-3<br />
-                        Acc Name: ALP Logistics Prakarsa
+                        Acc Name: PT. Omega Trust Logistik
                       </div>
                     </div>
                   </div>
@@ -651,7 +650,7 @@ const Accounting = () => {
                   <div style={{ textAlign: 'center', minWidth: '250px' }}>
                     <p style={{ marginBottom: '80px', fontSize: '0.9rem', fontWeight: '900', textTransform: 'uppercase', color: '#0f172a', letterSpacing: '1px' }}>Authorized Signature</p>
                     <div style={{ borderBottom: '3px solid #0f172a', width: '100%', marginBottom: '15px' }}></div>
-                    <p style={{ margin: 0, fontWeight: '950', color: '#065f46', fontSize: '1.2rem' }}>ALP LOGISTICS PRAKARSA</p>
+                    <p style={{ margin: 0, fontWeight: '950', color: '#065f46', fontSize: '1.2rem' }}>PT. OMEGA TRUST LOGISTIK</p>
                     <p style={{ margin: 0, color: '#64748b', fontWeight: '700', fontSize: '0.85rem' }}>Finance Department</p>
                   </div>
                 </div>
@@ -692,7 +691,7 @@ const Accounting = () => {
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: '900', fontSize: '1.4rem', color: '#0f172a' }}>ALP LOGISTICS</div>
+                <div style={{ fontWeight: '900', fontSize: '1.4rem', color: '#0f172a' }}>PT. OMEGA TRUST LOGISTIK</div>
                 <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600', marginTop: '5px' }}>
                   Green Sedayu Bizpark DM 11 No. 51<br />
                   Kalideres, Jakarta Barat<br />
@@ -763,12 +762,12 @@ const Accounting = () => {
               <div>
                 <div style={{ borderBottom: '2px solid #333', height: '100px', marginBottom: '15px' }} />
                 <div style={{ fontSize: '0.9rem', fontWeight: '900', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '1px' }}>Authorized Signature</div>
-                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '5px' }}>ALP Logistics Prakarsa</div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '5px' }}>PT. Omega Trust Logistik</div>
               </div>
             </div>
 
             <div style={{ marginTop: '60px', borderTop: '1px dashed #cbd5e1', paddingTop: '20px', textAlign: 'center' }}>
-              <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>* This Purchase Order is a legally binding document between ALP Logistics Prakarsa and the specified vendor.</p>
+              <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0 }}>* This Purchase Order is a legally binding document between PT. Omega Trust Logistik and the specified vendor.</p>
               <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '5px 0 0 0' }}>* Please acknowledge receipt of this PO within 24 hours.</p>
             </div>
           </div>
@@ -893,7 +892,7 @@ const Accounting = () => {
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontWeight: '900', fontSize: '1.2rem', color: '#0f172a' }}>ALP LOGISTICS PRAKARSA</div>
+                      <div style={{ fontWeight: '900', fontSize: '1.2rem', color: '#0f172a' }}>PT. OMEGA TRUST LOGISTIK</div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>
                         Green Sedayu Bizpark DM 11 No. 51<br />
                         Kalideres, Jakarta Barat<br />
@@ -914,7 +913,7 @@ const Accounting = () => {
                       </div>
                       <div style={{ fontSize: '0.85rem', color: '#475569', fontWeight: '600' }}>
                         Bank Mandiri | 164-00-0255502-3<br />
-                        ALP Logistics Prakarsa
+                        PT. Omega Trust Logistik
                       </div>
                     </div>
                   </div>
@@ -951,7 +950,7 @@ const Accounting = () => {
                     <div style={{ textAlign: 'center', minWidth: '200px' }}>
                       <p style={{ marginBottom: '60px', fontSize: '0.85rem', fontWeight: '800' }}>AUTHORIZED BY</p>
                       <div style={{ borderBottom: '2px solid #0f172a', width: '100%', marginBottom: '10px' }}></div>
-                      <p style={{ margin: 0, fontWeight: '900' }}>ALP LOGISTICS</p>
+                      <p style={{ margin: 0, fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</p>
                     </div>
                   </div>
                 </div>
@@ -1609,12 +1608,14 @@ const Accounting = () => {
                   <th style={{ padding: '15px' }}>Invoice</th>
                   <th style={{ padding: '15px' }}>Customer</th>
                   <th style={{ padding: '15px' }}>{receivableSubTab === 'outstanding' ? 'Outstanding Amount' : 'Amount Paid'}</th>
+                  {receivableSubTab === 'lunas' && <th style={{ padding: '15px' }}>Tax Ded.</th>}
                   <th style={{ padding: '15px' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {(() => {
-                  const filteredItems = (receivableSubTab === 'outstanding' ? receivables : paidInvoices)
+                  const outstandingReceivables = (receivables || []).filter(r => r.status !== 'paid');
+                  const filteredItems = (receivableSubTab === 'outstanding' ? outstandingReceivables : paidInvoices)
                     .filter(item => filterByDate(item.date))
                     .filter(item => {
                       const id = item.id || '';
@@ -1637,15 +1638,22 @@ const Accounting = () => {
                       <td style={{ padding: '15px', fontWeight: 'bold' }}>
                         Rp {(item.balance || item.amount).toLocaleString()}
                       </td>
+                      {receivableSubTab === 'lunas' && (
+                        <td style={{ padding: '15px', color: '#ef4444', fontWeight: '600' }}>
+                          Rp {(item.tax_deduction || 0).toLocaleString()}
+                        </td>
+                      )}
                       <td style={{ padding: '15px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
+                          {/* Common Doc Button (Signed Document from JO) */}
                           <button 
                             className="btn" 
                             style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}
                             onClick={() => {
                               const jo = jobOrders.find(j => j.id === item.joId);
                               if (jo && jo.photos && jo.photos.length > 0) {
-                                setPhotoViewer({ title: `Signed Document - ${item.id}`, photos: jo.photos });
+                                localStorage.setItem('print_invoice_data', JSON.stringify({ invoice: item, jo }));
+                                window.open('/print/invoice-attachment', '_blank');
                               } else {
                                 alert("Dokumen tertanda belum diupload oleh operasional.");
                               }
@@ -1653,33 +1661,59 @@ const Accounting = () => {
                           >
                             <ShieldCheck size={14} /> Doc
                           </button>
-                          
-                          {item.paymentProofPhoto ? (
-                            <button 
-                              className="btn" 
-                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}
-                              onClick={() => setPhotoViewer({ title: `Bukti Pembayaran - ${item.id}`, photos: item.paymentProofPhoto })}
-                            >
-                              <Image size={14} /> Proof
-                            </button>
-                          ) : (
-                            <button 
-                              className="btn" 
-                              style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}
-                              onClick={() => setReceivableProofModal(item)}
-                            >
-                              <Plus size={14} /> Upload
-                            </button>
-                          )}
 
                           {receivableSubTab === 'outstanding' ? (
-                            <ButtonWithLoading className="btn btn-gold" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => handleSettle(item.id)}>
-                              Mark as Settled
-                            </ButtonWithLoading>
+                            <>
+                              {item.paymentProofPhoto ? (
+                                <button 
+                                  className="btn" 
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}
+                                  onClick={() => setPhotoViewer({ title: `Bukti Pembayaran - ${item.id}`, photos: item.paymentProofPhoto })}
+                                >
+                                  <Image size={14} /> Proof
+                                </button>
+                              ) : (
+                                <button 
+                                  className="btn" 
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}
+                                  onClick={() => setReceivableProofModal(item)}
+                                >
+                                  <Plus size={14} /> Upload
+                                </button>
+                              )}
+                              <ButtonWithLoading className="btn btn-gold" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => handleSettle(item)}>
+                                Mark as Settled
+                              </ButtonWithLoading>
+                            </>
                           ) : (
-                            <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '5px' }} onClick={() => handleDownloadInvoice(item)}>
-                              <Download size={14} /> History View
-                            </button>
+                            <>
+                              {/* Paid Tab Downloads */}
+                              {(item.tax_deduction_proof || item.paymentProofPhoto) && (
+                                <button 
+                                  className="btn" 
+                                  style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', gap: '5px' }}
+                                  onClick={() => {
+                                    const photos = [];
+                                    if (item.tax_deduction_proof) photos.push(item.tax_deduction_proof);
+                                    if (item.paymentProofPhoto) {
+                                      if (Array.isArray(item.paymentProofPhoto)) photos.push(...item.paymentProofPhoto);
+                                      else photos.push(item.paymentProofPhoto);
+                                    }
+                                    const linkedJO = jobOrders.find(j => String(j.id) === String(item.joId));
+                                    localStorage.setItem('print_invoice_data', JSON.stringify({ 
+                                      invoice: item, 
+                                      jo: { ...linkedJO, photos: photos } 
+                                    }));
+                                    window.open('/print/invoice-attachment', '_blank');
+                                  }}
+                                >
+                                  <ShieldCheck size={14} /> Tax Proof
+                                </button>
+                              )}
+                              <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '5px' }} onClick={() => handleDownloadInvoice(item)}>
+                                <Download size={14} /> Doc
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -1711,7 +1745,7 @@ const Accounting = () => {
               <h4 style={{ margin: 0, color: '#8b5cf6', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <User size={20} /> Pengeluaran Biaya Gaji
               </h4>
-              <button className="btn btn-primary" style={{ background: '#8b5cf6' }} onClick={() => setSalaryModal(true)}>
+              <button className="btn btn-primary" style={{ background: '#8b5cf6' }} onClick={() => { setSalaryForm({ name: '', position: '', bankAccount: '', bankName: '', baseSalary: '', period: '', nik: '', npwp: '', taxes: [], proofPhoto: '', expenseDate: '' }); setSalaryModal(true); }}>
                 <Plus size={16} /> Tambah Data Gaji
               </button>
             </div>
@@ -1758,7 +1792,10 @@ const Accounting = () => {
                         <button className="btn btn-gold" style={{ padding: '5px 10px', fontSize: '0.75rem', gap: '5px' }} onClick={() => setSalarySlip(s)}>
                           <Download size={14} /> Slip
                         </button>
-                        <button className="btn btn-sm btn-danger" onClick={() => deleteSalary(s.id)}>
+                        <button className="btn btn-sm" style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => { setSalaryForm(s); setSalaryModal(true); }}>
+                          <Edit3 size={14} />
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => deleteSalary(s.id)} style={{ width:'32px', height:'32px' }}>
                           <X size={14} />
                         </button>
                       </div>
@@ -1779,7 +1816,7 @@ const Accounting = () => {
               <h4 style={{ margin: 0, color: '#ec4899', display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Briefcase size={20} /> Pengeluaran Biaya Lain-lain
               </h4>
-              <button className="btn btn-primary" style={{ background: '#ec4899' }} onClick={() => setOtherExpenseModal(true)}>
+              <button className="btn btn-primary" style={{ background: '#ec4899' }} onClick={() => { setOtherExpenseForm({ employeeName: '', position: '', bankAccount: '', bankName: '', amount: '', description: '', taxes: [], proofPhoto: '', expenseDate: '' }); setOtherExpenseModal(true); }}>
                 <Plus size={16} /> Tambah Biaya Lain
               </button>
             </div>
@@ -1822,9 +1859,14 @@ const Accounting = () => {
                       ) : <span style={{ color:'var(--text-muted)' }}>-</span>}
                     </td>
                     <td style={{ padding: '15px', textAlign: 'center' }}>
-                      <button className="btn btn-sm btn-danger" onClick={() => deleteOtherExpense(e.id)}>
-                        <X size={14} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button className="btn btn-sm" style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => { setOtherExpenseForm(e); setOtherExpenseModal(true); }}>
+                          <Edit3 size={14} />
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => deleteOtherExpense(e.id)} style={{ width:'32px', height:'32px' }}>
+                          <X size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1997,7 +2039,8 @@ const Accounting = () => {
                 revenue: invoices.filter(inv => filterByDate(inv.date)).reduce((s, i) => s + parseFloat(i.amount || 0), 0),
                 opCosts: purchaseOrders.filter(po => filterByDate(po.date)).reduce((s, p) => s + parseFloat(p.grandTotal || 0), 0),
                 payroll: salaries.filter(s => filterByDate(s.expenseDate || s.date)).reduce((s, sa) => s + parseFloat(sa.totalToPay || 0), 0),
-                misc: otherExpenses.filter(e => filterByDate(e.expenseDate || e.date)).reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0)
+                misc: otherExpenses.filter(e => filterByDate(e.expenseDate || e.date)).reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0),
+                totalTax: invoices.filter(inv => filterByDate(inv.date)).reduce((s, i) => s + parseFloat(i.tax_deduction || 0), 0)
               };
               const totalExpenses = reportData.opCosts + reportData.payroll + reportData.misc;
               const netProfit = reportData.revenue - totalExpenses;
@@ -2006,6 +2049,7 @@ const Accounting = () => {
                 { label: 'Total Revenue', val: reportData.revenue, color: '#10b981', icon: <Receipt size={24}/> },
                 { label: 'Total Expenses', val: totalExpenses, color: '#ef4444', icon: <Wallet size={24}/> },
                 { label: 'Net Profit', val: netProfit, color: netProfit >= 0 ? '#10b981' : '#ef4444', icon: <DollarSign size={24}/>, highlight: true },
+                { label: 'Total PPh Terpotong', val: reportData.totalTax, color: '#f59e0b', icon: <ShieldCheck size={24}/>, highlight: true },
                 { label: 'Operational (PO)', val: reportData.opCosts, color: '#f59e0b', icon: <Briefcase size={20}/>, small: true },
                 { label: 'Payroll', val: reportData.payroll, color: '#8b5cf6', icon: <User size={20}/>, small: true },
                 { label: 'Misc Expenses', val: reportData.misc, color: '#ec4899', icon: <CreditCard size={20}/>, small: true }
@@ -2352,11 +2396,15 @@ const Accounting = () => {
             <ButtonWithLoading className="btn btn-primary" style={{ width:'100%', padding:'15px', background:'#8b5cf6' }} onClick={async () => {
                const totalTaxes = salaryForm.taxes.reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
                const totalToPay = parseFloat(salaryForm.baseSalary || 0) - totalTaxes;
-               await addSalary({ ...salaryForm, totalToPay });
+               if (salaryForm.id) {
+                 await updateSalary(salaryForm.id, { ...salaryForm, totalToPay });
+               } else {
+                 await addSalary({ ...salaryForm, totalToPay });
+               }
                setSalaryModal(false);
                setSalaryForm({ name: '', position: '', bankAccount: '', bankName: '', baseSalary: '', period: '', nik: '', npwp: '', taxes: [], proofPhoto: '', expenseDate: '' });
             }}>
-              🚀 Simpan & Terbitkan Gaji
+              {salaryForm.id ? '💾 Perbarui Data Gaji' : '🚀 Simpan & Terbitkan Gaji'}
             </ButtonWithLoading>
           </div>
         </div>
@@ -2462,11 +2510,15 @@ const Accounting = () => {
             <ButtonWithLoading className="btn btn-primary" style={{ width:'100%', padding:'15px', background:'#ec4899' }} onClick={async () => {
                const totalTaxes = otherExpenseForm.taxes.reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
                const totalAfterTax = parseFloat(otherExpenseForm.amount || 0) - totalTaxes;
-               await addOtherExpense({ ...otherExpenseForm, totalAfterTax });
+               if (otherExpenseForm.id) {
+                 await updateOtherExpense(otherExpenseForm.id, { ...otherExpenseForm, totalAfterTax });
+               } else {
+                 await addOtherExpense({ ...otherExpenseForm, totalAfterTax });
+               }
                setOtherExpenseModal(false);
                setOtherExpenseForm({ employeeName: '', position: '', bankAccount: '', bankName: '', amount: '', description: '', taxes: [], proofPhoto: '', expenseDate: '' });
             }}>
-              💾 Simpan Biaya Lain-lain
+              {otherExpenseForm.id ? '💾 Perbarui Biaya' : '💾 Simpan Biaya Lain-lain'}
             </ButtonWithLoading>
           </div>
         </div>
@@ -2494,7 +2546,7 @@ const Accounting = () => {
                 <div style={{ color:'#666', marginTop:'5px' }}>Nomor Ref: {salarySlip.id}</div>
               </div>
               <div style={{ textAlign:'right' }}>
-                <div style={{ fontWeight:'900', fontSize:'1.2rem' }}>ALP LOGISTICS PRAKARSA</div>
+                <div style={{ fontWeight:'900', fontSize:'1.2rem' }}>PT. OMEGA TRUST LOGISTIK</div>
                 <div style={{ fontSize:'0.85rem', color:'#444' }}>Logistics & Transportation Excellence</div>
                 <div style={{ marginTop:'10px', fontWeight:'700' }}>Periode: {salarySlip.period}</div>
               </div>
@@ -2557,7 +2609,7 @@ const Accounting = () => {
                <div style={{ textAlign:'center', width:'200px' }}>
                  <div style={{ fontSize:'0.85rem', marginBottom:'80px' }}>Dibuat Oleh,</div>
                  <div style={{ borderBottom:'1px solid #333', fontWeight:'700' }}>Bagian Keuangan</div>
-                 <div style={{ fontSize:'0.75rem', color:'#666' }}>ALP Logistics System</div>
+                 <div style={{ fontSize:'0.75rem', color:'#666' }}>PT. Omega Trust Logistik</div>
                </div>
                <div style={{ textAlign:'center', width:'200px' }}>
                  <div style={{ fontSize:'0.85rem', marginBottom:'80px' }}>Diterima Oleh,</div>
@@ -2567,7 +2619,7 @@ const Accounting = () => {
             </div>
 
             <div style={{ marginTop:'40px', fontSize:'0.7rem', color:'#999', textAlign:'center', borderTop:'1px dashed #ccc', paddingTop:'15px' }}>
-              Dokumen ini diterbitkan secara elektronik melalui ALP System dan sah tanpa tanda tangan basah.
+              Dokumen ini diterbitkan secara elektronik melalui PT. Omega Trust Logistik dan sah tanpa tanda tangan basah.
             </div>
           </div>
         </div>
@@ -2671,7 +2723,7 @@ const Accounting = () => {
                 <div style={{ color:'#666', marginTop:'5px', fontSize:'1rem' }}>Periode: <strong>{financialReport.dateRange}</strong></div>
               </div>
               <div style={{ textAlign:'right' }}>
-                <div style={{ fontWeight:'900', fontSize:'1.4rem' }}>ALP LOGISTICS PRAKARSA</div>
+                <div style={{ fontWeight:'900', fontSize:'1.4rem' }}>PT. OMEGA TRUST LOGISTIK</div>
                 <div style={{ fontSize:'0.9rem', color:'#444' }}>Logistics & Transportation Excellence</div>
                 <div style={{ marginTop:'10px', fontSize:'0.8rem', color:'#888' }}>Generated on: {new Date().toLocaleString('id-ID')}</div>
               </div>
@@ -2768,17 +2820,17 @@ const Accounting = () => {
                <div style={{ textAlign:'center', width:'250px' }}>
                  <div style={{ fontSize:'0.9rem', marginBottom:'80px' }}>Financial Auditor,</div>
                  <div style={{ borderBottom:'2px solid #333', fontWeight:'800' }}>Finance Department</div>
-                 <div style={{ fontSize:'0.75rem', color:'#666', marginTop:'5px' }}>ALP Logistics System</div>
+                 <div style={{ fontSize:'0.75rem', color:'#666', marginTop:'5px' }}>PT. OMEGA TRUST LOGISTIK System</div>
                </div>
                <div style={{ textAlign:'center', width:'250px' }}>
                  <div style={{ fontSize:'0.9rem', marginBottom:'80px' }}>Approved By,</div>
                  <div style={{ borderBottom:'2px solid #333', fontWeight:'800' }}>Operations Manager</div>
-                 <div style={{ fontSize:'0.75rem', color:'#666', marginTop:'5px' }}>ALP Logistics System</div>
+                 <div style={{ fontSize:'0.75rem', color:'#666', marginTop:'5px' }}>PT. OMEGA TRUST LOGISTIK System</div>
                </div>
             </div>
 
             <div style={{ marginTop:'50px', borderTop:'1px dashed #ccc', paddingTop:'20px', textAlign:'center', color:'#999', fontSize:'0.7rem' }}>
-               Confidential - For Internal Use Only. This document is electronically generated and verified by the ALP Integrated Logistics System.
+               Confidential - For Internal Use Only. This document is electronically generated and verified by the PT. Omega Trust Logistik System.
             </div>
           </div>
         </div>
@@ -2820,7 +2872,134 @@ const Accounting = () => {
         </div>
       )}
 
+      {/* Settle Modal with Tax Deduction */}
+      {settleModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10005, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'550px', padding:'35px', position:'relative' }}>
+            <button onClick={() => setSettleModal(null)} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
+            <h3 style={{ color:'var(--secondary)', marginBottom:'20px', display:'flex', alignItems:'center', gap:'10px' }}><CheckCircle size={24}/> Settle Invoice Payment</h3>
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Invoice: <strong>{settleModal.id}</strong> - {settleModal.customerName}</p>
+            
+            <div style={{ marginBottom:'20px' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Bukti Bayar (Payment Proof)</label>
+              <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
+                {settleForm.paymentProof ? (
+                  <div style={{ position:'relative', width:'80px', height:'80px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={settleForm.paymentProof} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setSettleForm({...settleForm, paymentProof: ''})} style={{ position:'absolute', top:'2px', right:'2px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer' }}><X size={10}/></button>
+                  </div>
+                ) : (
+                  <label style={{ width:'80px', height:'80px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                    <Plus size={20} color="var(--text-muted)"/>
+                    <input type="file" style={{ display:'none' }} onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setSettleForm({...settleForm, paymentProof: reader.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                  </label>
+                )}
+                <span style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Upload receipt from customer</span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom:'20px' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+                <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>Pemotongan Pajak (PPh 23 / Lainnya)</label>
+                <button 
+                  onClick={() => setSettleForm({...settleForm, taxes: [...settleForm.taxes, { name: '', amount: 0 }]})}
+                  style={{ background:'rgba(255,193,7,0.1)', color:'var(--secondary)', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
+                >
+                  + Tambah Pajak
+                </button>
+              </div>
+              
+              {settleForm.taxes.map((tax, idx) => (
+                <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 150px 32px', gap:'10px', marginBottom:'10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Jenis Pajak (e.g. PPh 23)" 
+                    value={tax.name} 
+                    onChange={e => {
+                      const newTaxes = [...settleForm.taxes];
+                      newTaxes[idx].name = e.target.value;
+                      setSettleForm({...settleForm, taxes: newTaxes});
+                    }}
+                    style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.9rem' }}
+                  />
+                  <input 
+                    type="number" 
+                    placeholder="Nominal" 
+                    value={tax.amount} 
+                    onChange={e => {
+                      const newTaxes = [...settleForm.taxes];
+                      newTaxes[idx].amount = e.target.value;
+                      setSettleForm({...settleForm, taxes: newTaxes});
+                    }}
+                    style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.9rem', fontWeight:'700' }}
+                  />
+                  <button 
+                    onClick={() => setSettleForm({...settleForm, taxes: settleForm.taxes.filter((_, i) => i !== idx)})}
+                    style={{ background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'none', borderRadius:'8px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+                  >
+                    <X size={14}/>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginBottom:'30px' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Bukti Potong Pajak (Tax Proof)</label>
+              <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
+                {settleForm.taxProof ? (
+                  <div style={{ position:'relative', width:'80px', height:'80px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={settleForm.taxProof} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setSettleForm({...settleForm, taxProof: ''})} style={{ position:'absolute', top:'2px', right:'2px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer' }}><X size={10}/></button>
+                  </div>
+                ) : (
+                  <label style={{ width:'80px', height:'80px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                    <ShieldCheck size={20} color="var(--text-muted)"/>
+                    <input type="file" style={{ display:'none' }} onChange={e => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => setSettleForm({...settleForm, taxProof: reader.result});
+                        reader.readAsDataURL(file);
+                      }
+                    }} />
+                  </label>
+                )}
+                <span style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Upload tax withholding document</span>
+              </div>
+            </div>
+
+            <div style={{ background:'rgba(255,193,7,0.05)', padding:'20px', borderRadius:'15px', border:'1px solid var(--secondary)', marginBottom:'25px' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px' }}>
+                <span style={{ fontSize:'0.85rem', color:'var(--text-muted)' }}>Invoice Amount:</span>
+                <span style={{ fontWeight:'600' }}>Rp {settleModal.amount.toLocaleString()}</span>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'15px' }}>
+                <span style={{ fontSize:'0.85rem', color:'var(--text-muted)' }}>Total Tax Deduction:</span>
+                <span style={{ fontWeight:'600', color:'#ef4444' }}>- Rp {settleForm.taxes.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0).toLocaleString()}</span>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', paddingTop:'10px', borderTop:'1px solid var(--glass-border)' }}>
+                <span style={{ fontWeight:'700' }}>Final Settlement:</span>
+                <span style={{ fontWeight:'900', color:'var(--secondary)', fontSize:'1.2rem' }}>Rp {(settleModal.amount - settleForm.taxes.reduce((sum, t) => sum + (parseFloat(t.amount) || 0), 0)).toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:'12px' }}>
+              <button onClick={() => setSettleModal(null)} className="btn" style={{ flex:1, padding:'15px' }}>Cancel</button>
+              <ButtonWithLoading onClick={confirmSettle} className="btn btn-gold" style={{ flex:2, padding:'15px', fontWeight:'800' }}>Confirm Settlement</ButtonWithLoading>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bank Settings Modal */}
+
       {showBankSettings && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
           <div className="glass-card" style={{ width:'100%', maxWidth:'800px', padding:'35px', maxHeight:'90vh', overflowY:'auto' }}>
@@ -3053,3 +3232,4 @@ const Accounting = () => {
 };
 
 export default Accounting;
+

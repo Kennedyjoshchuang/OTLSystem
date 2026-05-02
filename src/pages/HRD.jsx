@@ -14,20 +14,23 @@ import {
   Check,
   Building,
   Hash,
-  Key
+  Key,
+  RotateCcw,
+  Settings2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const HRD = () => {
   const { 
     employees = [], addEmployee, updateEmployee, deleteEmployee,
-    employeeAccounts = [], addEmployeeAccount,
+    employeeAccounts = [], addEmployeeAccount, updateEmployeeAccount, deleteEmployeeAccount,
     t, user 
   } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
+  const [isEditAccount, setIsEditAccount] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   
   const [formData, setFormData] = useState({
@@ -73,11 +76,16 @@ const HRD = () => {
     e.preventDefault();
     if (!selectedEmployee) return;
     
-    await addEmployeeAccount({
-      id: selectedEmployee.id,
-      ...accountData
-    });
+    if (isEditAccount) {
+      await updateEmployeeAccount(selectedEmployee.id, accountData);
+    } else {
+      await addEmployeeAccount({
+        id: selectedEmployee.id,
+        ...accountData
+      });
+    }
     setIsAccountModalOpen(false);
+    setIsEditAccount(false);
     setSelectedEmployee(null);
     setAccountData({ username: '', password: '', role: 'staff' });
   };
@@ -165,14 +173,43 @@ const HRD = () => {
                     </td>
                     <td style={{ padding: '20px' }}>
                       {account ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '0.85rem', background: 'rgba(16, 185, 129, 0.1)', padding: '6px 12px', borderRadius: '100px', width: 'fit-content' }}>
-                          <ShieldCheck size={14} />
-                          Active: {account.username}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#10b981', fontSize: '0.85rem', background: 'rgba(16, 185, 129, 0.1)', padding: '6px 12px', borderRadius: '100px', width: 'fit-content' }}>
+                            <ShieldCheck size={14} />
+                            {account.username}
+                          </div>
+                          <button 
+                            title="Reset Akses"
+                            onClick={() => {
+                              setSelectedEmployee(emp);
+                              setAccountData({ username: account.username, password: '', role: account.role });
+                              setIsEditAccount(true);
+                              setIsAccountModalOpen(true);
+                            }}
+                            className="btn-icon" 
+                            style={{ padding: '6px', width: '32px', height: '32px' }}
+                          >
+                            <RotateCcw size={14} />
+                          </button>
+                          <button 
+                            title="Hapus Akses"
+                            onClick={() => {
+                              if (confirm(`Hapus akses sistem untuk ${emp.name}?`)) {
+                                deleteEmployeeAccount(emp.id);
+                              }
+                            }}
+                            className="btn-icon" 
+                            style={{ padding: '6px', width: '32px', height: '32px', color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)' }}
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
                       ) : (
                         <button 
                           onClick={() => {
                             setSelectedEmployee(emp);
+                            setIsEditAccount(false);
+                            setAccountData({ username: '', password: '', role: 'staff' });
                             setIsAccountModalOpen(true);
                           }}
                           className="btn-text" 
@@ -278,8 +315,8 @@ const HRD = () => {
         <div className="modal-overlay">
           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="modal-content" style={{ maxWidth: '450px' }}>
             <div className="modal-header">
-              <h3>Beri Akses Sistem</h3>
-              <button className="close-btn" onClick={() => setIsAccountModalOpen(false)}><X size={24} /></button>
+              <h3>{isEditAccount ? 'Reset Akses Sistem' : 'Beri Akses Sistem'}</h3>
+              <button className="close-btn" onClick={() => { setIsAccountModalOpen(false); setIsEditAccount(false); }}><X size={24} /></button>
             </div>
             <div style={{ padding: '20px 30px', background: 'rgba(212, 175, 55, 0.05)', borderBottom: '1px solid var(--border)' }}>
               <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>Karyawan: <strong style={{ color: 'var(--secondary)' }}>{selectedEmployee?.name}</strong></p>
@@ -311,7 +348,9 @@ const HRD = () => {
                 </select>
               </div>
               <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Buat Akun</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  {isEditAccount ? 'Update Akses' : 'Buat Akun'}
+                </button>
               </div>
             </form>
           </motion.div>
@@ -322,3 +361,4 @@ const HRD = () => {
 };
 
 export default HRD;
+

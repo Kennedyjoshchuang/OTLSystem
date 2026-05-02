@@ -9,6 +9,7 @@ import Executor from './pages/Executor';
 import Accounting from './pages/Accounting';
 import Procurement from './pages/Procurement';
 import SystemControl from './pages/SystemControl';
+import HRD from './pages/HRD';
 import Login from './pages/Login';
 import DashboardHome from './components/DashboardHome';
 import SuratJalanDetail from './pages/SuratJalanDetail';
@@ -39,7 +40,8 @@ const AppRoutes = () => {
         <Route path="/executor" element={<ProtectedRoute><Executor /></ProtectedRoute>} />
         <Route path="/accounting" element={<ProtectedRoute><Accounting /></ProtectedRoute>} />
         <Route path="/procurement" element={<ProtectedRoute><Procurement /></ProtectedRoute>} />
-        <Route path="/system" element={<ProtectedRoute><SystemControl /></ProtectedRoute>} />
+        <Route path="/hrd" element={<ProtectedRoute><HRD /></ProtectedRoute>} />
+        <Route path="/system-control" element={<ProtectedRoute><SystemControl /></ProtectedRoute>} />
         <Route path="/surat-jalan/:id" element={<ProtectedRoute><SuratJalanDetail /></ProtectedRoute>} />
 
         {/* Print Pages - No Layout */}
@@ -65,3 +67,4 @@ function App() {
 }
 
 export default App;
+

@@ -71,7 +71,8 @@ const PrintQuotation = () => {
           <div style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
             <img src="/assets/logo.png" alt="Logo" style={{ width: '75px', height: '75px', objectFit: 'contain' }} />
             <div>
-              <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOGISTICS & FREIGHT FORWARDING</h4>
+              <h1 style={{ margin: 0, fontWeight: '950', fontSize: '1.6rem', color: '#0f172a', letterSpacing: '-0.5px' }}>PT. OMEGA TRUST LOGISTIK</h1>
+              <h4 style={{ margin: '2px 0 0 0', fontWeight: '800', fontSize: '0.95rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px' }}>LOGISTICS & FREIGHT FORWARDING</h4>
               <div className="text-slate" style={{ fontSize: '0.75rem', lineHeight: '1.4', marginTop: '5px', maxWidth: '300px', fontWeight: '500' }}>
                 {data.companyAddress || "Green Sedayu Bizpark DM 11 No. 51, Kalideres, Jakarta Barat"}
               </div>
@@ -179,7 +180,7 @@ const PrintQuotation = () => {
             <p style={{ fontWeight: '900', fontSize: '1rem', color: '#0f172a', textTransform: 'uppercase', marginBottom: '80px', letterSpacing: '1.5px' }}>AUTHORIZED SIGNATURE</p>
             <div style={{ borderBottom: '2.5px solid #0f172a', width: '250px', margin: '0 auto 15px auto' }}></div>
             <p style={{ margin: 0, fontWeight: '900', fontSize: '1.2rem', color: '#0f172a' }}>Management</p>
-            <p className="text-slate" style={{ margin: 0, fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>OTL LOGISTICS</p>
+            <p className="text-slate" style={{ margin: 0, fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>PT. OMEGA TRUST LOGISTIK</p>
           </div>
         </div>
       </div>
@@ -188,3 +189,4 @@ const PrintQuotation = () => {
 };
 
 export default PrintQuotation;
+

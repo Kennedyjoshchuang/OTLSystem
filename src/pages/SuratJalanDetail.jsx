@@ -198,3 +198,4 @@ const SuratJalanDetail = () => {
 };
 
 export default SuratJalanDetail;
+

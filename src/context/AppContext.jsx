@@ -146,8 +146,8 @@ export const AppProvider = ({ children }) => {
       setProspects(Array.isArray(prosData) ? prosData : []);
       setQuotations(safeParse(quoData, ['items']));
       setJobOrders(safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName']));
-      setInvoices(safeParse(invData, ['extra_charges']));
-      setReceivables(safeParse(recData, ['extra_charges']));
+      setInvoices(safeParse(invData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted']));
+      setReceivables(safeParse(recData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted']));
       setVendors(safeParse(venData, ['services', 'assets']));
       setPurchaseOrders(safeParse(poData, ['items', 'vendorInvoicePhoto', 'paymentProofPhoto']));
       setSalaries(safeParse(salData, ['taxes']));
@@ -401,17 +401,33 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const settleInvoice = async (invoiceId, paymentProofPhoto) => {
+  const settleInvoice = async (invoiceId, paymentProofPhoto, taxesDeducted, taxDeductionProof) => {
+    const totalTax = Array.isArray(taxesDeducted) ? taxesDeducted.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0) : 0;
+    
     await fetch(`${API_URL}/invoices/${invoiceId}/settle`, { 
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paymentProofPhoto })
+      body: JSON.stringify({ paymentProofPhoto, taxesDeducted, taxDeductionProof })
     });
     setInvoices(prev => prev.map(inv => 
-      inv.id === invoiceId ? { ...inv, status: 'paid' } : inv
+      inv.id === invoiceId ? { 
+        ...inv, 
+        status: 'paid', 
+        tax_deduction: totalTax, 
+        taxes_deducted: taxesDeducted,
+        tax_deduction_proof: taxDeductionProof 
+      } : inv
     ));
     setReceivables(prev => prev.map(r => 
-      r.id === invoiceId || r.invoiceId === invoiceId ? { ...r, status: 'paid', balance: 0, paymentProofPhoto } : r
+      r.id === invoiceId || r.invoiceId === invoiceId ? { 
+        ...r, 
+        status: 'paid', 
+        balance: 0, 
+        paymentProofPhoto, 
+        tax_deduction: totalTax, 
+        taxes_deducted: taxesDeducted,
+        tax_deduction_proof: taxDeductionProof 
+      } : r
     ));
   };
 
@@ -563,6 +579,15 @@ export const AppProvider = ({ children }) => {
     setSalaries(prev => prev.filter(s => s.id !== id));
   };
 
+  const updateSalary = async (id, updates) => {
+    await fetch(`${API_URL}/salaries/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    setSalaries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
+  };
+
   const addOtherExpense = async (expense) => {
     const newExpense = { 
       ...expense, 
@@ -581,6 +606,15 @@ export const AppProvider = ({ children }) => {
   const deleteOtherExpense = async (id) => {
     await fetch(`${API_URL}/other-expenses/${id}`, { method: 'DELETE' });
     setOtherExpenses(prev => prev.filter(e => e.id !== id));
+  };
+
+  const updateOtherExpense = async (id, updates) => {
+    await fetch(`${API_URL}/other-expenses/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    setOtherExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
   };
 
   const clearAllData = async () => {
@@ -642,6 +676,20 @@ export const AppProvider = ({ children }) => {
     });
     setEmployeeAccounts(prev => [...prev, account]);
   };
+  
+  const updateEmployeeAccount = async (id, updates) => {
+    await fetch(`${API_URL}/employee-accounts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+    setEmployeeAccounts(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+  
+  const deleteEmployeeAccount = async (id) => {
+    await fetch(`${API_URL}/employee-accounts/${id}`, { method: 'DELETE' });
+    setEmployeeAccounts(prev => prev.filter(a => a.id !== id));
+  };
 
   const updateCompanyBank = async (account) => {
     await fetch(`${API_URL}/company-bank-accounts`, {
@@ -674,10 +722,10 @@ export const AppProvider = ({ children }) => {
       jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO,
       invoices, createInvoice, settleInvoice, deleteInvoice, updateInvoice,
       receivables, settleReceivable,
-      salaries, addSalary, deleteSalary,
-      otherExpenses, addOtherExpense, deleteOtherExpense,
+      salaries, addSalary, deleteSalary, updateSalary,
+      otherExpenses, addOtherExpense, deleteOtherExpense, updateOtherExpense,
       employees, addEmployee, updateEmployee, deleteEmployee,
-      employeeAccounts, addEmployeeAccount,
+      employeeAccounts, addEmployeeAccount, updateEmployeeAccount, deleteEmployeeAccount,
       companyBankAccounts, updateCompanyBank,
       clearAllData,
       getSystemConfig, updateSystemConfig
@@ -688,3 +736,4 @@ export const AppProvider = ({ children }) => {
 };
 
 export const useApp = () => useContext(AppContext);
+

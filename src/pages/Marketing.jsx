@@ -509,8 +509,8 @@ const Marketing = () => {
                   {/* Marketing Details */}
                   <div style={{ textAlign: 'right' }}>
                     <h5 className="text-slate" style={{ textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: '800', marginBottom: '18px', letterSpacing: '1.5px' }}>MARKETING PERSON</h5>
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: '1.8rem', fontWeight: '900', color: '#0f172a' }}>{selectedDraft.marketingName || 'ALP Logistics Team'}</h4>
-                    <p className="text-slate" style={{ margin: 0, fontWeight: '700', fontSize: '1rem' }}>{selectedDraft.marketingEmail || 'marketing@alplogistics.co.id'}</p>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: '1.8rem', fontWeight: '900', color: '#0f172a' }}>{selectedDraft.marketingName || 'PT. Omega Trust Logistik Team'}</h4>
+                    <p className="text-slate" style={{ margin: 0, fontWeight: '700', fontSize: '1rem' }}>{selectedDraft.marketingEmail || 'marketing@otl.co.id'}</p>
                     <p className="text-slate" style={{ margin: '4px 0 25px 0', fontWeight: '700', fontSize: '1rem' }}>+62 21 5000 8000</p>
                     <div style={{ borderTop: '1px solid #e2e8f0', display: 'inline-block', paddingTop: '12px' }}>
                       <span className="text-slate" style={{ textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: '800', letterSpacing: '1px', marginRight: '12px' }}>VALIDITY PERIOD:</span>
@@ -592,7 +592,7 @@ const Marketing = () => {
                     <p style={{ fontWeight: '900', fontSize: '1rem', color: '#0f172a', textTransform: 'uppercase', marginBottom: '80px', letterSpacing: '1.5px' }}>AUTHORIZED SIGNATURE</p>
                     <div style={{ borderBottom: '2.5px solid #0f172a', width: '250px', margin: '0 auto 15px auto' }}></div>
                     <p style={{ margin: 0, fontWeight: '900', fontSize: '1.2rem', color: '#0f172a' }}>Management</p>
-                    <p className="text-slate" style={{ margin: 0, fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>ALP LOGISTICS PRAKARSA</p>
+                    <p className="text-slate" style={{ margin: 0, fontWeight: '800', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px' }}>PT. OMEGA TRUST LOGISTIK</p>
                   </div>
                 </div>
             </motion.div>
@@ -727,7 +727,7 @@ const Marketing = () => {
               </div>
               <div className="input-group">
                 <label>Email Marketing</label>
-                <input required type="email" value={prospectData.marketingEmail} onChange={e => setProspectData({ ...prospectData, marketingEmail: e.target.value })} placeholder="email@alplogistics.co.id" />
+                <input required type="email" value={prospectData.marketingEmail} onChange={e => setProspectData({ ...prospectData, marketingEmail: e.target.value })} placeholder="marketing@otlfreight.co.id" />
               </div>
               <div className="input-group" style={{ gridColumn: 'span 3' }}>
                 <label>Alamat OTL (Tampil Di Header Penawaran)</label>
@@ -1037,3 +1037,4 @@ const Marketing = () => {
 };
 
 export default Marketing;
+

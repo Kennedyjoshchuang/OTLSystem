@@ -192,3 +192,4 @@ export const translations = {
     searchJobOrders: "Cari Job Order..."
   }
 };
+

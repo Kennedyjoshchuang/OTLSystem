@@ -6,3 +6,4 @@ export const exportToExcel = (data, fileName) => {
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
   XLSX.writeFile(workbook, `${fileName}_${new Date().toISOString().split('T')[0]}.xlsx`);
 };
+

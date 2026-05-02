@@ -21,7 +21,10 @@ const tablesToMigrate = [
   { name: 'purchase_orders', jsonCols: ['items', 'vendorInvoicePhoto', 'paymentProofPhoto'] },
   { name: 'system_config' },
   { name: 'salaries', jsonCols: ['taxes'] },
-  { name: 'other_expenses', jsonCols: ['taxes'] }
+  { name: 'other_expenses', jsonCols: ['taxes'] },
+  { name: 'employees' },
+  { name: 'employee_accounts' },
+  { name: 'company_bank_accounts' }
 ];
 
 async function migrate() {

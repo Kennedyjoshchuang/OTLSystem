@@ -57,22 +57,46 @@ const PrintInvoice = () => {
       `}</style>
 
       {/* Toolbar */}
-      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 100, background: 'white', borderBottom: '1px solid #e2e8f0', padding: '10px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span style={{ fontWeight: '800', fontSize: '0.95rem', color: '#1e293b' }}>Draft Invoice — {invoice?.id}</span>
-          <span style={{ background: '#fef3c7', color: '#d97706', fontSize: '0.7rem', fontWeight: '800', padding: '2px 10px', borderRadius: '20px' }}>DRAFT</span>
+      <div className="no-print" style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(10px)', borderBottom: '1px solid #e2e8f0', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <button 
+            onClick={() => window.location.href = '/'} 
+            style={{ padding: '8px 16px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            ← Kembali ke Dashboard
+          </button>
+          <div style={{ width: '1px', height: '24px', background: '#e2e8f0' }} />
+          <span style={{ fontWeight: '800', fontSize: '1rem', color: '#1e293b' }}>Invoice {invoice?.id}</span>
+          <span style={{ background: '#dcfce7', color: '#166534', fontSize: '0.7rem', fontWeight: '800', padding: '3px 12px', borderRadius: '20px', textTransform: 'uppercase' }}>Diterbitkan</span>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '12px' }}>
           {photos.length > 0 && (
             <button
-              onClick={handleOpenAttachment}
-              style={{ background: 'rgba(99,102,241,0.08)', color: '#6366f1', border: '1px solid #6366f1', borderRadius: '8px', padding: '4px 14px', fontSize: '0.78rem', fontWeight: '700', cursor: 'pointer' }}
+              onClick={() => window.open('/print/invoice-attachment', '_blank')}
+              style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              📎 Buka Lampiran Foto ({photos.length})
+              📎 Lampiran Foto ({photos.length})
             </button>
           )}
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => window.close()} style={{ padding: '8px 18px', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem' }}>Tutup</button>
-          <button onClick={() => window.print()} style={{ padding: '8px 20px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem' }}>🖨 Print / Simpan PDF</button>
+          <button
+            onClick={() => window.open('/print/invoice-delivery', '_blank')}
+            style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            🚚 Cetak Surat Jalan
+          </button>
+          <button
+            onClick={() => window.open('/print/invoice-receipt', '_blank')}
+            style={{ background: '#fefce8', color: '#854d0e', border: '1px solid #fef08a', borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            🧾 Cetak Kwitansi
+          </button>
+          <button 
+            onClick={() => window.print()} 
+            style={{ padding: '8px 24px', background: '#1e293b', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '800', fontSize: '0.85rem', boxShadow: '0 4px 6px rgba(30, 41, 59, 0.2)' }}
+          >
+            🖨 Cetak Invoice / PDF
+          </button>
         </div>
       </div>
 
@@ -260,3 +284,4 @@ const PrintInvoice = () => {
 };
 
 export default PrintInvoice;
+
