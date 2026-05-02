@@ -18,6 +18,7 @@ import PrintInvoice from './pages/PrintInvoice';
 import PrintInvoiceAttachment from './pages/PrintInvoiceAttachment';
 import PrintInvoiceReceipt from './pages/PrintInvoiceReceipt';
 import PrintInvoiceDelivery from './pages/PrintInvoiceDelivery';
+import MaintenanceOverlay from './components/MaintenanceOverlay';
 
 const ProtectedRoute = ({ children, useLayout = true }) => {
   const { user, loading } = useApp();
@@ -61,10 +62,19 @@ const AppRoutes = () => {
 function App() {
   return (
     <AppProvider>
+      <MaintenanceCheck />
       <AppRoutes />
     </AppProvider>
   );
 }
+
+const MaintenanceCheck = () => {
+  const { maintenanceMode, user } = useApp();
+  if (maintenanceMode && user?.role !== 'owner') {
+    return <MaintenanceOverlay />;
+  }
+  return null;
+};
 
 export default App;
 

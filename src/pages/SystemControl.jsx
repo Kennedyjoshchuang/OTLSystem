@@ -9,7 +9,9 @@ import {
   FileText,
   ShieldAlert,
   X,
-  CheckCircle
+  CheckCircle,
+  Settings,
+  Power
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,6 +22,7 @@ const SystemControl = () => {
     customers, deleteCustomer,
     jobOrders, deleteJO,
     invoices, deleteInvoice,
+    maintenanceMode, setMaintenanceMode,
     clearAllData,
     t, theme
   } = useApp();
@@ -124,6 +127,36 @@ const SystemControl = () => {
           <h2 style={{ fontSize: '1.8rem', margin: 0 }}>{t('systemControl') || 'System Management'}</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Authorized data removal and system maintenance.</p>
         </div>
+      </div>
+
+      <div className="glass-card" style={{ padding: '30px', marginBottom: '40px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+          <div style={{ 
+            padding: '15px', 
+            borderRadius: '15px', 
+            background: maintenanceMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+            color: maintenanceMode ? '#f59e0b' : '#10b981'
+          }}>
+            <Settings size={24} className={maintenanceMode ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text)' }}>Maintenance Mode</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
+              {maintenanceMode 
+                ? 'System is currently hidden from staff/public.' 
+                : 'System is live and accessible to all authorized users.'}
+            </p>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => setMaintenanceMode(!maintenanceMode)}
+          className={`btn ${maintenanceMode ? 'btn-gold' : 'btn-primary'}`}
+          style={{ borderRadius: '30px', padding: '10px 25px' }}
+        >
+          <Power size={18} />
+          {maintenanceMode ? 'DEACTIVATE' : 'ACTIVATE'}
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '40px' }}>
