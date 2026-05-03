@@ -236,6 +236,45 @@ table thead th {
   background: rgba(255, 255, 255, 0.02);
 }
 
+/* Mobile Responsive Utilities */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.mobile-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+@media (max-width: 1024px) {
+  .desktop-only { display: none !important; }
+  
+  .glass-card {
+    padding: 25px 20px !important;
+  }
+  
+  .btn {
+    padding: 10px 18px;
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 768px) {
+  h1 { fontSize: 1.8rem !important; }
+  h2 { fontSize: 1.5rem !important; }
+  
+  .input-group input, .input-group select {
+    padding: 12px 15px;
+    font-size: 16px; /* Prevents auto-zoom on iOS */
+  }
+}
+
 /* Print Styles - System Wide Fidelity */
 @media print {
   @page {

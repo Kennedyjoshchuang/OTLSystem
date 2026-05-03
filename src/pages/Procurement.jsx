@@ -287,7 +287,7 @@ const Procurement = () => {
                         <div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>📋 Layanan & Harga</div>
                           {v.services?.length > 0 ? (
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                               <thead>
                                 <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
                                   <th style={{ padding: '8px 0', textAlign: 'left', color: 'var(--text-muted)', fontWeight: '500' }}>Deskripsi</th>
@@ -302,7 +302,7 @@ const Procurement = () => {
                                   </tr>
                                 ))}
                               </tbody>
-                            </table>
+                            </table></div>
                           ) : <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Tidak ada layanan.</p>}
                         </div>
                         {/* Assets */}

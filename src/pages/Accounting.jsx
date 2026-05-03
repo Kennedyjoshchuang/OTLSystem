@@ -741,7 +741,7 @@ const Accounting = () => {
                   </div>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '50px' }}>
+                <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '50px' }}>
                   <thead>
                     <tr style={{ background: '#f8fafc', borderBottom: '3px solid #065f46' }}>
                       <th style={{ padding: '15px', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: '800', color: '#0f172a' }}>Service Description</th>
@@ -759,7 +759,7 @@ const Accounting = () => {
                       <td style={{ padding: '25px 15px', textAlign: 'right', fontWeight: '950', fontSize: '1.4rem', color: '#0f172a' }}>Rp {parseFloat(selectedInvoice.amount).toLocaleString('id-ID')}</td>
                     </tr>
                   </tbody>
-                </table>
+                </table></div></div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '40px', marginTop: '10px', padding: '35px', background: '#f8fafc', borderRadius: '15px', border: '1px solid #e2e8f0' }}>
                   <div style={{ textAlign: 'right' }}>
@@ -877,7 +877,7 @@ const Accounting = () => {
               </div>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '3px solid #333' }}>
                   <th style={{ padding: '15px', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: '800', color: '#0f172a' }}>Service Description</th>
@@ -905,7 +905,7 @@ const Accounting = () => {
                   <td style={{ padding: '25px 15px', textAlign: 'right', fontWeight: '950', fontSize: '1.8rem', color: '#d97706' }}>Rp {(printPO.grandTotal || 0).toLocaleString('id-ID')}</td>
                 </tr>
               </tfoot>
-            </table>
+            </table></div></div>
 
             {printPO.notes && (
               <div style={{ marginBottom: '40px', padding: '15px', background: '#f8fafc', borderLeft: '4px solid #d97706', borderRadius: '4px' }}>
@@ -1079,7 +1079,7 @@ const Accounting = () => {
                     </div>
                   </div>
 
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
+                  <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
                     <thead>
                       <tr style={{ background: '#f8fafc', borderBottom: '2px solid #0f172a' }}>
                         <th style={{ padding: '12px', textAlign: 'left', fontWeight: '800', fontSize: '0.8rem' }}>DESCRIPTION</th>
@@ -1097,7 +1097,7 @@ const Accounting = () => {
                         <td style={{ padding: '20px 12px', textAlign: 'right', fontWeight: '900', fontSize: '1.2rem' }}>Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</td>
                       </tr>
                     </tbody>
-                  </table>
+                  </table></div></div>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '30px', background: '#f8fafc', padding: '20px', borderRadius: '10px' }}>
                     <div style={{ fontWeight: '800', color: '#64748b' }}>TOTAL DUE</div>
@@ -1207,7 +1207,7 @@ const Accounting = () => {
                          <p style={{ margin:0 }}><strong>JO Ref:</strong> {inv.joId}</p>
                       </div>
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                    <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
                       <thead>
                         <tr style={{ background: '#1e293b', color: 'white' }}>
                           <th style={{ padding: '11px 14px', textAlign: 'left', fontSize: '0.72rem' }}>DESKRIPSI</th>
@@ -1231,7 +1231,7 @@ const Accounting = () => {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div></div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
                       <div style={{ background: '#1e293b', color: 'white', padding: '18px 30px', borderRadius: '12px', textAlign: 'right', minWidth: '280px' }}>
                         <div style={{ fontSize: '0.68rem', fontWeight: '800', color: '#94a3b8' }}>TOTAL DUE</div>
@@ -1390,7 +1390,7 @@ const Accounting = () => {
                          <p style={{ margin:0 }}><strong>JO Ref:</strong> {inv.joId}</p>
                       </div>
                     </div>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                    <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
                       <thead>
                         <tr style={{ background: '#1e293b', color: 'white' }}>
                           <th style={{ padding: '11px 14px', textAlign: 'left', fontSize: '0.72rem' }}>DESKRIPSI</th>
@@ -1414,7 +1414,7 @@ const Accounting = () => {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </table></div></div>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
                       <div style={{ background: '#1e293b', color: 'white', padding: '18px 30px', borderRadius: '12px', textAlign: 'right', minWidth: '280px' }}>
                         <div style={{ fontSize: '0.68rem', fontWeight: '800', color: '#94a3b8' }}>TOTAL PELUNASAN</div>
@@ -1603,7 +1603,7 @@ const Accounting = () => {
             {Array.isArray(costModal.costs) && costModal.costs.length > 0 && (
               <div style={{ marginBottom:'25px' }}>
                 <div style={{ fontSize:'0.75rem',color:'var(--secondary)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'10px' }}>Biaya Tercatat</div>
-                <table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.875rem' }}>
+                <div className="table-container"><div className="table-container"><table style={{ width:'100%',borderCollapse:'collapse',fontSize:'0.875rem' }}>
                   <thead><tr style={{ borderBottom:'1px solid var(--glass-border)',color:'var(--text-muted)' }}><th style={{padding:'8px',textAlign:'left'}}>Vendor</th><th style={{padding:'8px',textAlign:'left'}}>Layanan</th><th style={{padding:'8px',textAlign:'center'}}>Qty</th><th style={{padding:'8px',textAlign:'right'}}>Total</th><th style={{padding:'8px'}}></th></tr></thead>
                   <tbody>
                     {costModal.costs.map((c, ci) => (
@@ -1621,7 +1621,7 @@ const Accounting = () => {
                       <td></td>
                     </tr>
                   </tbody>
-                </table>
+                </table></div></div>
               </div>
             )}
 
@@ -1832,7 +1832,7 @@ const Accounting = () => {
               <p style={{ fontSize:'0.85rem' }}>Buat dan dispatch Job Order dari halaman Admin Office agar muncul di sini.</p>
             </div>
           ) : (
-            <table style={{ width:'100%',borderCollapse:'collapse',minWidth:'900px' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width:'100%',borderCollapse:'collapse',minWidth:'900px' }}>
               <thead>
                 <tr style={{ textAlign:'left', borderBottom:'2px solid var(--gold-metallic)' }}>
                    <th style={{padding:'12px'}}>JO Ref</th>
@@ -1892,7 +1892,7 @@ const Accounting = () => {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div></div>
           )}
         </div>
       ) : activeTab === 'billing' ? (
@@ -1906,7 +1906,7 @@ const Accounting = () => {
             </div>
             
             {!isPendingCollapsed && (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)' }}>
                   <th style={{ padding: '15px' }}>JO Ref</th>
@@ -1997,7 +1997,7 @@ const Accounting = () => {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div></div>
             )}
           </div>
 
@@ -2013,7 +2013,7 @@ const Accounting = () => {
             </div>
 
             {!isIssuedCollapsed && (
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+              <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--secondary)' }}>
                   <th style={{ padding: '15px', width: '40px' }}>
@@ -2189,7 +2189,7 @@ const Accounting = () => {
                   </tr>
                 )}
               </tbody>
-            </table>
+            </table></div></div>
             )}
 
             {selectedIssued.size > 0 && !isIssuedCollapsed && (
@@ -2277,7 +2277,7 @@ const Accounting = () => {
             <h4 style={{ marginBottom: '20px', color: receivableSubTab === 'outstanding' ? 'var(--secondary)' : '#10b981' }}>
               {receivableSubTab === 'outstanding' ? 'Accounts Receivable Ledger' : 'Settled Invoices Archive'}
             </h4>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)' }}>
                   <th style={{ padding: '15px', width: '40px' }}>
@@ -2397,7 +2397,7 @@ const Accounting = () => {
                   </tr>
                 )}
               </tbody>
-            </table>
+            </table></div></div>
 
             {selectedLedger.size > 0 && (
               <div style={{ marginTop: '20px', padding: '15px', background: receivableSubTab === 'lunas' ? 'rgba(16,185,129,0.05)' : 'rgba(212,175,55,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: receivableSubTab === 'lunas' ? '1px solid #10b981' : '1px solid var(--secondary)' }}>
@@ -2428,7 +2428,7 @@ const Accounting = () => {
               </button>
             </div>
             
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid #8b5cf6' }}>
                   <th style={{ padding: '15px' }}>Nama / Jabatan</th>
@@ -2484,7 +2484,7 @@ const Accounting = () => {
                   <tr><td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Belum ada data gaji tercatat.</td></tr>
                 )}
               </tbody>
-            </table>
+            </table></div></div>
           </div>
         </div>
       ) : activeTab === 'other_expenses' ? (
@@ -2499,7 +2499,7 @@ const Accounting = () => {
               </button>
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid #ec4899' }}>
                   <th style={{ padding: '15px' }}>Karyawan / Deskripsi</th>
@@ -2552,7 +2552,7 @@ const Accounting = () => {
                   <tr><td colSpan="8" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Belum ada data biaya tercatat.</td></tr>
                 )}
               </tbody>
-            </table>
+            </table></div></div>
           </div>
         </div>
       ) : activeTab === 'hutang' ? (
@@ -2600,7 +2600,7 @@ const Accounting = () => {
             <h4 style={{ marginBottom: '20px', color: payableSubTab === 'outstanding' ? '#f59e0b' : '#10b981' }}>
               {payableSubTab === 'outstanding' ? 'Outstanding Vendor Payables' : 'Settled Vendor Payables'}
             </h4>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--glass-border)' }}>
                   {payableSubTab === 'lunas' && (
@@ -2778,7 +2778,7 @@ const Accounting = () => {
                    <tr><td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No data found.</td></tr>
                 )}
               </tbody>
-            </table>
+            </table></div></div>
 
             {payableSubTab === 'lunas' && selectedPayables.size > 0 && (
               <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(16,185,129,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #10b981' }}>
@@ -2877,7 +2877,7 @@ const Accounting = () => {
             <div className="glass-card" style={{ padding:'30px' }}>
               <h4 style={{ marginBottom:'25px', display:'flex', alignItems:'center', gap:'10px' }}><Calendar size={20} style={{color:'var(--secondary)'}}/> Transaction Detail Log</h4>
               <div style={{ overflowX:'auto' }}>
-                <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <div className="table-container"><div className="table-container"><table style={{ width:'100%', borderCollapse:'collapse' }}>
                   <thead>
                     <tr style={{ textAlign:'left', borderBottom:'2px solid var(--glass-border)' }}>
                       <th style={{ padding:'12px', fontSize:'0.8rem', color:'var(--text-muted)' }}>Date</th>
@@ -2911,7 +2911,7 @@ const Accounting = () => {
                       );
                     })()}
                   </tbody>
-                </table>
+                </table></div></div>
               </div>
             </div>
 
@@ -3635,7 +3635,7 @@ const Accounting = () => {
             </div>
 
             <h3 style={{ borderBottom:'2px solid #333', paddingBottom:'10px', marginBottom:'20px', fontSize:'1.2rem' }}>Expense Breakdown</h3>
-            <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'40px' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width:'100%', borderCollapse:'collapse', marginBottom:'40px' }}>
                <thead>
                  <tr style={{ background:'#f8fafc', textAlign:'left' }}>
                    <th style={{ padding:'15px', border:'1px solid #e2e8f0' }}>Category</th>
@@ -3667,10 +3667,10 @@ const Accounting = () => {
                    <td style={{ padding:'15px', border:'1px solid #e2e8f0', textAlign:'right' }}>{(((financialReport.opCosts + financialReport.payroll + financialReport.misc) / (financialReport.revenue || 1)) * 100).toFixed(2)}%</td>
                  </tr>
                </tfoot>
-            </table>
+            </table></div></div>
 
             <h3 style={{ borderBottom:'2px solid #333', paddingBottom:'10px', marginBottom:'20px', fontSize:'1.2rem' }}>Detailed Transaction Logs</h3>
-            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
+            <div className="table-container"><div className="table-container"><table style={{ width:'100%', borderCollapse:'collapse', fontSize:'0.85rem' }}>
                <thead>
                  <tr style={{ background:'#f8fafc', textAlign:'left' }}>
                    <th style={{ padding:'10px', border:'1px solid #e2e8f0' }}>Date</th>
@@ -3701,7 +3701,7 @@ const Accounting = () => {
                  })()}
                  {/* Footer or Page Break indicator if many logs */}
                </tbody>
-            </table>
+            </table></div></div>
             
             <div style={{ marginTop:'60px', display:'flex', justifyContent:'space-between' }}>
                <div style={{ textAlign:'center', width:'250px' }}>

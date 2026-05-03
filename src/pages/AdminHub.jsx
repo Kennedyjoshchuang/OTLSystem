@@ -280,7 +280,7 @@ const AdminHub = () => {
                 </div>
               </div>
 
-              <table style={{width:'100%',borderCollapse:'collapse',marginBottom:'30px'}}>
+              <div className="table-container"><table style={{width:'100%',borderCollapse:'collapse',marginBottom:'30px'}}>
                 <thead>
                   <tr style={{background:'#f5f5f5',borderBottom:'2px solid #333'}}>
                     <th style={{padding:'10px',textAlign:'left'}}>Service Description</th>
@@ -305,7 +305,7 @@ const AdminHub = () => {
                     <td style={{padding:'15px',textAlign:'right',fontWeight:'bold',fontSize:'1.2rem',color:'#d97706'}}>Rp {(printPO.grandTotal||0).toLocaleString('id-ID')}</td>
                   </tr>
                 </tfoot>
-              </table>
+              </table></div>
 
               {printPO.notes && (
                 <div style={{ marginBottom: '40px', padding: '15px', background: '#f8fafc', borderLeft: '4px solid #d97706', borderRadius: '4px' }}>
@@ -789,7 +789,7 @@ const AdminHub = () => {
               exit={{ height: 0, opacity: 0 }}
               style={{ overflow: 'hidden' }}
             >
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+          <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
                 <th style={{ padding: '12px' }}>PO Ref</th>
@@ -852,7 +852,7 @@ const AdminHub = () => {
                 </tr>
               )}
             </tbody>
-          </table>
+          </table></div>
             </motion.div>
           )}
         </AnimatePresence>

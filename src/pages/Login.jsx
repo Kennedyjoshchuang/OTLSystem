@@ -93,7 +93,15 @@ const Login = () => {
         zIndex: 1
       }}></div>
 
-      <div style={{ display: 'flex', gap: '40px', maxWidth: '1000px', width: '100%', zIndex: 10, alignItems: 'stretch' }}>
+      <div className="mobile-stack" style={{ 
+        display: 'flex', 
+        gap: '20px', 
+        maxWidth: '1000px', 
+        width: '100%', 
+        zIndex: 10, 
+        alignItems: 'stretch',
+        flexDirection: window.innerWidth <= 1024 ? 'column' : 'row'
+      }}>
         
         {/* Login Card */}
         <motion.div 
@@ -102,7 +110,7 @@ const Login = () => {
           className="glass-card" 
           style={{ 
             flex: 1,
-            padding: '50px 40px',
+            padding: window.innerWidth <= 768 ? '40px 25px' : '50px 40px',
             textAlign: 'center',
             border: '1px solid var(--glass-border)',
             background: 'var(--glass)'
@@ -111,9 +119,9 @@ const Login = () => {
           <img 
             src="/assets/logo.png" 
             alt="Omega Logo" 
-            style={{ width: '100px', marginBottom: '20px', filter: 'drop-shadow(0 0 15px rgba(16, 185, 129, 0.4))' }} 
+            style={{ width: '80px', marginBottom: '15px', filter: 'drop-shadow(0 0 15px rgba(16, 185, 129, 0.4))' }} 
           />
-          <h2 className="shimmer-text" style={{ fontSize: '2rem', marginBottom: '30px' }}>{t('logistikSystem')}</h2>
+          <h2 className="shimmer-text" style={{ fontSize: window.innerWidth <= 768 ? '1.5rem' : '2rem', marginBottom: '25px' }}>{t('logistikSystem')}</h2>
 
           <form onSubmit={handleSubmit}>
             <div className="input-group" style={{ textAlign: 'left' }}>
@@ -162,30 +170,30 @@ const Login = () => {
           transition={{ delay: 0.2 }}
           className="glass-card"
           style={{ 
-            width: '350px',
-            padding: '40px 30px',
+            width: window.innerWidth <= 1024 ? '100%' : '350px',
+            padding: '30px 25px',
             background: 'rgba(6, 95, 70, 0.05)',
             border: '1px solid var(--border)'
           }}
         >
-          <h3 style={{ fontSize: '1.2rem', marginBottom: '25px', color: 'var(--secondary)' }}>Access Directory</h3>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: '20px', color: 'var(--secondary)' }}>Access Directory</h3>
           
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: window.innerWidth <= 600 ? '1fr' : 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
             {accounts.map(acc => (
-              <div key={acc.id} style={{ padding: '15px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <div style={{ fontWeight: '600', color: 'var(--text)', fontSize: '0.9rem', marginBottom: '4px' }}>{acc.name}</div>
-                <div style={{ color: 'var(--primary-light)', fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{acc.access}</div>
+              <div key={acc.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ fontWeight: '600', color: 'var(--text)', fontSize: '0.85rem', marginBottom: '2px' }}>{acc.name}</div>
+                <div style={{ color: 'var(--primary-light)', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{acc.access}</div>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop: 'auto', paddingTop: '30px', textAlign: 'center' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem' }}>Authorized Personnel Only &bull; PT. Omega Trust</p>
+          <div style={{ marginTop: '25px', paddingTop: '20px', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Authorized Personnel Only &bull; PT. Omega Trust</p>
           </div>
         </motion.div>
 
       </div>
+
     </div>
   );
 };

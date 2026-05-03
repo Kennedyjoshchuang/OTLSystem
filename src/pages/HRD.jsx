@@ -135,7 +135,7 @@ const HRD = () => {
       </div>
 
       <div className="glass-card" style={{ padding: '0', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ textAlign: 'left', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: '20px' }}>Nama & Jabatan</th>
@@ -255,7 +255,7 @@ const HRD = () => {
               })}
             </AnimatePresence>
           </tbody>
-        </table>
+        </table></div>
         {filteredEmployees.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px', color: 'var(--text-muted)' }}>
             <Users size={64} style={{ opacity: 0.1, marginBottom: '20px' }} />

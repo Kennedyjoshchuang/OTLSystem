@@ -521,7 +521,7 @@ const Marketing = () => {
 
                 {/* Items Table */}
                 <div style={{ flex: 1 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '50px' }}>
+                  <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '50px' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #0f172a' }}>
                         <th className="text-slate" style={{ padding: '15px 0', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '1px' }}>DESCRIPTION</th>
@@ -558,7 +558,7 @@ const Marketing = () => {
                         </tr>
                       )}
                     </tbody>
-                  </table>
+                  </table></div>
 
                   {/* Grand Total Section */}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '35px', marginTop: '20px' }}>
@@ -767,7 +767,7 @@ const Marketing = () => {
                 <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               </div>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1050px' }}>
+            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1050px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
                   <th style={{ padding: '15px' }}>Quotation #</th>
@@ -835,7 +835,7 @@ const Marketing = () => {
                     );
                   })}
               </tbody>
-            </table>
+            </table></div>
             {quotations.filter(q => q.status === 'approved').filter(q =>
               q.customerName.toLowerCase().includes(jobOrderSearchTerm.toLowerCase()) ||
               q.id.toLowerCase().includes(jobOrderSearchTerm.toLowerCase())
@@ -865,7 +865,7 @@ const Marketing = () => {
                 <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               </div>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
                   <th style={{ padding: '15px' }}>Quotation #</th>
@@ -948,7 +948,7 @@ const Marketing = () => {
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         ) : (
           <div className="glass-card" style={{ padding: '25px', overflowX: 'auto' }}>
@@ -962,7 +962,7 @@ const Marketing = () => {
                 <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               </div>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
+            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)' }}>
                   <th style={{ padding: '15px' }}>{t('companyName')}</th>
@@ -1027,7 +1027,7 @@ const Marketing = () => {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </table></div>
           </div>
         )}
       </motion.div>

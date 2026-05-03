@@ -27,7 +27,8 @@ const Portal = () => {
       background: 'var(--bg)',
       color: 'var(--text)',
       position: 'relative',
-      overflow: 'hidden',
+      overflowX: 'hidden',
+      overflowY: 'auto',
       fontFamily: "'Outfit', sans-serif"
     }}>
       {/* Background Animated Elements */}
@@ -35,19 +36,9 @@ const Portal = () => {
         position: 'absolute',
         top: '-10%',
         left: '-10%',
-        width: '40%',
+        width: window.innerWidth <= 768 ? '80%' : '40%',
         height: '40%',
         background: 'radial-gradient(circle, rgba(6, 95, 70, 0.2) 0%, transparent 70%)',
-        zIndex: 0,
-        borderRadius: '50%'
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '-10%',
-        right: '-10%',
-        width: '40%',
-        height: '40%',
-        background: 'radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%)',
         zIndex: 0,
         borderRadius: '50%'
       }} />
@@ -55,32 +46,34 @@ const Portal = () => {
       {/* Top Bar */}
       <div style={{
         display: 'flex',
+        flexDirection: window.innerWidth <= 768 ? 'column' : 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '30px 50px',
+        padding: window.innerWidth <= 768 ? '20px' : '30px 50px',
+        gap: '20px',
         zIndex: 10
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <img src="/assets/logo.png" alt="Logo" style={{ height: '40px' }} />
+          <img src="/assets/logo.png" alt="Logo" style={{ height: '35px' }} />
           <div style={{ height: '30px', width: '1px', background: 'var(--border)' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '700', fontSize: '1rem', letterSpacing: '1px' }}>PT. OMEGA TRUST</span>
-            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Logistics Management System</span>
+            <span style={{ fontWeight: '700', fontSize: '0.9rem', letterSpacing: '1px' }}>PT. OMEGA TRUST</span>
+            <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Logistics Management</span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <div className="glass-card" style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Clock size={16} color="var(--secondary)" />
-            <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div className="glass-card" style={{ padding: '6px 15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Clock size={14} color="var(--secondary)" />
+            <span style={{ fontSize: '0.8rem', fontWeight: '500' }}>
               {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
-          <button onClick={toggleTheme} className="btn-icon">
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          <button onClick={toggleTheme} className="btn-icon" style={{ width: '36px', height: '36px' }}>
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
-          <button onClick={toggleLanguage} className="btn-icon" style={{ width: 'auto', padding: '0 15px', fontSize: '0.8rem', fontWeight: '700' }}>
-            <Globe size={16} style={{ marginRight: '8px' }} /> {language === 'en' ? 'EN' : 'ID'}
+          <button onClick={toggleLanguage} className="btn-icon" style={{ width: 'auto', height: '36px', padding: '0 12px', fontSize: '0.75rem', fontWeight: '700' }}>
+            <Globe size={14} style={{ marginRight: '6px' }} /> {language === 'en' ? 'EN' : 'ID'}
           </button>
         </div>
       </div>
@@ -94,23 +87,29 @@ const Portal = () => {
         justifyContent: 'center',
         textAlign: 'center',
         zIndex: 10,
-        paddingBottom: '5vh'
+        padding: '20px',
+        minHeight: '60vh'
       }}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="shimmer-text" style={{ fontSize: '4.5rem', marginBottom: '10px', lineHeight: 1 }}>
+          <h1 className="shimmer-text" style={{ 
+            fontSize: window.innerWidth <= 768 ? '2.5rem' : '4.5rem', 
+            marginBottom: '15px', 
+            lineHeight: 1.1 
+          }}>
             {language === 'en' ? 'ACCESS PORTAL' : 'AKSES PORTAL'}
           </h1>
           <p style={{ 
-            fontSize: '1.2rem', 
+            fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.2rem', 
             color: 'var(--text-muted)', 
             marginBottom: '40px', 
-            maxWidth: '600px',
+            maxWidth: '500px',
+            margin: '0 auto 40px',
             fontWeight: '300',
-            letterSpacing: '2px'
+            letterSpacing: window.innerWidth <= 768 ? '1px' : '2px'
           }}>
             {language === 'en' 
               ? 'INTEGRATED LOGISTICS COMMAND CENTER' 
@@ -122,8 +121,8 @@ const Portal = () => {
               onClick={handleEnter}
               className="btn btn-gold" 
               style={{ 
-                padding: '18px 45px', 
-                fontSize: '1rem', 
+                padding: window.innerWidth <= 768 ? '15px 35px' : '18px 45px', 
+                fontSize: window.innerWidth <= 768 ? '0.9rem' : '1rem', 
                 borderRadius: '100px',
                 boxShadow: '0 0 30px rgba(212, 175, 55, 0.3)'
               }}
@@ -136,39 +135,41 @@ const Portal = () => {
 
         {/* System Stats / Indicators */}
         <div style={{ 
-          marginTop: '80px', 
+          marginTop: window.innerWidth <= 768 ? '50px' : '80px', 
           display: 'flex', 
-          gap: '40px',
-          padding: '20px 40px',
+          flexDirection: window.innerWidth <= 768 ? 'column' : 'row',
+          gap: window.innerWidth <= 768 ? '15px' : '40px',
+          padding: '20px 30px',
           borderRadius: '20px',
           border: '1px solid var(--border)',
-          background: 'rgba(255,255,255,0.02)'
+          background: 'rgba(255,255,255,0.02)',
+          alignItems: 'center'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
-            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Network Status: Online</span>
+            <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Status: Online</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <Monitor size={14} color="var(--secondary)" />
-            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>V2.1.0 Revision</span>
+            <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>V2.1.7 Revision</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <ShieldCheck size={14} color="var(--secondary)" />
-            <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Secured Gateway</span>
+            <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Secured Gateway</span>
           </div>
         </div>
       </div>
 
       {/* Footer */}
       <div style={{
-        padding: '30px',
+        padding: '20px',
         textAlign: 'center',
-        fontSize: '0.7rem',
+        fontSize: '0.6rem',
         color: 'var(--text-muted)',
         zIndex: 10,
         letterSpacing: '1px'
       }}>
-        © {new Date().getFullYear()} PT. OMEGA TRUST LOGISTIK. ALL RIGHTS RESERVED.
+        © {new Date().getFullYear()} PT. OMEGA TRUST LOGISTIK.
       </div>
     </div>
   );

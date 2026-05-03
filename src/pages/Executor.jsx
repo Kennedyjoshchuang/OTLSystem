@@ -342,7 +342,7 @@ const Executor = () => {
       </div>
 
       <div className="glass-card" style={{ padding: '25px', overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+        <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--secondary)' }}>
               <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>JO ID</th>
@@ -554,7 +554,7 @@ const Executor = () => {
               </React.Fragment>
             ))}
           </tbody>
-        </table>
+        </table></div>
 
         {/* Surat Jalan Modal */}
         {filteredJOs.length === 0 && (

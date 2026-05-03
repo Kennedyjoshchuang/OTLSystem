@@ -135,7 +135,7 @@ const QuotationList = () => {
 
                 {/* Items Table */}
                 <div style={{ flex: 1 }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
+                  <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #0f172a' }}>
                         <th style={{ padding: '15px 0', textAlign: 'left', textTransform: 'uppercase', fontSize: '0.9rem', fontWeight: '800', color: '#64748b' }}>Description</th>
@@ -173,7 +173,7 @@ const QuotationList = () => {
                         </tr>
                       )}
                     </tbody>
-                  </table>
+                  </table></div>
 
                   {/* Grand Total Section */}
                   <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '30px', marginTop: '15px' }}>
@@ -237,7 +237,7 @@ const QuotationList = () => {
           </div>
         </div>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+        <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
               <th style={{ padding: '15px' }}>Quotation #</th>
@@ -289,7 +289,7 @@ const QuotationList = () => {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       </motion.div>
     </div>
   );

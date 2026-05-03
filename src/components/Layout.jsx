@@ -14,7 +14,9 @@ import {
   ShieldAlert,
   FileText,
   ShoppingCart,
-  UserCheck
+  UserCheck,
+  Menu,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const Layout = ({ children }) => {
   const location = useLocation();
   const { logout, user, t, language, toggleLanguage, theme, toggleTheme, loading } = useApp();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
   const menuItems = [
     { path: '/marketing', label: t('marketing'), icon: Users, roles: ['owner', 'marketing'] },
@@ -39,33 +42,25 @@ const Layout = ({ children }) => {
   };
 
   return (
-    <div className={theme === 'light' ? 'light-theme' : ''} style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
-      {/* Loading Overlay */}
+    <div className={theme === 'light' ? 'light-theme' : ''} style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', overflowX: 'hidden' }}>
+      {/* Sidebar Overlay (Mobile) */}
       <AnimatePresence>
-        {loading && (
+        {isMobileMenuOpen && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
             style={{
               position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: 'rgba(3, 7, 18, 0.8)', zIndex: 9999,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexDirection: 'column', gap: '20px', backdropFilter: 'blur(10px)'
+              background: 'rgba(0,0,0,0.6)', zIndex: 150, backdropFilter: 'blur(4px)'
             }}
-          >
-            <div className="spinner" style={{ 
-              width: '50px', height: '50px', border: '3px solid rgba(212, 175, 55, 0.1)', 
-              borderTop: '3px solid var(--secondary)', borderRadius: '50%',
-              animation: 'spin 1s linear infinite'
-            }} />
-            <p style={{ color: 'var(--secondary)', fontWeight: '600', letterSpacing: '2px', fontSize: '0.8rem', textTransform: 'uppercase' }}>Synchronizing Data...</p>
-          </motion.div>
+          />
         )}
       </AnimatePresence>
 
       {/* Sidebar */}
-      <aside className="glass-card no-print" style={{
+      <aside className={`glass-card no-print ${isMobileMenuOpen ? 'mobile-open' : ''}`} style={{
         width: '300px',
         margin: '20px',
         padding: '40px 25px',
@@ -73,11 +68,23 @@ const Layout = ({ children }) => {
         flexDirection: 'column',
         position: 'fixed',
         height: 'calc(100vh - 40px)',
-        zIndex: 100,
+        zIndex: 200,
         borderRadius: '24px',
-        background: theme === 'light' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(3, 7, 18, 0.4)'
+        background: theme === 'light' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(3, 7, 18, 0.4)',
+        transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: window.innerWidth <= 1024 && !isMobileMenuOpen ? 'translateX(-340px)' : 'translateX(0)'
       }}>
-        <div style={{ marginBottom: '50px', textAlign: 'center' }}>
+        <div style={{ marginBottom: '50px', textAlign: 'center', position: 'relative' }}>
+          {/* Close button for mobile */}
+          {window.innerWidth <= 1024 && (
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <X size={24} />
+            </button>
+          )}
+
           <img 
             src="/assets/logo.png" 
             alt="Logo" 
@@ -87,7 +94,7 @@ const Layout = ({ children }) => {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '3px', textTransform: 'uppercase' }}>{t('logistikSystem')}</p>
         </div>
 
-        <nav style={{ flex: 1 }}>
+        <nav style={{ flex: 1, overflowY: 'auto' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -95,6 +102,7 @@ const Layout = ({ children }) => {
               <Link 
                 key={item.path} 
                 to={item.path}
+                onClick={() => setIsMobileMenuOpen(false)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -133,45 +141,48 @@ const Layout = ({ children }) => {
             <LogOut size={18} />
             <span>{t('signOut')}</span>
           </button>
-          
-          <div style={{ 
-            textAlign: 'center', 
-            marginTop: '20px', 
-            fontSize: '0.65rem', 
-            color: 'var(--text-muted)', 
-            letterSpacing: '2px',
-            opacity: 0.6
-          }}>
-            OTL SYSTEM v2.1.7-LOCAL
-          </div>
         </div>
       </aside>
 
       {/* Main Content */}
       <main style={{ 
         flex: 1, 
-        marginLeft: '340px', 
-        padding: '50px 60px',
-        maxWidth: '1400px'
+        marginLeft: window.innerWidth <= 1024 ? '0' : '340px', 
+        padding: window.innerWidth <= 768 ? '25px 20px' : '50px 60px',
+        maxWidth: '1400px',
+        transition: 'all 0.4s'
       }}>
         <header className="no-print" style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
-          marginBottom: '50px'
+          marginBottom: window.innerWidth <= 768 ? '30px' : '50px'
         }}>
-          <div>
-            <motion.h1 
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              style={{ fontSize: '2.5rem', marginBottom: '8px' }}
-            >
-              {getCurrentTitle()}
-            </motion.h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>{t('welcomeMessage')}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* Hamburger Toggle */}
+            {window.innerWidth <= 1024 && (
+              <button 
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="btn-icon"
+                style={{ width: '45px', height: '45px' }}
+              >
+                <Menu size={24} />
+              </button>
+            )}
+            
+            <div>
+              <motion.h1 
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                style={{ fontSize: window.innerWidth <= 768 ? '1.8rem' : '2.5rem', marginBottom: '4px' }}
+              >
+                {getCurrentTitle()}
+              </motion.h1>
+              <p className="desktop-only" style={{ color: 'var(--text-muted)', fontSize: '1rem' }}>{t('welcomeMessage')}</p>
+            </div>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* Theme Toggle */}
             <button 
               onClick={toggleTheme}
@@ -214,10 +225,10 @@ const Layout = ({ children }) => {
               <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>{language === 'en' ? 'EN' : 'ID'}</span>
             </button>
 
-            <div className="glass-card" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '15px', borderRadius: '100px', border: '1px solid var(--border)', background: 'var(--glass)' }}>
+            <div className="glass-card desktop-only" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '15px', borderRadius: '100px', border: '1px solid var(--border)', background: 'var(--glass)' }}>
               <div style={{ 
-                width: '40px', 
-                height: '40px', 
+                width: '32px', 
+                height: '32px', 
                 borderRadius: '50%', 
                 background: 'var(--gold-metallic)', 
                 display: 'flex', 
@@ -225,12 +236,10 @@ const Layout = ({ children }) => {
                 justifyContent: 'center', 
                 color: '#030712',
                 fontWeight: '700',
-                fontSize: '1.2rem',
-                boxShadow: '0 0 15px rgba(212, 175, 55, 0.3)'
+                fontSize: '1rem'
               }}>O</div>
               <div>
-                <p style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text)' }}>{t('authorized')} {user?.name}</p>
-                <p style={{ fontSize: '0.7rem', color: 'var(--secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>{t('systemRole')} {user?.role}</p>
+                <p style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text)' }}>{user?.name}</p>
               </div>
             </div>
           </div>
