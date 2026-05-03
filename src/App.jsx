@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { Toaster } from 'react-hot-toast';
 import Layout from './components/Layout';
 import Marketing from './pages/Marketing';
 import QuotationList from './pages/QuotationList';
@@ -66,6 +67,22 @@ const AppRoutes = () => {
 function App() {
   return (
     <AppProvider>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 4000,
+          style: {
+            background: 'rgba(10, 15, 30, 0.95)',
+            color: '#fff',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '12px',
+            backdropFilter: 'blur(10px)',
+            fontSize: '0.9rem',
+          },
+          success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
+        }}
+      />
       <MaintenanceCheck />
       <AppRoutes />
     </AppProvider>

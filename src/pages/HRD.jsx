@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import toast from 'react-hot-toast';
 import { 
   Users, 
   UserPlus, 
@@ -33,6 +34,7 @@ const HRD = () => {
   const [isEditAccount, setIsEditAccount] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -61,11 +63,15 @@ const HRD = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError('');
     try {
-      if (selectedEmployee) {
+      const isEditing = !!selectedEmployee;
+      if (isEditing) {
         await updateEmployee(selectedEmployee.id, formData);
+        toast.success('Data karyawan berhasil diperbarui!');
       } else {
         await addEmployee(formData);
+        toast.success('Karyawan baru berhasil ditambahkan!');
       }
       setIsAddModalOpen(false);
       setSelectedEmployee(null);
@@ -73,10 +79,11 @@ const HRD = () => {
         name: '', address: '', phone: '', nik: '', npwp: '',
         position: '', email: '', accountNumber: '', bankName: ''
       });
-      alert(selectedEmployee ? 'Data karyawan berhasil diperbarui' : 'Karyawan baru berhasil ditambahkan');
     } catch (err) {
-      console.error(err);
-      alert('Gagal menyimpan data: ' + err.message);
+      console.error('Gagal menyimpan karyawan:', err);
+      const msg = err.message || 'Terjadi kesalahan. Coba lagi.';
+      setSubmitError(msg);
+      toast.error('Gagal menyimpan: ' + msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -121,6 +128,7 @@ const HRD = () => {
           className="btn btn-primary"
           onClick={() => {
             setSelectedEmployee(null);
+            setSubmitError('');
             setFormData({
               name: '', address: '', phone: '', nik: '', npwp: '',
               position: '', email: '', accountNumber: '', bankName: ''
@@ -311,11 +319,16 @@ const HRD = () => {
                   <textarea required value={formData.address} onChange={e => setFormData({ ...formData, address: e.target.value })} placeholder="Alamat sesuai KTP" style={{ minHeight: '80px' }} />
                 </div>
               </div>
+              {submitError && (
+                <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', color: '#ef4444', fontSize: '0.85rem' }}>
+                  ⚠️ {submitError}
+                </div>
+              )}
               <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
                 <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ flex: 1 }}>
                   {isSubmitting ? 'Memproses...' : (selectedEmployee ? 'Simpan Perubahan' : 'Tambahkan Karyawan')}
                 </button>
-                <button type="button" disabled={isSubmitting} className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1 }}>Batal</button>
+                <button type="button" disabled={isSubmitting} className="btn btn-secondary" onClick={() => { setIsAddModalOpen(false); setSubmitError(''); }} style={{ flex: 1 }}>Batal</button>
               </div>
             </form>
           </motion.div>
