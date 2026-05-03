@@ -338,7 +338,7 @@ const HRD = () => {
               </div>
               <div className="input-group" style={{ marginTop: '20px' }}>
                 <label>Role / Akses</label>
-                <select value={accountData.role} onChange={e => setAccountData({ ...accountData, role: e.target.value })}>
+                <select value={accountData.role} onChange={e => setAccountData({ ...accountData, role: e.target.value })} style={{ color: '#000000' }}>
                   <option value="marketing">Marketing</option>
                   <option value="accounting">Accounting</option>
                   <option value="executor">Executor</option>

@@ -713,11 +713,11 @@ const Marketing = () => {
                       marketingEmail: emp?.email || ''
                     });
                   }}
-                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px' }}
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: '#000000', padding: '12px' }}
                 >
-                  <option value="">-- Pilih Marketing --</option>
+                  <option value="" style={{ color: '#000000' }}>-- Pilih Marketing --</option>
                   {employees.filter(e => e.position?.toLowerCase().includes('marketing')).map(e => (
-                    <option key={e.id} value={e.name}>{e.name}</option>
+                    <option key={e.id} value={e.name} style={{ color: '#000000' }}>{e.name}</option>
                   ))}
                 </select>
               </div>
