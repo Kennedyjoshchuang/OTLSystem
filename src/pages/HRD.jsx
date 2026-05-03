@@ -32,6 +32,7 @@ const HRD = () => {
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [isEditAccount, setIsEditAccount] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -59,17 +60,26 @@ const HRD = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (selectedEmployee) {
-      await updateEmployee(selectedEmployee.id, formData);
-    } else {
-      await addEmployee(formData);
+    setIsSubmitting(true);
+    try {
+      if (selectedEmployee) {
+        await updateEmployee(selectedEmployee.id, formData);
+      } else {
+        await addEmployee(formData);
+      }
+      setIsAddModalOpen(false);
+      setSelectedEmployee(null);
+      setFormData({
+        name: '', address: '', phone: '', nik: '', npwp: '',
+        position: '', email: '', accountNumber: '', bankName: ''
+      });
+      alert(selectedEmployee ? 'Data karyawan berhasil diperbarui' : 'Karyawan baru berhasil ditambahkan');
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyimpan data: ' + err.message);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsAddModalOpen(false);
-    setSelectedEmployee(null);
-    setFormData({
-      name: '', address: '', phone: '', nik: '', npwp: '',
-      position: '', email: '', accountNumber: '', bankName: ''
-    });
   };
 
   const handleCreateAccount = async (e) => {
@@ -120,7 +130,7 @@ const HRD = () => {
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 25px' }}
         >
           <UserPlus size={20} />
-          Tambah Karyawan
+          Tambahkan Karyawan
         </button>
       </div>
 
@@ -302,8 +312,10 @@ const HRD = () => {
                 </div>
               </div>
               <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{selectedEmployee ? 'Simpan Perubahan' : 'Tambah Karyawan'}</button>
-                <button type="button" className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1 }}>Batal</button>
+                <button type="submit" disabled={isSubmitting} className="btn btn-primary" style={{ flex: 1 }}>
+                  {isSubmitting ? 'Memproses...' : (selectedEmployee ? 'Simpan Perubahan' : 'Tambahkan Karyawan')}
+                </button>
+                <button type="button" disabled={isSubmitting} className="btn btn-secondary" onClick={() => setIsAddModalOpen(false)} style={{ flex: 1 }}>Batal</button>
               </div>
             </form>
           </motion.div>

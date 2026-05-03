@@ -169,8 +169,8 @@ const Login = () => {
           }}
         >
           <h3 style={{ fontSize: '1.2rem', marginBottom: '25px', color: 'var(--secondary)' }}>Access Directory</h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '30px' }}>Use the universal key <strong style={{ color: 'var(--text)' }}>1234</strong> for all departments.</p>
           
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             {accounts.map(acc => (
               <div key={acc.id} style={{ padding: '15px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border)' }}>

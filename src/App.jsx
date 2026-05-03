@@ -18,6 +18,7 @@ import PrintInvoice from './pages/PrintInvoice';
 import PrintInvoiceAttachment from './pages/PrintInvoiceAttachment';
 import PrintInvoiceReceipt from './pages/PrintInvoiceReceipt';
 import PrintInvoiceDelivery from './pages/PrintInvoiceDelivery';
+import PrintPOAttachment from './pages/PrintPOAttachment';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
 import Portal from './pages/Portal';
 
@@ -53,6 +54,7 @@ const AppRoutes = () => {
         <Route path="/print/invoice-attachment" element={<ProtectedRoute useLayout={false}><PrintInvoiceAttachment /></ProtectedRoute>} />
         <Route path="/print/invoice-receipt" element={<ProtectedRoute useLayout={false}><PrintInvoiceReceipt /></ProtectedRoute>} />
         <Route path="/print/invoice-delivery" element={<ProtectedRoute useLayout={false}><PrintInvoiceDelivery /></ProtectedRoute>} />
+        <Route path="/print/po-attachment" element={<ProtectedRoute useLayout={false}><PrintPOAttachment /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/dashboard" />} />

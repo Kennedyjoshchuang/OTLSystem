@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, DollarSign, Search, FileSpreadsheet, RotateCcw, Edit3, Save, Image, ChevronDown, ChevronUp, User, Briefcase, Banknote, Calendar, FileText, Trash2, Settings, ExternalLink, ShieldCheck } from 'lucide-react';
+import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, DollarSign, Search, FileSpreadsheet, RotateCcw, Edit3, Save, Image, ChevronDown, ChevronUp, User, Briefcase, Banknote, Calendar, FileText, Trash2, Settings, ExternalLink, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 
@@ -29,6 +29,9 @@ const Accounting = () => {
   
   // Mass Selection State
   const [selectedLedger, setSelectedLedger] = useState(new Set());
+  const [selectedPayables, setSelectedPayables] = useState(new Set());
+  const [selectedIssued, setSelectedIssued] = useState(new Set());
+
   
   // PO States
   const [showPOModal, setShowPOModal] = useState(false);
@@ -56,30 +59,42 @@ const Accounting = () => {
   const [vendorInvoiceModal, setVendorInvoiceModal] = useState(null);
   const [paymentProofModal, setPaymentProofModal] = useState(null);
   const [modalPhotos, setModalPhotos] = useState([]);
+  const [modalTaxPhotos, setModalTaxPhotos] = useState([]);
   const [batchPrintInvoices, setBatchPrintInvoices] = useState(null);
+  const [batchPrintPOs, setBatchPrintPOs] = useState(null);
+  const [batchPrintIssued, setBatchPrintIssued] = useState(null);
+  const [batchPrintPaidInvoices, setBatchPrintPaidInvoices] = useState(null);
+
+
   const [bankModal, setBankModal] = useState(null);
   const [showBankSettings, setShowBankSettings] = useState(false);
   const [isSavingBank, setIsSavingBank] = useState(false);
+  const [bankToDelete, setBankToDelete] = useState(null);
 
   // Invoice Bank Selection
   const [issuingInvoiceJoId, setIssuingInvoiceJoId] = useState(null);
   const [selectedBankId, setSelectedBankId] = useState('');
   const [receivableProofModal, setReceivableProofModal] = useState(null); // invoice to upload proof for
   const [settleModal, setSettleModal] = useState(null); // { id, amount, ... }
-  const [settleForm, setSettleForm] = useState({ paymentProof: '', taxes: [{ name: '', amount: 0 }], taxProof: '' });
+  const [settleForm, setSettleForm] = useState({ paymentProof: [], taxes: [{ name: '', amount: 0 }], taxProof: [] });
+  const [settlePayableModal, setSettlePayableModal] = useState(null);
+  const [settlePayableForm, setSettlePayableForm] = useState({ paymentProof: [], taxName: '', taxAmount: 0, taxProof: [] });
   const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); 
   const [verifyStep, setVerifyStep] = useState(1);
   const [verifyText, setVerifyText] = useState('');
   const [otpInput, setOtpInput] = useState('');
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const { 
     jobOrders = [], invoices = [], createInvoice, settleInvoice, deleteInvoice, updateInvoice, 
-    receivables = [], vendors = [], purchaseOrders = [], updateJOStatus, updatePurchaseOrder,
+    receivables = [], vendors = [], purchaseOrders = [], updateJOStatus, updatePurchaseOrder, patchPurchaseOrderLocal,
     quotations = [],
     salaries = [], addSalary, deleteSalary, updateSalary,
     otherExpenses = [], addOtherExpense, deleteOtherExpense, updateOtherExpense,
     employees = [], companyBankAccounts = [], updateCompanyBank, deleteCompanyBank,
+    getSystemConfig,
     loading 
   } = context || {};
 
@@ -224,15 +239,75 @@ const Accounting = () => {
     setModalPhotos([]);
   };
 
-  const handleSettlePayable = async (poId, photos) => {
+  const handleSettlePayable = async (poId, data) => {
+    if (!data.paymentProofPhoto || data.paymentProofPhoto.length === 0) {
+      if (!window.confirm("Anda belum melampirkan Bukti Bayar. Lanjutkan proses pelunasan tanpa bukti?")) return;
+    }
     const paidDate = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-    await updatePurchaseOrder(poId, { 
-      paymentProofPhoto: photos, 
+    
+    // Full payload including all tax data
+    const cleanData = {
+      ...data,
+      tax_amount: parseFloat(data.tax_amount) || 0,
       status: 'paid',
       paidDate
+    };
+
+    try {
+      console.log("Settling PO with data:", cleanData);
+      await updatePurchaseOrder(poId, cleanData);
+      setSettlePayableModal(null);
+      setPaymentProofModal(null); 
+      setModalPhotos([]);
+    } catch (err) {
+      console.error("Primary settlement failed, trying fallback...", err);
+      
+      // Fallback: save only the safe columns to DB (in case tax columns don't exist yet)
+      if (err.message.includes('column') || err.message.includes('400') || err.message.includes('500')) {
+        try {
+          const taxInfo = `[TAX_INFO] Name: ${data.tax_name || '-'}, Amount: ${data.tax_amount || 0}`;
+          const fallbackDbData = {
+            paymentProofPhoto: data.paymentProofPhoto,
+            status: 'paid',
+            paidDate,
+            notes: (settlePayableModal.notes || '') + '\n' + taxInfo
+            // We omit tax_name, tax_amount, tax_proof_photo as DB columns may not exist
+          };
+          
+          await updatePurchaseOrder(poId, fallbackDbData);
+
+          // Also update local state with tax data so View (Full Doc) shows tax photos.
+          // patchPurchaseOrderLocal only updates React state without calling the API.
+          patchPurchaseOrderLocal?.(poId, {
+            tax_name: data.tax_name,
+            tax_amount: parseFloat(data.tax_amount) || 0,
+            tax_proof_photo: data.tax_proof_photo,
+          });
+
+          alert("Pembayaran berhasil disimpan. Catatan: Kolom pajak belum ada di database — jalankan migrasi 'add_tax_columns_po.cjs' untuk menyimpan permanen.");
+          setSettlePayableModal(null);
+          setPaymentProofModal(null);
+          setModalPhotos([]);
+          return;
+        } catch (fallbackErr) {
+          alert("Gagal memproses pembayaran: " + fallbackErr.message);
+        }
+      } else {
+        alert("Gagal memproses pembayaran: " + err.message);
+      }
+    }
+  };
+
+  const downloadPhotos = (photos, prefix) => {
+    if (!photos || photos.length === 0) return;
+    photos.forEach((photo, idx) => {
+      const link = document.createElement('a');
+      link.href = photo;
+      link.download = `${prefix}_${idx + 1}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     });
-    setPaymentProofModal(null);
-    setModalPhotos([]);
   };
 
   const handleExport = () => {
@@ -402,23 +477,34 @@ const Accounting = () => {
     }
   };
 
-  const handleUploadReceivableProof = async (invId, photos) => {
+  const handleUploadReceivableProof = async (invId, paymentPhotos, taxPhotos) => {
     try {
-      await updateInvoice(invId, { paymentProofPhoto: photos });
+      await updateInvoice(invId, { 
+        paymentProofPhoto: paymentPhotos,
+        tax_deduction_proof: taxPhotos
+      });
       setReceivableProofModal(null);
+      setModalPhotos([]);
+      setModalTaxPhotos([]);
     } catch (err) {
       alert("Gagal upload bukti: " + err.message);
     }
   };
 
   const handleDownloadInvoice = (inv) => {
-    const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
+    // If inv is a receivable object, it might be missing joId but have id or invoiceId
+    // Let's find the original invoice to get the joId
+    const originalInv = invoices.find(i => i.id === inv.id || i.id === inv.invoiceId);
+    const joId = inv.joId || (originalInv ? originalInv.joId : null);
+
+    const linkedJO = jobOrders.find(j => String(j.id) === String(joId));
     const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
     
-    // Check if bank account info is needed (from existing logic if we can find it)
-    // For now we just pass what we have
+    // Pass the enriched invoice object (merging receivable and original invoice data)
+    const enrichedInv = { ...originalInv, ...inv };
+    
     localStorage.setItem('print_invoice_data', JSON.stringify({ 
-      invoice: inv, 
+      invoice: enrichedInv, 
       jo: linkedJO, 
       quotation: linkedQuo 
     }));
@@ -426,8 +512,15 @@ const Accounting = () => {
     // 1. Main Invoice
     window.open('/print/invoice', '_blank');
     
-    // 2. Attachment (Operational Photos) - Only if photos exist
-    if (linkedJO && Array.isArray(linkedJO.photos) && linkedJO.photos.length > 0) {
+    // 2. Receipt (STT)
+    window.open('/print/invoice-receipt', '_blank');
+
+    // 3. Attachments (Operational Photos + Signed Docs + Payment/Tax Proofs)
+    const hasOpsPhotos = linkedJO && Array.isArray(linkedJO.photos) && linkedJO.photos.length > 0;
+    const hasSignedPhotos = enrichedInv.signedInvoicePhoto || enrichedInv.signedReceiptPhoto;
+    const hasProofs = enrichedInv.paymentProofPhoto || enrichedInv.tax_deduction_proof;
+    
+    if (hasOpsPhotos || hasSignedPhotos || hasProofs) {
       window.open('/print/invoice-attachment', '_blank');
     }
   };
@@ -439,10 +532,17 @@ const Accounting = () => {
   const handleSettle = (inv) => {
     setSettleModal(inv);
     const existingTaxes = Array.isArray(inv.taxes_deducted) ? inv.taxes_deducted : (inv.tax_deduction > 0 ? [{ name: 'PPh 23', amount: inv.tax_deduction }] : [{ name: '', amount: 0 }]);
+    
+    const getInitialPhotos = (val) => {
+      if (!val) return [];
+      if (Array.isArray(val)) return val;
+      return [val];
+    };
+
     setSettleForm({ 
-      paymentProof: inv.paymentProofPhoto || '', 
+      paymentProof: getInitialPhotos(inv.paymentProofPhoto), 
       taxes: existingTaxes, 
-      taxProof: inv.tax_deduction_proof || '' 
+      taxProof: getInitialPhotos(inv.tax_deduction_proof) 
     });
   };
 
@@ -512,6 +612,61 @@ const Accounting = () => {
     const selectedList = invoices.filter(inv => selectedLedger.has(inv.id));
     setBatchPrintInvoices(selectedList);
   };
+
+  const togglePayableSelection = (id) => {
+    const newSelected = new Set(selectedPayables);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedPayables(newSelected);
+  };
+
+  const toggleAllPayables = (items) => {
+    if (selectedPayables.size === items.length) {
+      setSelectedPayables(new Set());
+    } else {
+      setSelectedPayables(new Set(items.map(i => i.id)));
+    }
+  };
+
+  const handleBatchPrintPayable = () => {
+    if (selectedPayables.size === 0) return;
+    const selectedList = purchaseOrders.filter(po => selectedPayables.has(po.id));
+    setBatchPrintPOs(selectedList);
+  };
+
+  const toggleIssuedSelection = (id) => {
+    const newSelected = new Set(selectedIssued);
+    if (newSelected.has(id)) newSelected.delete(id);
+    else newSelected.add(id);
+    setSelectedIssued(newSelected);
+  };
+
+  const toggleAllIssued = (items) => {
+    if (selectedIssued.size === items.length) {
+      setSelectedIssued(new Set());
+    } else {
+      setSelectedIssued(new Set(items.map(i => i.id)));
+    }
+  };
+
+  const handleBatchPrintIssued = () => {
+    if (selectedIssued.size === 0) return;
+    const selectedList = invoices.filter(inv => selectedIssued.has(inv.id));
+    setBatchPrintIssued(selectedList);
+  };
+
+  const handleBatchPrintPaidInvoices = () => {
+    if (selectedLedger.size === 0) return;
+    const selectedList = (paidInvoices || [])
+      .filter(inv => selectedLedger.has(inv.id))
+      .map(inv => {
+        const originalInv = invoices.find(i => i.id === inv.id || i.id === inv.invoiceId);
+        return { ...originalInv, ...inv };
+      });
+    setBatchPrintPaidInvoices(selectedList);
+  };
+
+
 
   return (
     <div className="accounting-container">
@@ -966,6 +1121,475 @@ const Accounting = () => {
         </div>
       )}
 
+      {batchPrintIssued && (
+        <div style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 10000, color: 'black', overflowY: 'auto', padding: '20px' }}>
+          <style>{`
+            @media print {
+              .batch-issued-page { 
+                width: 210mm !important; 
+                min-height: 297mm !important; 
+                padding: 1.2cm !important; 
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-after: always !important;
+                display: flex !important;
+                flex-direction: column !important;
+              }
+              .no-print { display: none !important; }
+              body { background: white !important; }
+            }
+          `}</style>
+          <div className="no-print" style={{ position: 'sticky', top: '10px', right: '10px', display: 'flex', gap: '10px', justifyContent: 'flex-end', background: 'rgba(255,255,255,0.9)', padding: '10px', borderRadius: '8px', zIndex: 10001 }}>
+            <button className="btn" style={{ background: '#eee', color: '#333' }} onClick={() => { setBatchPrintIssued(null); setSelectedIssued(new Set()); }}>Close</button>
+            <button className="btn btn-primary" onClick={() => window.print()}><FileText size={18}/> Print All Selected (Inv + Att)</button>
+          </div>
+          
+          <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+            {batchPrintIssued.map((inv) => {
+              const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
+              const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
+              
+              const getPhotos = (val) => {
+                if (!val) return [];
+                if (Array.isArray(val)) return val;
+                if (typeof val === 'string') {
+                  if (val.startsWith('[') || val.startsWith('{')) {
+                    try { return JSON.parse(val); } catch(e) { return [val]; }
+                  }
+                  return [val];
+                }
+                return [];
+              };
+
+              const operationalPhotos = Array.isArray(linkedJO?.photos) ? linkedJO.photos : [];
+              const docs = [
+                { src: inv.signedInvoicePhoto, label: 'SIGNED INVOICE' },
+                { src: inv.signedReceiptPhoto, label: 'SIGNED STT (SURAT JALAN)' }
+              ];
+              const paymentPhotos = getPhotos(inv.paymentProofPhoto);
+              paymentPhotos.forEach((p) => p && docs.push({ src: p, label: 'BUKTI PEMBAYARAN (PAYMENT PROOF)' }));
+              const taxPhotos = getPhotos(inv.tax_deduction_proof);
+              taxPhotos.forEach((p) => p && docs.push({ src: p, label: 'BUKTI POTONG PAJAK (TAX PROOF)' }));
+              
+              const allAtts = docs.filter(d => d.src);
+              operationalPhotos.forEach(p => {
+                if (p && !allAtts.find(ap => ap.src === p)) {
+                  allAtts.push({ src: p, label: 'DOKUMENTASI OPERASIONAL' });
+                }
+              });
+
+              return (
+                <React.Fragment key={inv.id}>
+                  {/* INVOICE PAGE */}
+                  <div className="batch-issued-page" style={{ background: 'white', padding: '1.2cm', marginBottom: '40px', border: '1px solid #eee', boxShadow: '0 0 10px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b', paddingBottom: '22px', marginBottom: '32px' }}>
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <img src="/assets/logo.png" alt="Logo" style={{ width: '65px', height: '65px', objectFit: 'contain' }} />
+                        <div>
+                          <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', color: '#1e293b' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                          <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Green Sedayu Bizpark DM 11 No. 51, Jakarta Barat</p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#d4af37' }}>INVOICE</div>
+                        <div style={{ marginTop: '6px', fontWeight: '800', fontSize: '0.95rem' }}>No: {inv.id}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', marginBottom: '36px' }}>
+                      <div>
+                        <p style={{ margin: '0 0 6px 0', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>DITAGIHKAN KEPADA:</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontWeight: '900', color: '#1e293b' }}>{inv.customerName}</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>{linkedQuo?.companyAddress || linkedJO?.address || 'Indonesia'}</p>
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize:'0.85rem' }}>
+                         <p style={{ margin:0 }}><strong>Tanggal:</strong> {formatDate(inv.date)}</p>
+                         <p style={{ margin:0 }}><strong>JO Ref:</strong> {inv.joId}</p>
+                      </div>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                      <thead>
+                        <tr style={{ background: '#1e293b', color: 'white' }}>
+                          <th style={{ padding: '11px 14px', textAlign: 'left', fontSize: '0.72rem' }}>DESKRIPSI</th>
+                          <th style={{ padding: '11px 14px', textAlign: 'right', fontSize: '0.72rem' }}>TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ padding:'15px 14px', borderBottom:'1px solid #eee' }}>
+                             <div style={{ fontWeight:'800' }}>Freight & Logistics Services</div>
+                             <div style={{ fontSize:'0.75rem', color:'#64748b' }}>{linkedJO?.instruction || 'Logistics Services'}</div>
+                          </td>
+                          <td style={{ padding:'15px 14px', textAlign:'right', fontWeight:'900' }}>
+                             Rp {parseFloat(inv.subtotal || inv.amount).toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                        {(inv.extra_charges || []).map((ec, i) => (
+                          <tr key={i}>
+                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', color:'#475569', borderBottom:'1px solid #eee' }}>{ec.description}</td>
+                            <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:'700', borderBottom:'1px solid #eee' }}>Rp {parseFloat(ec.amount).toLocaleString('id-ID')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
+                      <div style={{ background: '#1e293b', color: 'white', padding: '18px 30px', borderRadius: '12px', textAlign: 'right', minWidth: '280px' }}>
+                        <div style={{ fontSize: '0.68rem', fontWeight: '800', color: '#94a3b8' }}>TOTAL DUE</div>
+                        <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#d4af37' }}>Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                      <p style={{ fontSize: '0.72rem', color: '#94a3b8' }}>* Dokumen sah tanpa tanda tangan basah.</p>
+                      <div style={{ textAlign: 'center', minWidth: '200px' }}>
+                        <p style={{ margin: '0 0 50px 0', fontSize: '0.78rem', fontWeight: '900' }}>Hormat Kami,</p>
+                        <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
+                        <p style={{ margin: 0, fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* STT PAGE */}
+                  <div className="batch-issued-page" style={{ background: 'white', padding: '1.5cm', marginBottom: '40px', border: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '4px solid #1e293b', paddingBottom: '20px', marginBottom: '40px' }}>
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <img src="/assets/logo.png" alt="Logo" style={{ width: '60px', height: '60px' }} />
+                        <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#64748b' }}>TANDA TERIMA</div>
+                        <div style={{ fontWeight: '800' }}>NO: {inv.id}/STT</div>
+                      </div>
+                    </div>
+                    <p>Telah diterima dokumen penagihan:</p>
+                    <div style={{ background: '#f8fafc', padding: '25px', borderRadius: '12px', border:'1px solid #e2e8f0', marginBottom:'40px' }}>
+                       <p><strong>No. Invoice:</strong> {inv.id}</p>
+                       <p><strong>Customer:</strong> {inv.customerName}</p>
+                       <p><strong>Total Tagihan:</strong> Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between' }}>
+                       <div style={{ textAlign:'center', flex:1 }}>
+                          <p style={{ marginBottom:'70px' }}>PENGIRIM,</p>
+                          <div style={{ borderBottom:'2px solid #1e293b', width:'80%', margin:'0 auto' }}></div>
+                       </div>
+                       <div style={{ textAlign:'center', flex:1 }}>
+                          <p style={{ marginBottom:'70px' }}>PENERIMA,</p>
+                          <div style={{ borderBottom:'2px solid #1e293b', width:'80%', margin:'0 auto' }}></div>
+                       </div>
+                    </div>
+                  </div>
+
+                  {/* ATTACHMENT PAGES */}
+                  {allAtts.map((att, attIdx) => (
+                    <div key={attIdx} className="batch-issued-page" style={{ background: 'white', padding: '1.2cm', marginBottom: '40px', border: '1px solid #eee', display:'flex', flexDirection:'column' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #1e293b', paddingBottom: '15px', marginBottom: '25px' }}>
+                          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                            <img src="/assets/logo.png" alt="Logo" style={{ width: '45px', height: '45px' }} />
+                            <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '900', color: '#64748b' }}>{att.label}</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: '800' }}>Invoice: {inv.id}</div>
+                          </div>
+                       </div>
+                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border:'1px solid #eee', padding:'10px' }}>
+                          <img src={att.src} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
+                       </div>
+                    </div>
+                  ))}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {batchPrintPaidInvoices && (
+        <div style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 10000, color: 'black', overflowY: 'auto', padding: '20px' }}>
+          <style>{`
+            @media print {
+              .batch-paid-page { 
+                width: 210mm !important; 
+                min-height: 297mm !important; 
+                padding: 1.2cm !important; 
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-after: always !important;
+                display: flex !important;
+                flex-direction: column !important;
+              }
+              .no-print { display: none !important; }
+              body { background: white !important; }
+            }
+          `}</style>
+          <div className="no-print" style={{ position: 'sticky', top: '10px', right: '10px', display: 'flex', gap: '10px', justifyContent: 'flex-end', background: 'rgba(255,255,255,0.9)', padding: '10px', borderRadius: '8px', zIndex: 10001 }}>
+            <button className="btn" style={{ background: '#eee', color: '#333' }} onClick={() => { setBatchPrintPaidInvoices(null); setSelectedLedger(new Set()); }}>Close</button>
+            <button className="btn btn-primary" style={{ background:'#10b981' }} onClick={() => window.print()}><FileText size={18}/> Print All Selected (Full Doc)</button>
+          </div>
+          
+          <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+            {batchPrintPaidInvoices.map((inv) => {
+              const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
+              const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
+              
+              const getPhotos = (val) => {
+                if (!val) return [];
+                if (Array.isArray(val)) return val;
+                if (typeof val === 'string') {
+                  if (val.startsWith('[') || val.startsWith('{')) {
+                    try { return JSON.parse(val); } catch(e) { return [val]; }
+                  }
+                  return [val];
+                }
+                return [];
+              };
+
+              const operationalPhotos = Array.isArray(linkedJO?.photos) ? linkedJO.photos : [];
+              const docs = [
+                { src: inv.signedInvoicePhoto, label: 'SIGNED INVOICE' },
+                { src: inv.signedReceiptPhoto, label: 'SIGNED STT (SURAT JALAN)' }
+              ];
+              const paymentPhotos = getPhotos(inv.paymentProofPhoto);
+              paymentPhotos.forEach((p) => p && docs.push({ src: p, label: 'BUKTI PEMBAYARAN (PAYMENT PROOF)' }));
+              const taxPhotos = getPhotos(inv.tax_deduction_proof);
+              taxPhotos.forEach((p) => p && docs.push({ src: p, label: 'BUKTI POTONG PAJAK (TAX PROOF)' }));
+              
+              const allAtts = docs.filter(d => d.src);
+              operationalPhotos.forEach(p => {
+                if (p && !allAtts.find(ap => ap.src === p)) {
+                  allAtts.push({ src: p, label: 'DOKUMENTASI OPERASIONAL' });
+                }
+              });
+
+              return (
+                <React.Fragment key={inv.id}>
+                  {/* INVOICE PAGE */}
+                  <div className="batch-paid-page" style={{ background: 'white', padding: '1.2cm', marginBottom: '40px', border: '1px solid #eee', boxShadow: '0 0 10px rgba(0,0,0,0.05)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '4px solid #1e293b', paddingBottom: '22px', marginBottom: '32px' }}>
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <img src="/assets/logo.png" alt="Logo" style={{ width: '65px', height: '65px', objectFit: 'contain' }} />
+                        <div>
+                          <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', color: '#1e293b' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                          <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Green Sedayu Bizpark DM 11 No. 51, Jakarta Barat</p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#10b981' }}>INVOICE</div>
+                        <div style={{ marginTop: '6px', fontWeight: '800', fontSize: '0.95rem' }}>No: {inv.id}</div>
+                        <div style={{ color: '#10b981', fontWeight: '900', fontSize: '0.8rem', marginTop: '5px' }}>SETTLED / PAID</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', marginBottom: '36px' }}>
+                      <div>
+                        <p style={{ margin: '0 0 6px 0', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>DITAGIHKAN KEPADA:</p>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontWeight: '900', color: '#1e293b' }}>{inv.customerName}</p>
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>{linkedQuo?.companyAddress || linkedJO?.address || 'Indonesia'}</p>
+                      </div>
+                      <div style={{ textAlign: 'right', fontSize:'0.85rem' }}>
+                         <p style={{ margin:0 }}><strong>Tanggal:</strong> {formatDate(inv.date)}</p>
+                         <p style={{ margin:0 }}><strong>JO Ref:</strong> {inv.joId}</p>
+                      </div>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                      <thead>
+                        <tr style={{ background: '#1e293b', color: 'white' }}>
+                          <th style={{ padding: '11px 14px', textAlign: 'left', fontSize: '0.72rem' }}>DESKRIPSI</th>
+                          <th style={{ padding: '11px 14px', textAlign: 'right', fontSize: '0.72rem' }}>TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{ padding:'15px 14px', borderBottom:'1px solid #eee' }}>
+                             <div style={{ fontWeight:'800' }}>Freight & Logistics Services</div>
+                             <div style={{ fontSize:'0.75rem', color:'#64748b' }}>{linkedJO?.instruction || 'Logistics Services'}</div>
+                          </td>
+                          <td style={{ padding:'15px 14px', textAlign:'right', fontWeight:'900' }}>
+                             Rp {parseFloat(inv.subtotal || inv.amount).toLocaleString('id-ID')}
+                          </td>
+                        </tr>
+                        {(inv.extra_charges || []).map((ec, i) => (
+                          <tr key={i}>
+                            <td style={{ padding:'10px 14px', fontSize:'0.85rem', color:'#475569', borderBottom:'1px solid #eee' }}>{ec.description}</td>
+                            <td style={{ padding:'10px 14px', textAlign:'right', fontWeight:'700', borderBottom:'1px solid #eee' }}>Rp {parseFloat(ec.amount).toLocaleString('id-ID')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '40px' }}>
+                      <div style={{ background: '#1e293b', color: 'white', padding: '18px 30px', borderRadius: '12px', textAlign: 'right', minWidth: '280px' }}>
+                        <div style={{ fontSize: '0.68rem', fontWeight: '800', color: '#94a3b8' }}>TOTAL PELUNASAN</div>
+                        <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#10b981' }}>Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</div>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                      <p style={{ fontSize: '0.72rem', color: '#94a3b8' }}>* Dokumen pelunasan sah sistem.</p>
+                      <div style={{ textAlign: 'center', minWidth: '200px' }}>
+                        <p style={{ margin: '0 0 50px 0', fontSize: '0.78rem', fontWeight: '900' }}>Hormat Kami,</p>
+                        <div style={{ borderBottom: '2px solid #1e293b', width: '100%', marginBottom: '10px' }}></div>
+                        <p style={{ margin: 0, fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* STT PAGE */}
+                  <div className="batch-paid-page" style={{ background: 'white', padding: '1.5cm', marginBottom: '40px', border: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '4px solid #1e293b', paddingBottom: '20px', marginBottom: '40px' }}>
+                      <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                        <img src="/assets/logo.png" alt="Logo" style={{ width: '60px', height: '60px' }} />
+                        <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#64748b' }}>TANDA TERIMA</div>
+                        <div style={{ fontWeight: '800' }}>NO: {inv.id}/STT</div>
+                      </div>
+                    </div>
+                    <p>Telah diterima dokumen pelunasan penagihan:</p>
+                    <div style={{ background: '#f8fafc', padding: '25px', borderRadius: '12px', border:'1px solid #e2e8f0', marginBottom:'40px' }}>
+                       <p><strong>No. Invoice:</strong> {inv.id}</p>
+                       <p><strong>Customer:</strong> {inv.customerName}</p>
+                       <p><strong>Total Terbayar:</strong> Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</p>
+                    </div>
+                    <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between' }}>
+                       <div style={{ textAlign:'center', flex:1 }}>
+                          <p style={{ marginBottom:'70px' }}>PENGIRIM,</p>
+                          <div style={{ borderBottom:'2px solid #1e293b', width:'80%', margin:'0 auto' }}></div>
+                       </div>
+                       <div style={{ textAlign:'center', flex:1 }}>
+                          <p style={{ marginBottom:'70px' }}>PENERIMA,</p>
+                          <div style={{ borderBottom:'2px solid #1e293b', width:'80%', margin:'0 auto' }}></div>
+                       </div>
+                    </div>
+                  </div>
+
+                  {/* ATTACHMENT PAGES */}
+                  {allAtts.map((att, attIdx) => (
+                    <div key={attIdx} className="batch-paid-page" style={{ background: 'white', padding: '1.2cm', marginBottom: '40px', border: '1px solid #eee', display:'flex', flexDirection:'column' }}>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #1e293b', paddingBottom: '15px', marginBottom: '25px' }}>
+                          <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                            <img src="/assets/logo.png" alt="Logo" style={{ width: '45px', height: '45px' }} />
+                            <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: '900' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '900', color: '#64748b' }}>{att.label}</div>
+                            <div style={{ fontSize: '0.75rem', fontWeight: '800' }}>Invoice: {inv.id}</div>
+                          </div>
+                       </div>
+                       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', border:'1px solid #eee', padding:'10px' }}>
+                          <img src={att.src} style={{ maxWidth:'100%', maxHeight:'100%', objectFit:'contain' }} />
+                       </div>
+                    </div>
+                  ))}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+
+      {batchPrintPOs && (
+        <div style={{ position: 'fixed', inset: 0, background: 'white', zIndex: 10000, color: 'black', overflowY: 'auto', padding: '20px' }}>
+          <style>{`
+            @media print {
+              .batch-po-page { 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                padding: 1.2cm !important; 
+                margin: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                page-break-after: always !important;
+              }
+              .no-print { display: none !important; }
+            }
+          `}</style>
+          <div className="no-print" style={{ position: 'sticky', top: '10px', right: '10px', display: 'flex', gap: '10px', justifyContent: 'flex-end', background: 'rgba(255,255,255,0.9)', padding: '10px', borderRadius: '8px', zIndex: 10001 }}>
+            <button className="btn" style={{ background: '#eee', color: '#333' }} onClick={() => setBatchPrintPOs(null)}>Close</button>
+            <button className="btn btn-primary" onClick={() => window.print()}><FileText size={18}/> Print All Selected Full Docs</button>
+          </div>
+          
+          <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+            {batchPrintPOs.map((po) => {
+              const getPhotos = (val) => {
+                if (!val) return [];
+                if (Array.isArray(val)) return val;
+                if (typeof val === 'string') {
+                  if (val.startsWith('[') || val.startsWith('{')) {
+                    try { return JSON.parse(val); } catch(e) { return [val]; }
+                  }
+                  return [val];
+                }
+                return [];
+              };
+
+              const docs = [];
+              const vendorInvPhotos = getPhotos(po.vendorInvoicePhoto);
+              vendorInvPhotos.forEach(p => p && docs.push({ src: p, label: 'INVOICE VENDOR' }));
+              const paymentPhotos = getPhotos(po.paymentProofPhoto);
+              paymentPhotos.forEach(p => p && docs.push({ src: p, label: 'BUKTI PEMBAYARAN (PAYMENT PROOF)' }));
+              const taxPhotos = getPhotos(po.tax_proof_photo);
+              taxPhotos.forEach(p => p && docs.push({ src: p, label: 'BUKTI POTONG PAJAK (TAX PROOF)' }));
+              const allPhotos = docs.filter(d => d.src);
+
+              if (allPhotos.length === 0) return (
+                <div key={po.id} className="batch-po-page" style={{ padding: '60px', textAlign: 'center', background:'white', marginBottom:'20px', border:'1px solid #eee' }}>
+                   <h3 style={{color:'#1e293b'}}>PO ID: {po.id}</h3>
+                   <p style={{color:'#94a3b8'}}>Tidak ada foto dokumentasi untuk PO ini.</p>
+                </div>
+              );
+
+              return allPhotos.map((p, pIdx) => (
+                <div key={`${po.id}-${pIdx}`} className="batch-po-page" style={{ background: 'white', padding: '1.2cm', marginBottom: '40px', border: '1px solid #eee', boxShadow: '0 0 10px rgba(0,0,0,0.05)', display:'flex', flexDirection:'column', minHeight:'297mm' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '3px solid #1e293b', paddingBottom: '18px', marginBottom: '28px' }}>
+                    <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                      <img src="/assets/logo.png" alt="Logo" style={{ width: '45px', height: '45px', objectFit: 'contain' }} />
+                      <h1 style={{ margin: 0, fontSize: '1rem', fontWeight: '900', color: '#1e293b' }}>PT. OMEGA TRUST LOGISTIK</h1>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1rem', fontWeight: '900', color: '#64748b', textTransform: 'uppercase' }}>{p.label}</div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: '800', color: '#1e293b' }}>PO ID: {po.id}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '12px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', marginBottom: '24px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '0.75rem' }}>
+                      {[
+                        ['Vendor', po.vendorName],
+                        ['Grand Total', `Rp ${parseFloat(po.grandTotal || 0).toLocaleString()}`],
+                        ['Tanggal Pelunasan', po.paidDate],
+                        ['Tax Name', po.tax_name || '-'],
+                        ['Tax Amount', `Rp ${parseFloat(po.tax_amount || 0).toLocaleString()}`],
+                        ['Job Order Ref', po.joId],
+                      ].map(([l, v]) => (
+                        <div key={l}>
+                          <div style={{ fontSize: '0.6rem', color: '#94a3b8', fontWeight: '800', textTransform: 'uppercase' }}>{l}</div>
+                          <div style={{ fontWeight: '700', color: '#1e293b' }}>{v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', padding: '10px', border:'1px solid #eee', overflow:'hidden' }}>
+                    <img src={p.src} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  </div>
+
+                  <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                    <p style={{ fontSize: '0.65rem', color: '#94a3b8', margin: 0 }}>Halaman {pIdx + 1} dari {allPhotos.length} — {po.id}</p>
+                    <div style={{ textAlign: 'center', minWidth: '180px' }}>
+                      <div style={{ borderBottom: '1px solid #1e293b', width: '100%', marginBottom: '6px' }}></div>
+                      <p style={{ margin: 0, fontWeight: '800', fontSize: '0.8rem' }}>Accounting Division</p>
+                    </div>
+                  </div>
+                </div>
+              ));
+            })}
+          </div>
+        </div>
+      )}
+
+
+
+
 
       {/* JO Costing Modal */}
       {costModal && (
@@ -1392,7 +2016,15 @@ const Accounting = () => {
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--secondary)' }}>
+                  <th style={{ padding: '15px', width: '40px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedIssued.size > 0 && selectedIssued.size === invoices.filter(inv => filterByDate(inv.date) && (inv.id.toLowerCase().includes(searchTerm.toLowerCase()) || inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()))).length}
+                      onChange={() => toggleAllIssued(invoices.filter(inv => filterByDate(inv.date) && (inv.id.toLowerCase().includes(searchTerm.toLowerCase()) || inv.customerName.toLowerCase().includes(searchTerm.toLowerCase()))))}
+                    />
+                  </th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Inv ID / JO</th>
+
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Customer</th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase' }}>Date</th>
                   <th style={{ padding: '15px', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', textAlign: 'right' }}>Revenue (INV)</th>
@@ -1417,6 +2049,13 @@ const Accounting = () => {
                     const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
                     return (
                     <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
+                      <td style={{ padding: '15px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIssued.has(inv.id)}
+                          onChange={() => toggleIssuedSelection(inv.id)}
+                        />
+                      </td>
                       <td style={{ padding: '15px' }}>
                         <div style={{ fontWeight: '800', color: 'var(--secondary)' }}>{inv.id}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {inv.joId}</div>
@@ -1510,10 +2149,19 @@ const Accounting = () => {
                             className="btn" 
                             style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }} 
                             onClick={() => {
-                              if (linkedJO && linkedJO.photos && linkedJO.photos.length > 0) {
-                                setPhotoViewer({ title: `JO Photos - ${inv.joId}`, photos: linkedJO.photos });
+                              const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
+                              const allAtts = [
+                                ...(linkedJO?.photos || []),
+                                inv.signedInvoicePhoto,
+                                inv.signedReceiptPhoto,
+                                ...(Array.isArray(inv.paymentProofPhoto) ? inv.paymentProofPhoto : (inv.paymentProofPhoto ? [inv.paymentProofPhoto] : [])),
+                                ...(Array.isArray(inv.tax_deduction_proof) ? inv.tax_deduction_proof : (inv.tax_deduction_proof ? [inv.tax_deduction_proof] : []))
+                              ].filter(Boolean);
+                              
+                              if (allAtts.length > 0) {
+                                setPhotoViewer({ title: `Attachments - ${inv.id}`, photos: allAtts });
                               } else {
-                                alert("Tidak ada lampiran operasional.");
+                                alert("Tidak ada lampiran.");
                               }
                             }}
                           >
@@ -1543,14 +2191,24 @@ const Accounting = () => {
               </tbody>
             </table>
             )}
+
+            {selectedIssued.size > 0 && !isIssuedCollapsed && (
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(59,130,246,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #3b82f6' }}>
+                <span style={{ fontWeight: '600', color:'var(--text)' }}>{selectedIssued.size} Invoices Selected</span>
+                <button className="btn btn-primary" onClick={handleBatchPrintIssued} style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                  <ExternalLink size={16} /> Batch View (Inv + Att)
+                </button>
+              </div>
+            )}
           </div>
+
         </div>
       ) : activeTab === 'piutang' ? (
         <div className="piutang-section">
           {/* Sub-Navigation */}
           <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', background: 'rgba(255,255,255,0.02)', padding: '5px', borderRadius: '10px', width: 'fit-content' }}>
             <button 
-              onClick={() => setReceivableSubTab('outstanding')}
+              onClick={() => { setReceivableSubTab('outstanding'); setSelectedLedger(new Set()); }}
               style={{
                 padding: '8px 20px', borderRadius: '8px', border: 'none',
                 background: receivableSubTab === 'outstanding' ? 'var(--secondary)' : 'transparent',
@@ -1561,7 +2219,7 @@ const Accounting = () => {
               Outstanding Receivables
             </button>
             <button 
-              onClick={() => setReceivableSubTab('lunas')}
+              onClick={() => { setReceivableSubTab('lunas'); setSelectedLedger(new Set()); }}
               style={{
                 padding: '8px 20px', borderRadius: '8px', border: 'none',
                 background: receivableSubTab === 'lunas' ? '#10b981' : 'transparent',
@@ -1571,6 +2229,7 @@ const Accounting = () => {
             >
               Invoice Lunas (Paid)
             </button>
+
           </div>
 
           {receivableSubTab === 'outstanding' && (
@@ -1587,23 +2246,28 @@ const Accounting = () => {
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:'15px' }}>
                 {(() => {
-                  const grouped = receivables.reduce((acc, r) => {
-                    if (!acc[r.customerName]) acc[r.customerName] = { total: 0, count: 0 };
-                    acc[r.customerName].total += (r.balance || r.amount);
-                    acc[r.customerName].count += 1;
-                    return acc;
-                  }, {});
+                  const grouped = (receivables || [])
+                    .filter(r => r.status !== 'paid')
+                    .reduce((acc, r) => {
+                      if (!acc[r.customerName]) acc[r.customerName] = 0;
+                      acc[r.customerName] += (r.balance || r.amount);
+                      return acc;
+                    }, {});
                   
-                  return Object.entries(grouped).map(([name, data]) => (
-                    <div key={name} style={{ background:'rgba(255,255,255,0.03)', padding:'15px', borderRadius:'10px', border:'1px solid var(--glass-border)' }}>
-                      <div style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700', marginBottom:'5px' }}>{name}</div>
-                      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
-                        <div style={{ fontSize:'1.2rem', fontWeight:'800', color:'var(--secondary)' }}>Rp {data.total.toLocaleString()}</div>
-                        <div style={{ fontSize:'0.75rem', color:'var(--text-muted)' }}>{data.count} Inv</div>
+                  return Object.entries(grouped).map(([name, total]) => (
+                    <div key={name} className="glass-card" style={{ padding: '25px', display: 'flex', alignItems: 'center', gap: '20px', border: '1px solid var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
+                      <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                        <Wallet size={24} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: '900', color: '#3b82f6' }}>Rp {total.toLocaleString()}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px', marginTop: '2px' }}>{name}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--secondary)', fontWeight: '700', marginTop: '4px' }}>TOTAL OUTSTANDING</div>
                       </div>
                     </div>
                   ));
                 })()}
+
                 {receivables.length === 0 && <p style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>Tidak ada data piutang outstanding.</p>}
               </div>
             </div>
@@ -1619,10 +2283,11 @@ const Accounting = () => {
                   <th style={{ padding: '15px', width: '40px' }}>
                     <input 
                       type="checkbox" 
-                      checked={selectedLedger.size > 0 && selectedLedger.size === (receivableSubTab === 'outstanding' ? receivables : paidInvoices).filter(item => filterByDate(item.date)).filter(item => item.id.toLowerCase().includes(searchTerm.toLowerCase()) || item.customerName.toLowerCase().includes(searchTerm.toLowerCase())).length}
-                      onChange={() => toggleAllLedger((receivableSubTab === 'outstanding' ? receivables : paidInvoices).filter(item => filterByDate(item.date)).filter(item => item.id.toLowerCase().includes(searchTerm.toLowerCase()) || item.customerName.toLowerCase().includes(searchTerm.toLowerCase())))}
+                      checked={selectedLedger.size > 0 && selectedLedger.size === (receivableSubTab === 'outstanding' ? (receivables || []).filter(r => r.status !== 'paid') : (paidInvoices || [])).filter(item => filterByDate(item.date)).filter(item => item.id.toLowerCase().includes(searchTerm.toLowerCase()) || item.customerName.toLowerCase().includes(searchTerm.toLowerCase())).length}
+                      onChange={() => toggleAllLedger((receivableSubTab === 'outstanding' ? (receivables || []).filter(r => r.status !== 'paid') : (paidInvoices || [])).filter(item => filterByDate(item.date)).filter(item => item.id.toLowerCase().includes(searchTerm.toLowerCase()) || item.customerName.toLowerCase().includes(searchTerm.toLowerCase())))}
                     />
                   </th>
+
                   <th style={{ padding: '15px' }}>Invoice</th>
                   <th style={{ padding: '15px' }}>Customer</th>
                   <th style={{ padding: '15px' }}>{receivableSubTab === 'outstanding' ? 'Outstanding Amount' : 'Amount Paid'}</th>
@@ -1657,50 +2322,32 @@ const Accounting = () => {
                         Rp {(item.balance || item.amount).toLocaleString()}
                       </td>
                       {receivableSubTab === 'lunas' && (
-                        <td style={{ padding: '15px', color: '#ef4444', fontWeight: '600' }}>
-                          Rp {(item.tax_deduction || 0).toLocaleString()}
+                        <td style={{ padding: '15px' }}>
+                          <div style={{ color: '#ef4444', fontWeight: '600' }}>Rp {(item.tax_deduction || 0).toLocaleString()}</div>
+                          {item.tax_deduction_proof && (
+                            <button 
+                              onClick={() => setPhotoViewer({ title: `Bukti Potong Pajak - ${item.id}`, photos: item.tax_deduction_proof })}
+                              style={{ background: 'none', border: 'none', color: 'var(--secondary)', cursor: 'pointer', padding: 0, marginTop: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <ShieldCheck size={12}/> View Proof
+                            </button>
+                          )}
                         </td>
                       )}
                       <td style={{ padding: '15px' }}>
                         <div style={{ display: 'flex', gap: '8px' }}>
-                          {/* Common Doc Button (Signed Document from JO) */}
                           <button 
                             className="btn" 
                             style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}
-                            onClick={() => {
-                              const jo = jobOrders.find(j => j.id === item.joId);
-                              if (jo && jo.photos && jo.photos.length > 0) {
-                                localStorage.setItem('print_invoice_data', JSON.stringify({ invoice: item, jo }));
-                                window.open('/print/invoice-attachment', '_blank');
-                              } else {
-                                alert("Dokumen tertanda belum diupload oleh operasional.");
-                              }
-                            }}
+                            onClick={() => handleDownloadInvoice(item)}
                           >
                             <ShieldCheck size={14} /> Doc
                           </button>
 
                           {receivableSubTab === 'outstanding' ? (
                             <>
-                              {item.paymentProofPhoto ? (
-                                <button 
-                                  className="btn" 
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}
-                                  onClick={() => setPhotoViewer({ title: `Bukti Pembayaran - ${item.id}`, photos: item.paymentProofPhoto })}
-                                >
-                                  <Image size={14} /> Proof
-                                </button>
-                              ) : (
-                                <button 
-                                  className="btn" 
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }}
-                                  onClick={() => setReceivableProofModal(item)}
-                                >
-                                  <Plus size={14} /> Upload
-                                </button>
-                              )}
                               <ButtonWithLoading className="btn btn-gold" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => handleSettle(item)}>
-                                Mark as Settled
+                                Settle
                               </ButtonWithLoading>
                               <button 
                                 className="btn" 
@@ -1717,31 +2364,12 @@ const Accounting = () => {
                             </>
                           ) : (
                             <>
-                              {/* Paid Tab Downloads */}
-                              {(item.tax_deduction_proof || item.paymentProofPhoto) && (
-                                <button 
-                                  className="btn" 
-                                  style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', gap: '5px' }}
-                                  onClick={() => {
-                                    const photos = [];
-                                    if (item.tax_deduction_proof) photos.push(item.tax_deduction_proof);
-                                    if (item.paymentProofPhoto) {
-                                      if (Array.isArray(item.paymentProofPhoto)) photos.push(...item.paymentProofPhoto);
-                                      else photos.push(item.paymentProofPhoto);
-                                    }
-                                    const linkedJO = jobOrders.find(j => String(j.id) === String(item.joId));
-                                    localStorage.setItem('print_invoice_data', JSON.stringify({ 
-                                      invoice: item, 
-                                      jo: { ...linkedJO, photos: photos } 
-                                    }));
-                                    window.open('/print/invoice-attachment', '_blank');
-                                  }}
-                                >
-                                  <ShieldCheck size={14} /> Tax Proof
-                                </button>
-                              )}
-                              <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '5px' }} onClick={() => handleDownloadInvoice(item)}>
-                                <Download size={14} /> Doc
+                              <button 
+                                className="btn btn-primary" 
+                                style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '5px' }} 
+                                onClick={() => handleDownloadInvoice(item)}
+                              >
+                                <Download size={14} /> View (Full Doc)
                               </button>
                               <button 
                                 className="btn" 
@@ -1762,6 +2390,7 @@ const Accounting = () => {
                     </tr>
                   ));
                 })()}
+
                 {((receivableSubTab === 'outstanding' ? receivables : paidInvoices).length === 0) && (
                   <tr>
                     <td colSpan="5" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>No records found.</td>
@@ -1771,13 +2400,20 @@ const Accounting = () => {
             </table>
 
             {selectedLedger.size > 0 && (
-              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(212,175,55,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--secondary)' }}>
-                <span style={{ fontWeight: '600' }}>{selectedLedger.size} Invoices Selected</span>
-                <button className="btn btn-gold" onClick={handleBatchPrint}>
-                  <Download size={16} /> Download Selected Invoices (Batch)
-                </button>
+              <div style={{ marginTop: '20px', padding: '15px', background: receivableSubTab === 'lunas' ? 'rgba(16,185,129,0.05)' : 'rgba(212,175,55,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: receivableSubTab === 'lunas' ? '1px solid #10b981' : '1px solid var(--secondary)' }}>
+                <span style={{ fontWeight: '600', color:'var(--text)' }}>{selectedLedger.size} Invoices Selected</span>
+                {receivableSubTab === 'lunas' ? (
+                  <button className="btn" style={{ background:'#10b981', color:'white', display:'flex', alignItems:'center', gap:'8px' }} onClick={handleBatchPrintPaidInvoices}>
+                    <ExternalLink size={16} /> Batch View (Full Doc)
+                  </button>
+                ) : (
+                  <button className="btn btn-gold" onClick={handleBatchPrint} style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                    <Download size={16} /> Download Selected Invoices (Batch)
+                  </button>
+                )}
               </div>
             )}
+
           </div>
         </div>
       ) : activeTab === 'salary' ? (
@@ -1936,7 +2572,7 @@ const Accounting = () => {
                 Hutang Outstanding
               </button>
               <button 
-                onClick={() => setPayableSubTab('lunas')}
+                onClick={() => { setPayableSubTab('lunas'); setSelectedPayables(new Set()); }}
                 style={{
                   padding: '8px 20px', borderRadius: '8px', border: 'none',
                   background: payableSubTab === 'lunas' ? '#10b981' : 'transparent',
@@ -1967,13 +2603,25 @@ const Accounting = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--glass-border)' }}>
+                  {payableSubTab === 'lunas' && (
+                    <th style={{ padding: '15px', width: '40px' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedPayables.size > 0 && selectedPayables.size === purchaseOrders.filter(po => po.status === 'paid' && filterByDate(po.date) && (po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))).length}
+                        onChange={() => toggleAllPayables(purchaseOrders.filter(po => po.status === 'paid' && filterByDate(po.date) && (po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))))}
+                      />
+                    </th>
+                  )}
                   <th style={{ padding: '15px' }}>PO ID / JO</th>
                   <th style={{ padding: '15px' }}>Vendor Name</th>
                   <th style={{ padding: '15px' }}>Date</th>
-                  <th style={{ padding: '15px', textAlign: 'right' }}>Grand Total</th>
-                  <th style={{ padding: '15px', textAlign: 'center' }}>Inv Vendor</th>
-                  <th style={{ padding: '15px', textAlign: 'center' }}>Proof Pay</th>
-                  <th style={{ padding: '15px', textAlign: 'center' }}>Action</th>
+                  <th style={{ padding: '15px', textAlign: 'right' }}>{payableSubTab === 'outstanding' ? 'Grand Total' : 'Nominal Dibayar'}</th>
+                   <th style={{ padding: '15px', textAlign: 'center' }}>Inv Vendor</th>
+                   <th style={{ padding: '15px', textAlign: 'center' }}>Tax (PPh)</th>
+                   <th style={{ padding: '15px', textAlign: 'center' }}>Payment Proof</th>
+                   <th style={{ padding: '15px', textAlign: 'center' }}>Tax Proof</th>
+                   <th style={{ padding: '15px', textAlign: 'center' }}>Action</th>
+
                 </tr>
               </thead>
               <tbody>
@@ -1990,14 +2638,36 @@ const Accounting = () => {
                   
                   return filteredPOs.map(po => (
                     <tr key={po.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
+                      {payableSubTab === 'lunas' && (
+                        <td style={{ padding: '15px' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedPayables.has(po.id)}
+                            onChange={() => togglePayableSelection(po.id)}
+                          />
+                        </td>
+                      )}
                       <td style={{ padding: '15px' }}>
                         <div style={{ fontWeight: '700', color: 'var(--secondary)' }}>{po.id}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {po.joId}</div>
                       </td>
                       <td style={{ padding: '15px', fontWeight: '600' }}>{po.vendorName}</td>
                       <td style={{ padding: '15px' }}>{new Date(po.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                      <td style={{ padding: '15px', textAlign: 'right', fontWeight: '800', color: '#f59e0b' }}>
-                        Rp {parseFloat(po.grandTotal || 0).toLocaleString()}
+                      <td style={{ padding: '15px', textAlign: 'right' }}>
+                        {payableSubTab === 'outstanding' ? (
+                          <div style={{ fontWeight: '800', color: '#f59e0b' }}>Rp {parseFloat(po.grandTotal || 0).toLocaleString()}</div>
+                        ) : (
+                          <div>
+                            <div style={{ fontWeight: '900', color: '#10b981', fontSize: '1rem' }}>
+                              Rp {(parseFloat(po.grandTotal || 0) - (parseFloat(po.tax_amount) || 0)).toLocaleString()}
+                            </div>
+                            {po.tax_amount > 0 && (
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                                (Inv: Rp {parseFloat(po.grandTotal).toLocaleString()})
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
                         {po.vendorInvoicePhoto && po.vendorInvoicePhoto.length > 0 ? (
@@ -2014,19 +2684,57 @@ const Accounting = () => {
                         )}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
-                        {po.paymentProofPhoto && po.paymentProofPhoto.length > 0 ? (
-                          <div style={{ display:'flex', gap:'5px', justifyContent:'center' }}>
-                            <button onClick={() => setPhotoViewer({ title: `Bukti Bayar - ${po.vendorName}`, photos: po.paymentProofPhoto })} style={{ background:'none', border:'none', color:'#10b981', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
-                              <Image size={18}/>
-                              <span style={{ fontSize:'0.7rem', fontWeight:'700' }}>({po.paymentProofPhoto.length})</span>
-                            </button>
-                            <button onClick={() => { setModalPhotos(po.paymentProofPhoto); setPaymentProofModal(po); }} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><Edit3 size={14}/></button>
-                            <button onClick={() => { if(window.confirm('Hapus semua bukti bayar?')) handleSettlePayable(po.id, []); }} style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer' }}><Trash2 size={14}/></button>
+                        {po.tax_amount > 0 ? (
+                          <div style={{ fontSize:'0.75rem' }}>
+                            <div style={{ color:'var(--secondary)', fontWeight:'700' }}>{po.tax_name || 'Tax'}</div>
+                            <div style={{ color:'var(--text-muted)' }}>Rp {parseFloat(po.tax_amount).toLocaleString()}</div>
                           </div>
-                        ) : payableSubTab === 'outstanding' ? (
-                          <span style={{ color:'var(--text-muted)', fontSize:'0.8rem' }}>Pending</span>
                         ) : (
-                           <button onClick={() => { setModalPhotos([]); setPaymentProofModal(po); }} style={{ background:'rgba(16,185,129,0.1)', color:'#10b981', border:'1px dashed #10b981', padding:'4px 8px', borderRadius:'6px', fontSize:'0.7rem', cursor:'pointer' }}>+ Proof</button>
+                          <span style={{ color:'var(--text-muted)', fontSize:'0.75rem' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        {po.paymentProofPhoto && po.paymentProofPhoto.length > 0 ? (
+                           <div style={{ display:'flex', gap:'5px', justifyContent:'center' }}>
+                              <button onClick={() => setPhotoViewer({ title: `Bukti Pembayaran - ${po.vendorName}`, photos: po.paymentProofPhoto })} style={{ background:'none', border:'none', color:'#10b981', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+                                <CheckCircle size={18}/>
+                                <span style={{ fontSize:'0.7rem', fontWeight:'700' }}>({po.paymentProofPhoto.length})</span>
+                              </button>
+                           </div>
+                        ) : (
+                           <span style={{ color:'var(--text-muted)', fontSize:'0.75rem' }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '15px', textAlign: 'center' }}>
+                        {po.tax_proof_photo && po.tax_proof_photo.length > 0 ? (
+                           <div style={{ display:'flex', gap:'5px', justifyContent:'center' }}>
+                              <button onClick={() => setPhotoViewer({ title: `Bukti Potong Pajak - ${po.vendorName}`, photos: po.tax_proof_photo })} style={{ background:'none', border:'none', color:'var(--secondary)', cursor:'pointer', display:'flex', alignItems:'center', gap:'4px' }}>
+                                <ShieldCheck size={18}/>
+                                <span style={{ fontSize:'0.7rem', fontWeight:'700' }}>({po.tax_proof_photo.length})</span>
+                              </button>
+                              <button onClick={() => { 
+                                 setSettlePayableModal(po);
+                                 setSettlePayableForm({
+                                    paymentProof: po.paymentProofPhoto || [],
+                                    taxName: po.tax_name || '',
+                                    taxAmount: po.tax_amount || 0,
+                                    taxProof: po.tax_proof_photo || []
+                                 });
+                              }} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><Edit3 size={14}/></button>
+                              <button onClick={() => { if(window.confirm('Hapus bukti potong pajak?')) handleSettlePayable(po.id, { tax_proof_photo: [] }); }} style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer' }}><Trash2 size={14}/></button>
+                           </div>
+                        ) : po.status === 'paid' && po.tax_amount > 0 ? (
+                           <button onClick={() => { 
+                              setSettlePayableModal(po);
+                              setSettlePayableForm({
+                                 paymentProof: po.paymentProofPhoto || [],
+                                 taxName: po.tax_name || '',
+                                 taxAmount: po.tax_amount || 0,
+                                 taxProof: po.tax_proof_photo || []
+                              });
+                           }} style={{ background:'rgba(255,193,7,0.1)', color:'var(--secondary)', border:'1px dashed var(--secondary)', padding:'4px 8px', borderRadius:'6px', fontSize:'0.7rem', cursor:'pointer' }}>+ Tax Proof</button>
+                        ) : (
+                           <span style={{ color:'var(--text-muted)', fontSize:'0.75rem' }}>—</span>
                         )}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
@@ -2034,14 +2742,35 @@ const Accounting = () => {
                           <button 
                             className="btn btn-gold" 
                             style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                            onClick={() => setPaymentProofModal(po)}
+                            onClick={() => {
+                              setSettlePayableModal(po);
+                              setSettlePayableForm({
+                                paymentProof: po.paymentProofPhoto || [],
+                                taxName: po.tax_name || '',
+                                taxAmount: po.tax_amount || 0,
+                                taxProof: po.tax_proof_photo || []
+                              });
+                            }}
                           >
                             Mark as Paid
                           </button>
                         ) : (
-                          <div style={{ color:'#10b981', fontWeight:'700', fontSize:'0.8rem' }}>Settled on {po.paidDate}</div>
+                          <div style={{ textAlign:'center' }}>
+                            <div style={{ color:'#10b981', fontWeight:'700', fontSize:'0.8rem' }}>Settled on {po.paidDate}</div>
+                            <button 
+                              className="btn btn-gold" 
+                              style={{ padding: '4px 10px', fontSize: '0.65rem', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius:'6px' }}
+                              onClick={() => {
+                                localStorage.setItem('print_po_data', JSON.stringify(po));
+                                window.open('/print/po-attachment', '_blank');
+                              }}
+                            >
+                              <ExternalLink size={12}/> View (Full Doc)
+                            </button>
+                          </div>
                         )}
                       </td>
+
                     </tr>
                   ));
                 })()}
@@ -2050,6 +2779,16 @@ const Accounting = () => {
                 )}
               </tbody>
             </table>
+
+            {payableSubTab === 'lunas' && selectedPayables.size > 0 && (
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(16,185,129,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #10b981' }}>
+                <span style={{ fontWeight: '600', color:'var(--text)' }}>{selectedPayables.size} PO Selected</span>
+                <button className="btn btn-gold" onClick={handleBatchPrintPayable} style={{ background:'#10b981', borderColor:'#10b981', color:'white', display:'flex', alignItems:'center', gap:'8px' }}>
+                  <ExternalLink size={16} /> Batch View (Full Docs)
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       ) : activeTab === 'detail_report' ? (
@@ -2060,52 +2799,78 @@ const Accounting = () => {
                 className="btn btn-gold" 
                 style={{ padding:'10px 20px', display:'flex', alignItems:'center', gap:'8px', borderRadius:'12px', fontWeight:'700' }}
                 onClick={() => {
+                  const periodInvoices = invoices.filter(inv => filterByDate(inv.date));
+                  const periodPOs = purchaseOrders.filter(po => filterByDate(po.date));
+                  const periodSalaries = salaries.filter(s => filterByDate(s.expenseDate || s.date));
+                  const periodMisc = otherExpenses.filter(e => filterByDate(e.expenseDate || e.date));
+                  const periodReceivables = receivables.filter(r => filterByDate(r.paidDate));
+
                   const reportData = {
-                    revenue: invoices.filter(inv => filterByDate(inv.date)).reduce((s, i) => s + parseFloat(i.amount || 0), 0),
-                    opCosts: purchaseOrders.filter(po => filterByDate(po.date)).reduce((s, p) => s + parseFloat(p.grandTotal || 0), 0),
-                    payroll: salaries.filter(s => filterByDate(s.expenseDate || s.date)).reduce((s, sa) => s + parseFloat(sa.totalToPay || 0), 0),
-                    misc: otherExpenses.filter(e => filterByDate(e.expenseDate || e.date)).reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0),
+                    revenue: periodInvoices.reduce((s, i) => s + parseFloat(i.amount || 0), 0),
+                    opCosts: periodPOs.reduce((s, p) => s + parseFloat(p.grandTotal || 0), 0),
+                    payroll: periodSalaries.reduce((s, sa) => s + parseFloat(sa.totalToPay || 0), 0),
+                    misc: periodMisc.reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0),
+                    taxPiutang: periodInvoices.reduce((s, i) => s + (parseFloat(i.tax_deduction) || 0), 0),
+                    taxHutang: periodPOs.reduce((s, p) => s + (parseFloat(p.tax_amount) || 0), 0),
+                    totalHutang: purchaseOrders.filter(po => po.status === 'issued').reduce((s, p) => s + parseFloat(p.grandTotal || 0), 0),
+                    totalPiutang: receivables.reduce((s, r) => s + parseFloat(r.balance || 0), 0),
+                    inflow: periodReceivables.filter(r => r.status === 'paid').reduce((s, r) => s + parseFloat(r.amount || 0), 0),
+                    outflow: 
+                      purchaseOrders.filter(p => p.status === 'paid' && filterByDate(p.paidDate)).reduce((s, p) => s + (parseFloat(p.grandTotal || 0) - (parseFloat(p.tax_amount) || 0)), 0) +
+                      periodSalaries.reduce((s, sa) => s + parseFloat(sa.totalToPay || 0), 0) +
+                      periodMisc.reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0),
                     dateRange: startDate && endDate ? `${formatDate(startDate)} - ${formatDate(endDate)}` : 'All Time'
                   };
                   setFinancialReport(reportData);
                 }}
+
              >
                 <Download size={18}/> Export Professional PDF
              </button>
           </div>
 
           {/* Summary Dashboard */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px', marginBottom:'30px' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(280px, 1fr))', gap:'20px', marginBottom:'30px' }}>
             {(() => {
               const reportData = {
                 revenue: invoices.filter(inv => filterByDate(inv.date)).reduce((s, i) => s + parseFloat(i.amount || 0), 0),
                 opCosts: purchaseOrders.filter(po => filterByDate(po.date)).reduce((s, p) => s + parseFloat(p.grandTotal || 0), 0),
                 payroll: salaries.filter(s => filterByDate(s.expenseDate || s.date)).reduce((s, sa) => s + parseFloat(sa.totalToPay || 0), 0),
                 misc: otherExpenses.filter(e => filterByDate(e.expenseDate || e.date)).reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0),
-                totalTax: invoices.filter(inv => filterByDate(inv.date)).reduce((s, i) => s + parseFloat(i.tax_deduction || 0), 0)
+                taxPiutang: invoices.filter(i => filterByDate(i.date)).reduce((s, i) => s + (parseFloat(i.tax_deduction) || 0), 0),
+                taxHutang: purchaseOrders.filter(p => filterByDate(p.date)).reduce((s, p) => s + (parseFloat(p.tax_amount) || 0), 0),
+                totalHutang: purchaseOrders.filter(po => po.status === 'issued').reduce((s, p) => s + parseFloat(p.grandTotal || 0), 0),
+                totalPiutang: receivables.reduce((s, r) => s + parseFloat(r.balance || 0), 0),
+                cashInflow: receivables.filter(r => r.status === 'paid' && filterByDate(r.paidDate)).reduce((s, r) => s + parseFloat(r.amount || 0), 0),
+                cashOutflow: 
+                  purchaseOrders.filter(p => p.status === 'paid' && filterByDate(p.paidDate)).reduce((s, p) => s + (parseFloat(p.grandTotal || 0) - (parseFloat(p.tax_amount) || 0)), 0) +
+                  salaries.filter(s => filterByDate(s.expenseDate || s.date)).reduce((s, sa) => s + parseFloat(sa.totalToPay || 0), 0) +
+                  otherExpenses.filter(e => filterByDate(e.expenseDate || e.date)).reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0)
               };
               const totalExpenses = reportData.opCosts + reportData.payroll + reportData.misc;
-              const netProfit = reportData.revenue - totalExpenses;
+              const netProfit = reportData.revenue - (totalExpenses + reportData.taxPiutang);
 
               return [
-                { label: 'Total Revenue', val: reportData.revenue, color: '#10b981', icon: <Receipt size={24}/> },
-                { label: 'Total Expenses', val: totalExpenses, color: '#ef4444', icon: <Wallet size={24}/> },
-                { label: 'Net Profit', val: netProfit, color: netProfit >= 0 ? '#10b981' : '#ef4444', icon: <DollarSign size={24}/>, highlight: true },
-                { label: 'Total PPh Terpotong', val: reportData.totalTax, color: '#f59e0b', icon: <ShieldCheck size={24}/>, highlight: true },
-                { label: 'Operational (PO)', val: reportData.opCosts, color: '#f59e0b', icon: <Briefcase size={20}/>, small: true },
-                { label: 'Payroll', val: reportData.payroll, color: '#8b5cf6', icon: <User size={20}/>, small: true },
-                { label: 'Misc Expenses', val: reportData.misc, color: '#ec4899', icon: <CreditCard size={20}/>, small: true }
+                { label: 'Omset per Periode', val: reportData.revenue, color: '#10b981', icon: <Receipt size={24}/> },
+                { label: 'Hutang Outstanding (Total)', val: reportData.totalHutang, color: '#f59e0b', icon: <Briefcase size={24}/> },
+                { label: 'Piutang Outstanding (Total)', val: reportData.totalPiutang, color: '#3b82f6', icon: <Wallet size={24}/> },
+                { label: 'Keuntungan Bersih', val: netProfit, color: netProfit >= 0 ? '#10b981' : '#ef4444', icon: <DollarSign size={24}/>, highlight: true },
+                { label: 'Penerimaan Dana (Period)', val: reportData.cashInflow, color: '#10b981', icon: <CheckCircle size={20}/>, small: true },
+                { label: 'Pengeluaran Dana (Period)', val: reportData.cashOutflow, color: '#ef4444', icon: <XCircle size={20}/>, small: true },
+                { label: 'Pajak Invoice Piutang', val: reportData.taxPiutang, color: '#8b5cf6', icon: <ShieldCheck size={20}/>, small: true },
+                { label: 'Pajak Invoice Hutang', val: reportData.taxHutang, color: '#ec4899', icon: <ShieldAlert size={20}/>, small: true }
               ].map(stat => (
                 <div key={stat.label} className="glass-card" style={{ padding:'25px', display:'flex', alignItems:'center', gap:'20px', border: stat.highlight ? `2px solid ${stat.color}` : '1px solid var(--glass-border)', background: stat.highlight ? `rgba(${stat.color === '#10b981' ? '16,185,129' : '239,68,68'}, 0.05)` : 'rgba(255,255,255,0.03)' }}>
                   <div style={{ padding:'12px', borderRadius:'12px', background: `${stat.color}15`, color: stat.color }}>{stat.icon}</div>
-                  <div>
-                    <div style={{ fontSize: stat.small ? '1.1rem' : '1.5rem', fontWeight:'800', color: stat.color }}>Rp {stat.val.toLocaleString()}</div>
-                    <div style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700', letterSpacing:'0.5px', marginTop:'2px' }}>{stat.label}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: stat.small ? '1.1rem' : '1.4rem', fontWeight:'900', color: stat.color }}>Rp {stat.val.toLocaleString()}</div>
+                    <div style={{ fontSize:'0.7rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'800', letterSpacing:'0.5px', marginTop:'2px' }}>{stat.label}</div>
                   </div>
                 </div>
               ));
             })()}
           </div>
+
 
           <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'30px' }}>
             {/* Detailed Transaction Log */}
@@ -2304,19 +3069,36 @@ const Accounting = () => {
               <p style={{ margin:0, color:'var(--text-muted)', fontSize:'0.85rem' }}>{photoViewer.photos.length} Total Images</p>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'20px', display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:'15px' }}>
-              {photoViewer.photos.map((p, idx) => (
-                <div key={idx} style={{ position:'relative', borderRadius:'10px', overflow:'hidden', border:'1px solid var(--glass-border)', background:'#000' }}>
-                  <img src={p} alt={`JO Photo ${idx}`} style={{ width:'100%', height:'180px', objectFit:'cover' }} />
-                  <a 
-                    href={p} 
-                    download={`Photo_${idx+1}.jpg`}
-                    style={{ position:'absolute', bottom:'10px', right:'10px', background:'var(--secondary)', color:'white', width:'30px', height:'30px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 10px rgba(0,0,0,0.5)' }}
-                    title="Download Photo"
-                  >
-                    <Download size={14} />
-                  </a>
-                </div>
-              ))}
+              {(() => {
+                const getPhotos = (data) => {
+                  if (!data) return [];
+                  if (Array.isArray(data)) return data;
+                  if (typeof data === 'string') {
+                    if (data.startsWith('[') || data.startsWith('{')) {
+                      try {
+                        const parsed = JSON.parse(data);
+                        return Array.isArray(parsed) ? parsed : [parsed];
+                      } catch (e) { return [data]; }
+                    }
+                    return [data];
+                  }
+                  return [];
+                };
+                const photoList = getPhotos(photoViewer.photos);
+                return photoList.map((p, idx) => (
+                  <div key={idx} style={{ position:'relative', borderRadius:'10px', overflow:'hidden', border:'1px solid var(--glass-border)', background:'#000' }}>
+                    <img src={p} alt={`JO Photo ${idx}`} style={{ width:'100%', height:'180px', objectFit:'cover' }} />
+                    <a 
+                      href={p} 
+                      download={`Photo_${idx+1}.jpg`}
+                      style={{ position:'absolute', bottom:'10px', right:'10px', background:'var(--secondary)', color:'white', width:'30px', height:'30px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 10px rgba(0,0,0,0.5)' }}
+                      title="Download Photo"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </div>
+                ));
+              })()}
             </div>
             <div style={{ padding:'15px', borderTop:'1px solid var(--glass-border)', textAlign:'right' }}>
               <button onClick={() => setPhotoViewer(null)} className="btn btn-gold" style={{ padding:'10px 25px' }}>Done</button>
@@ -2353,8 +3135,12 @@ const Accounting = () => {
                   }} 
                   style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
                 >
-                  <option value="">-- Pilih Karyawan --</option>
-                  {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name} ({emp.position})</option>)}
+                  <option value="" style={{ background: '#1e293b', color: '#94a3b8' }}>-- Pilih Karyawan --</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id} style={{ background: '#1e293b', color: 'white' }}>
+                      {emp.name} ({emp.position})
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -2706,44 +3492,103 @@ const Accounting = () => {
         </div>
       )}
 
-      {/* Payment Proof Modal */}
-      {paymentProofModal && (
+      {/* Enhanced Payment Proof Modal (Payable) */}
+      {settlePayableModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-          <div className="glass-card" style={{ width:'100%', maxWidth:'600px', padding:'35px', textAlign:'center', maxHeight:'90vh', overflowY:'auto' }}>
-            <button onClick={() => { setPaymentProofModal(null); setModalPhotos([]); }} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
-            <h3 style={{ color:'#10b981', marginBottom:'20px' }}>Settle Payment</h3>
-            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Konfirmasi pembayaran untuk <strong>{paymentProofModal.vendorName}</strong> sejumlah <strong>Rp {paymentProofModal.grandTotal.toLocaleString()}</strong></p>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'650px', padding:'35px', position:'relative', maxHeight:'90vh', overflowY:'auto' }}>
+            <button onClick={() => setSettlePayableModal(null)} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
+            <h3 style={{ color:'var(--secondary)', marginBottom:'20px', display:'flex', alignItems:'center', gap:'10px' }}><CheckCircle size={24}/> Settle Vendor Payment</h3>
+            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Konfirmasi pembayaran untuk <strong>{settlePayableModal.vendorName}</strong> sejumlah <strong>Rp {settlePayableModal.grandTotal.toLocaleString()}</strong></p>
             
-            {/* Preview Section */}
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', marginBottom:'25px' }}>
-              {modalPhotos.map((p, i) => (
-                <div key={i} style={{ position:'relative', height:'100px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
-                  <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                  <button onClick={() => setModalPhotos(prev => prev.filter((_, idx) => idx !== i))} style={{ position:'absolute', top:'5px', right:'5px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'20px', height:'20px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={12}/></button>
-                </div>
-              ))}
-              <label htmlFor="pay-proof-upload" style={{ height:'100px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)', transition:'all 0.3s' }} onMouseOver={e=>e.currentTarget.style.borderColor='#10b981'} onMouseOut={e=>e.currentTarget.style.borderColor='var(--glass-border)'}>
-                <Plus size={24}/>
-                <span style={{ fontSize:'0.7rem', marginTop:'5px' }}>Add Photo</span>
-              </label>
+            {/* Payment Proof Section */}
+            <div style={{ marginBottom:'25px', padding:'20px', background:'rgba(255,255,255,0.02)', borderRadius:'12px', border:'1px solid var(--glass-border)' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--secondary)', marginBottom:'12px', textTransform:'uppercase', fontWeight:'800', letterSpacing:'0.5px' }}>1. Bukti Pembayaran (Payment Proof)</label>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(80px, 1fr))', gap:'10px', marginBottom:'15px' }}>
+                {(settlePayableForm.paymentProof || []).map((p, i) => (
+                  <div key={i} style={{ position:'relative', height:'80px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setSettlePayableForm({...settlePayableForm, paymentProof: settlePayableForm.paymentProof.filter((_, idx) => idx !== i)})} style={{ position:'absolute', top:'3px', right:'3px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={10}/></button>
+                  </div>
+                ))}
+                <label htmlFor="po-pay-proof" style={{ height:'80px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)' }}>
+                  <Plus size={20}/>
+                  <span style={{ fontSize:'0.6rem', marginTop:'3px' }}>Upload</span>
+                </label>
+              </div>
+              <input type="file" multiple id="po-pay-proof" style={{ display:'none' }} onChange={e => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => setSettlePayableForm(prev => ({ ...prev, paymentProof: [...prev.paymentProof, reader.result] }));
+                  reader.readAsDataURL(file);
+                });
+              }} />
             </div>
 
-            <input type="file" multiple onChange={e => {
-              const files = Array.from(e.target.files);
-              files.forEach(file => {
-                const reader = new FileReader();
-                reader.onloadend = () => setModalPhotos(prev => [...prev, reader.result]);
-                reader.readAsDataURL(file);
-              });
-            }} style={{ display:'none' }} id="pay-proof-upload" />
+            {/* Tax Deduction Section */}
+            <div style={{ marginBottom:'25px', padding:'20px', background:'rgba(212,175,55,0.03)', borderRadius:'12px', border:'1px solid rgba(212,175,55,0.1)' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--secondary)', marginBottom:'15px', textTransform:'uppercase', fontWeight:'800', letterSpacing:'0.5px' }}>2. Pemotongan Pajak (Optional)</label>
+              
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px' }}>
+                <div>
+                  <label style={{ display:'block', fontSize:'0.7rem', color:'var(--text-muted)', marginBottom:'5px' }}>Nama Pajak (e.g. PPh 23)</label>
+                  <input 
+                    type="text" 
+                    value={settlePayableForm.taxName} 
+                    onChange={e => setSettlePayableForm({...settlePayableForm, taxName: e.target.value})}
+                    placeholder="Nama Pajak"
+                    style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.9rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display:'block', fontSize:'0.7rem', color:'var(--text-muted)', marginBottom:'5px' }}>Nominal Pajak (Rp)</label>
+                  <input 
+                    type="number" 
+                    value={settlePayableForm.taxAmount} 
+                    onChange={e => setSettlePayableForm({...settlePayableForm, taxAmount: e.target.value})}
+                    placeholder="0"
+                    style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.9rem', fontWeight:'700' }}
+                  />
+                </div>
+              </div>
+            </div>
 
-            <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
-              <button onClick={() => { setPaymentProofModal(null); setModalPhotos([]); }} className="btn" style={{ background:'rgba(255,255,255,0.05)', color:'var(--text)' }}>Cancel</button>
-              <ButtonWithLoading onClick={() => handleSettlePayable(paymentProofModal.id, modalPhotos)} className="btn" style={{ background:'#10b981', color:'white' }} disabled={modalPhotos.length === 0}>Save &amp; Settle {modalPhotos.length > 0 && `(${modalPhotos.length})`} Photos</ButtonWithLoading>
+
+            <div style={{ background:'rgba(255,193,7,0.05)', padding:'20px', borderRadius:'15px', border:'1px solid var(--secondary)', marginBottom:'25px' }}>
+               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px' }}>
+                  <span style={{ color:'var(--text-muted)' }}>Total Invoice:</span>
+                  <span style={{ fontWeight:'700' }}>Rp {settlePayableModal.grandTotal.toLocaleString()}</span>
+               </div>
+               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'8px', color:'#ef4444' }}>
+                  <span>Potongan Pajak ({settlePayableForm.taxName || 'Pajak'}):</span>
+                  <span style={{ fontWeight:'700' }}>- Rp {(parseFloat(settlePayableForm.taxAmount) || 0).toLocaleString()}</span>
+               </div>
+               <div style={{ display:'flex', justifyContent:'space-between', paddingTop:'10px', borderTop:'1px solid var(--glass-border)', marginTop:'10px' }}>
+                  <span style={{ fontWeight:'800', color:'var(--secondary)' }}>TOTAL DIBAYAR (NET):</span>
+                  <span style={{ fontWeight:'900', color:'var(--secondary)', fontSize:'1.2rem' }}>Rp {(settlePayableModal.grandTotal - (parseFloat(settlePayableForm.taxAmount) || 0)).toLocaleString()}</span>
+               </div>
+            </div>
+
+            <div style={{ display:'flex', gap:'15px', justifyContent:'center' }}>
+              <button onClick={() => setSettlePayableModal(null)} className="btn" style={{ flex:1, background:'rgba(255,255,255,0.05)', color:'var(--text)' }}>Cancel</button>
+              <ButtonWithLoading 
+                onClick={() => handleSettlePayable(settlePayableModal.id, { 
+                  paymentProofPhoto: settlePayableForm.paymentProof,
+                  tax_name: settlePayableForm.taxName,
+                  tax_amount: parseFloat(settlePayableForm.taxAmount || 0),
+                  tax_proof_photo: settlePayableForm.taxProof
+                })} 
+                className="btn btn-gold" 
+                style={{ flex:2 }}
+                disabled={!settlePayableModal}
+              >
+                Save &amp; Settle Payment
+              </ButtonWithLoading>
             </div>
           </div>
         </div>
       )}
+
       {/* Financial Report PDF Preview */}
       {financialReport && (
         <div style={{ position:'fixed', inset:0, background:'white', zIndex:30000, color:'black', padding:'40px', overflowY:'auto' }}>
@@ -2881,34 +3726,63 @@ const Accounting = () => {
       {receivableProofModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
           <div className="glass-card" style={{ width:'100%', maxWidth:'600px', padding:'35px', textAlign:'center', maxHeight:'90vh', overflowY:'auto' }}>
-            <button onClick={() => { setReceivableProofModal(null); setModalPhotos([]); }} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
-            <h3 style={{ color:'#10b981', marginBottom:'20px' }}>Upload Bukti Pembayaran (Piutang)</h3>
+            <button onClick={() => { setReceivableProofModal(null); setModalPhotos([]); setModalTaxPhotos([]); }} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
+            <h3 style={{ color:'#10b981', marginBottom:'20px' }}>Upload Bukti Pembayaran & Pajak</h3>
             <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Invoice: <strong>{receivableProofModal.id}</strong> - {receivableProofModal.customerName}</p>
             
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', marginBottom:'25px' }}>
-              {modalPhotos.map((p, i) => (
-                <div key={i} style={{ position:'relative', height:'100px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
-                  <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                  <button onClick={() => setModalPhotos(prev => prev.filter((_, idx) => idx !== i))} style={{ position:'absolute', top:'5px', right:'5px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'20px', height:'20px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={12}/></button>
-                </div>
-              ))}
-              <label htmlFor="rec-proof-upload" style={{ height:'100px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)' }}>
-                <Plus size={24}/>
-                <span style={{ fontSize:'0.7rem', marginTop:'5px' }}>Add Photo</span>
-              </label>
+            {/* Payment Proof Section */}
+            <div style={{ marginBottom:'25px', textAlign:'left' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--secondary)', marginBottom:'10px', textTransform:'uppercase', fontWeight:'800' }}>1. Bukti Pembayaran (Payment Proof)</label>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', marginBottom:'15px' }}>
+                {modalPhotos.map((p, i) => (
+                  <div key={i} style={{ position:'relative', height:'100px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setModalPhotos(prev => prev.filter((_, idx) => idx !== i))} style={{ position:'absolute', top:'5px', right:'5px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'20px', height:'20px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={12}/></button>
+                  </div>
+                ))}
+                <label htmlFor="rec-proof-upload" style={{ height:'100px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)' }}>
+                  <Plus size={24}/>
+                  <span style={{ fontSize:'0.7rem', marginTop:'5px' }}>Add Photo</span>
+                </label>
+              </div>
+              <input type="file" multiple onChange={e => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => setModalPhotos(prev => [...prev, reader.result]);
+                  reader.readAsDataURL(file);
+                });
+              }} style={{ display:'none' }} id="rec-proof-upload" />
             </div>
-            <input type="file" multiple onChange={e => {
-              const files = Array.from(e.target.files);
-              files.forEach(file => {
-                const reader = new FileReader();
-                reader.onloadend = () => setModalPhotos(prev => [...prev, reader.result]);
-                reader.readAsDataURL(file);
-              });
-            }} style={{ display:'none' }} id="rec-proof-upload" />
+
+            {/* Tax Proof Section */}
+            <div style={{ marginBottom:'30px', textAlign:'left' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'#8b5cf6', marginBottom:'10px', textTransform:'uppercase', fontWeight:'800' }}>2. Bukti Potong Pajak (Tax Proof)</label>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(100px, 1fr))', gap:'10px', marginBottom:'15px' }}>
+                {modalTaxPhotos.map((p, i) => (
+                  <div key={i} style={{ position:'relative', height:'100px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setModalTaxPhotos(prev => prev.filter((_, idx) => idx !== i))} style={{ position:'absolute', top:'5px', right:'5px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'20px', height:'20px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={12}/></button>
+                  </div>
+                ))}
+                <label htmlFor="rec-tax-upload" style={{ height:'100px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'var(--text-muted)' }}>
+                  <ShieldCheck size={24}/>
+                  <span style={{ fontSize:'0.7rem', marginTop:'5px' }}>Add Tax Proof</span>
+                </label>
+              </div>
+              <input type="file" multiple onChange={e => {
+                const files = Array.from(e.target.files);
+                files.forEach(file => {
+                  const reader = new FileReader();
+                  reader.onloadend = () => setModalTaxPhotos(prev => [...prev, reader.result]);
+                  reader.readAsDataURL(file);
+                });
+              }} style={{ display:'none' }} id="rec-tax-upload" />
+            </div>
             
             <div style={{ display:'flex', gap:'10px', justifyContent:'center' }}>
-              <button onClick={() => { setReceivableProofModal(null); setModalPhotos([]); }} className="btn">Cancel</button>
-              <ButtonWithLoading onClick={() => handleUploadReceivableProof(receivableProofModal.id, modalPhotos)} className="btn" style={{ background:'#10b981', color:'white' }}>Save Bukti</ButtonWithLoading>
+              <button onClick={() => { setReceivableProofModal(null); setModalPhotos([]); setModalTaxPhotos([]); }} className="btn">Cancel</button>
+              <ButtonWithLoading onClick={() => handleUploadReceivableProof(receivableProofModal.id, modalPhotos, modalTaxPhotos)} className="btn btn-gold" style={{ flex: 1 }}>Save Documents</ButtonWithLoading>
             </div>
           </div>
         </div>
@@ -2924,27 +3798,26 @@ const Accounting = () => {
             
             <div style={{ marginBottom:'20px' }}>
               <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Bukti Bayar (Payment Proof)</label>
-              <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
-                {settleForm.paymentProof ? (
-                  <div style={{ position:'relative', width:'80px', height:'80px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
-                    <img src={settleForm.paymentProof} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                    <button onClick={() => setSettleForm({...settleForm, paymentProof: ''})} style={{ position:'absolute', top:'2px', right:'2px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer' }}><X size={10}/></button>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(70px, 1fr))', gap:'10px', marginBottom:'10px' }}>
+                {(settleForm.paymentProof || []).map((p, i) => (
+                  <div key={i} style={{ position:'relative', height:'70px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setSettleForm({...settleForm, paymentProof: settleForm.paymentProof.filter((_, idx) => idx !== i)})} style={{ position:'absolute', top:'2px', right:'2px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={10}/></button>
                   </div>
-                ) : (
-                  <label style={{ width:'80px', height:'80px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                    <Plus size={20} color="var(--text-muted)"/>
-                    <input type="file" style={{ display:'none' }} onChange={e => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setSettleForm({...settleForm, paymentProof: reader.result});
-                        reader.readAsDataURL(file);
-                      }
-                    }} />
-                  </label>
-                )}
-                <span style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Upload receipt from customer</span>
+                ))}
+                <label style={{ height:'70px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <Plus size={20} color="var(--text-muted)"/>
+                  <input type="file" multiple style={{ display:'none' }} onChange={e => {
+                    const files = Array.from(e.target.files);
+                    files.forEach(file => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setSettleForm(prev => ({...prev, paymentProof: [...prev.paymentProof, reader.result]}));
+                      reader.readAsDataURL(file);
+                    });
+                  }} />
+                </label>
               </div>
+              <span style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Upload receipt(s) from customer</span>
             </div>
 
             <div style={{ marginBottom:'20px' }}>
@@ -2994,27 +3867,26 @@ const Accounting = () => {
 
             <div style={{ marginBottom:'30px' }}>
               <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Bukti Potong Pajak (Tax Proof)</label>
-              <div style={{ display:'flex', gap:'15px', alignItems:'center' }}>
-                {settleForm.taxProof ? (
-                  <div style={{ position:'relative', width:'80px', height:'80px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
-                    <img src={settleForm.taxProof} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
-                    <button onClick={() => setSettleForm({...settleForm, taxProof: ''})} style={{ position:'absolute', top:'2px', right:'2px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer' }}><X size={10}/></button>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(70px, 1fr))', gap:'10px', marginBottom:'10px' }}>
+                {(settleForm.taxProof || []).map((p, i) => (
+                  <div key={i} style={{ position:'relative', height:'70px', borderRadius:'8px', overflow:'hidden', border:'1px solid var(--glass-border)' }}>
+                    <img src={p} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                    <button onClick={() => setSettleForm({...settleForm, taxProof: settleForm.taxProof.filter((_, idx) => idx !== i)})} style={{ position:'absolute', top:'2px', right:'2px', background:'rgba(239,68,68,0.8)', color:'white', border:'none', borderRadius:'50%', width:'18px', height:'18px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={10}/></button>
                   </div>
-                ) : (
-                  <label style={{ width:'80px', height:'80px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
-                    <ShieldCheck size={20} color="var(--text-muted)"/>
-                    <input type="file" style={{ display:'none' }} onChange={e => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => setSettleForm({...settleForm, taxProof: reader.result});
-                        reader.readAsDataURL(file);
-                      }
-                    }} />
-                  </label>
-                )}
-                <span style={{ fontSize:'0.8rem', color:'var(--text-muted)' }}>Upload tax withholding document</span>
+                ))}
+                <label style={{ height:'70px', borderRadius:'8px', border:'2px dashed var(--glass-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer' }}>
+                  <ShieldCheck size={20} color="var(--text-muted)"/>
+                  <input type="file" multiple style={{ display:'none' }} onChange={e => {
+                    const files = Array.from(e.target.files);
+                    files.forEach(file => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => setSettleForm(prev => ({...prev, taxProof: [...prev.taxProof, reader.result]}));
+                      reader.readAsDataURL(file);
+                    });
+                  }} />
+                </label>
               </div>
+              <span style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Upload tax withholding document(s)</span>
             </div>
 
             <div style={{ background:'rgba(255,193,7,0.05)', padding:'20px', borderRadius:'15px', border:'1px solid var(--secondary)', marginBottom:'25px' }}>
@@ -3092,17 +3964,34 @@ const Accounting = () => {
                     <div style={{ fontWeight:'700', fontSize:'1rem' }}>{bank.bankName}</div>
                     <div style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>{bank.accountNumber} - {bank.accountName}</div>
                   </div>
-                  <div style={{ display:'flex', gap:'10px' }}>
-                    <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(59, 130, 246, 0.1)', color:'#3b82f6' }} onClick={() => setBankModal(bank)}><Edit3 size={14}/> Edit</button>
-                    <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(239, 68, 68, 0.1)', color:'#ef4444' }} onClick={async () => {
-                      if(window.confirm('Hapus rekening ini?')) {
-                        try {
-                          await deleteCompanyBank(bank.id);
-                        } catch (err) {
-                          alert("Gagal menghapus: " + err.message);
-                        }
-                      }
-                    }}><Trash2 size={14}/> Hapus</button>
+                  <div style={{ display:'flex', gap:'10px', alignItems: 'center' }}>
+                    {bankToDelete === bank.id ? (
+                      <div style={{ display:'flex', gap:'8px', background:'rgba(239,68,68,0.1)', padding:'5px 10px', borderRadius:'8px', border:'1px solid rgba(239,68,68,0.2)' }}>
+                        <span style={{ fontSize:'0.75rem', color:'#ef4444', fontWeight:'700' }}>Hapus?</span>
+                        <button 
+                          className="btn btn-sm" 
+                          style={{ background:'#ef4444', color:'white', border:'none', padding:'2px 8px', fontSize:'0.7rem' }}
+                          onClick={async () => {
+                            try {
+                              await deleteCompanyBank(bank.id);
+                              setBankToDelete(null);
+                            } catch (err) {
+                              alert("Gagal menghapus: " + err.message);
+                            }
+                          }}
+                        >Ya</button>
+                        <button 
+                          className="btn btn-sm" 
+                          style={{ background:'rgba(255,255,255,0.1)', color:'var(--text)', border:'none', padding:'2px 8px', fontSize:'0.7rem' }}
+                          onClick={() => setBankToDelete(null)}
+                        >Batal</button>
+                      </div>
+                    ) : (
+                      <>
+                        <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(59, 130, 246, 0.1)', color:'#3b82f6' }} onClick={() => setBankModal(bank)}><Edit3 size={14}/> Edit</button>
+                        <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(239, 68, 68, 0.1)', color:'#ef4444' }} onClick={() => setBankToDelete(bank.id)}><Trash2 size={14}/> Hapus</button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
@@ -3125,41 +4014,72 @@ const Accounting = () => {
             </p>
 
             <div style={{ marginBottom:'30px' }}>
-              <div 
-                style={{ height:'150px', border:'2px dashed var(--glass-border)', borderRadius:'12px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', background:'rgba(255,255,255,0.02)', cursor:'pointer' }}
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = async (readerEvent) => {
-                        const base64 = readerEvent.target.result;
-                        try {
-                          const updateData = uploadSignedModal.type === 'invoice' 
-                            ? { signedInvoicePhoto: base64 } 
-                            : { signedReceiptPhoto: base64 };
-                          
-                          await updateInvoice(uploadSignedModal.invId, updateData);
-                          setUploadSignedModal(null);
-                          alert("Dokumen berhasil diupload!");
-                        } catch (err) {
-                          alert("Gagal upload dokumen: " + err.message);
-                        }
-                      };
-                      reader.readAsDataURL(file);
+              <input 
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file || !uploadSignedModal) return;
+
+                  setIsUploading(true);
+                  const reader = new FileReader();
+                  reader.onload = async (readerEvent) => {
+                    const base64 = readerEvent.target.result;
+                    try {
+                      const updateData = uploadSignedModal.type === 'invoice' 
+                        ? { signedInvoicePhoto: base64 } 
+                        : { signedReceiptPhoto: base64 };
+                      
+                      await updateInvoice(uploadSignedModal.invId, updateData);
+                      setUploadSignedModal(null);
+                      alert("Dokumen berhasil diupload!");
+                    } catch (err) {
+                      alert("Gagal upload dokumen: " + err.message);
+                    } finally {
+                      setIsUploading(false);
+                      // Clear the input value to allow re-uploading the same file
+                      if (fileInputRef.current) fileInputRef.current.value = '';
                     }
                   };
-                  input.click();
+                  reader.readAsDataURL(file);
                 }}
+              />
+              <div 
+                style={{ 
+                  height:'150px', 
+                  border:'2px dashed var(--glass-border)', 
+                  borderRadius:'12px', 
+                  display:'flex', 
+                  flexDirection:'column', 
+                  alignItems:'center', 
+                  justifyContent:'center', 
+                  gap:'10px', 
+                  background:'rgba(255,255,255,0.02)', 
+                  cursor: isUploading ? 'not-allowed' : 'pointer',
+                  opacity: isUploading ? 0.6 : 1
+                }}
+                onClick={() => !isUploading && fileInputRef.current?.click()}
               >
-                <div style={{ background:'var(--secondary-glass)', p:2, borderRadius:'50%' }}>
-                  <Image size={32} style={{ color:'var(--secondary)' }}/>
-                </div>
-                <div style={{ fontWeight:'700', fontSize:'0.9rem' }}>Klik untuk Pilih Foto</div>
-                <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Format: JPG, PNG, WEBP</div>
+                {isUploading ? (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ 
+                      width: '32px', height: '32px', border: '3px solid rgba(212, 175, 55, 0.1)', 
+                      borderTop: '3px solid var(--secondary)', borderRadius: '50%',
+                      animation: 'spin 1s linear infinite', margin: '0 auto 10px'
+                    }} />
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Memproses foto...</div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ background:'var(--secondary-glass)', padding:'10px', borderRadius:'50%' }}>
+                      <Image size={32} style={{ color:'var(--secondary)' }}/>
+                    </div>
+                    <div style={{ fontWeight:'700', fontSize:'0.9rem' }}>Klik untuk Pilih Foto</div>
+                    <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Format: JPG, PNG, WEBP</div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -3174,68 +4094,6 @@ const Accounting = () => {
         </div>
       )}
 
-      {/* Upload Signed Document Modal */}
-      {uploadSignedModal && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10001, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-          <div className="glass-card" style={{ width:'100%', maxWidth:'450px', padding:'30px' }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'25px' }}>
-              <h3 style={{ margin:0, color:'var(--secondary)' }}>Upload Dokumen Tertandatangan</h3>
-              <button onClick={() => setUploadSignedModal(null)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={24}/></button>
-            </div>
-
-            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'20px' }}>
-              Pilih foto atau scan dari <strong>{uploadSignedModal.type === 'invoice' ? 'Invoice' : 'Surat Tanda Terima (STT)'}</strong> yang sudah tertandatangan oleh customer.
-            </p>
-
-            <div style={{ marginBottom:'30px' }}>
-              <div 
-                style={{ height:'150px', border:'2px dashed var(--glass-border)', borderRadius:'12px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'10px', background:'rgba(255,255,255,0.02)', cursor:'pointer' }}
-                onClick={() => {
-                  const input = document.createElement('input');
-                  input.type = 'file';
-                  input.accept = 'image/*';
-                  input.onchange = (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = async (readerEvent) => {
-                        const base64 = readerEvent.target.result;
-                        try {
-                          const updateData = uploadSignedModal.type === 'invoice' 
-                            ? { signedInvoicePhoto: base64 } 
-                            : { signedReceiptPhoto: base64 };
-                          
-                          await updateInvoice(uploadSignedModal.invId, updateData);
-                          setUploadSignedModal(null);
-                          alert("Dokumen berhasil diupload!");
-                        } catch (err) {
-                          alert("Gagal upload dokumen: " + err.message);
-                        }
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  };
-                  input.click();
-                }}
-              >
-                <div style={{ background:'var(--secondary-glass)', p:2, borderRadius:'50%' }}>
-                  <Image size={32} style={{ color:'var(--secondary)' }}/>
-                </div>
-                <div style={{ fontWeight:'700', fontSize:'0.9rem' }}>Klik untuk Pilih Foto</div>
-                <div style={{ fontSize:'0.7rem', color:'var(--text-muted)' }}>Format: JPG, PNG, WEBP</div>
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setUploadSignedModal(null)} 
-              className="btn" 
-              style={{ width:'100%', padding:'12px' }}
-            >
-              Batal
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Bank Selection Modal for Invoice Issuance */}
       {issuingInvoiceJoId && (

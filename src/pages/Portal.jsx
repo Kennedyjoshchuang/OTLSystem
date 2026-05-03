@@ -15,11 +15,7 @@ const Portal = () => {
   }, []);
 
   const handleEnter = () => {
-    if (user) {
-      navigate('/dashboard');
-    } else {
-      navigate('/login');
-    }
+    navigate('/login');
   };
 
   return (

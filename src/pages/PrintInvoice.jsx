@@ -73,18 +73,7 @@ const PrintInvoice = () => {
         <div style={{ display: 'flex', gap: '12px' }}>
           {(photos.length > 0 || invoice?.signedInvoicePhoto || invoice?.signedReceiptPhoto) && (
             <button
-              onClick={() => {
-                const allPhotos = [...photos];
-                if (invoice?.signedInvoicePhoto) allPhotos.push(invoice.signedInvoicePhoto);
-                if (invoice?.signedReceiptPhoto) allPhotos.push(invoice.signedReceiptPhoto);
-                
-                // Update localStorage with the merged photos before opening
-                localStorage.setItem('print_invoice_data', JSON.stringify({ 
-                  ...data, 
-                  jo: { ...jo, photos: allPhotos } 
-                }));
-                window.open('/print/invoice-attachment', '_blank');
-              }}
+              onClick={() => window.open('/print/invoice-attachment', '_blank')}
               style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               📎 Lampiran Foto ({(photos.length + (invoice?.signedInvoicePhoto ? 1 : 0) + (invoice?.signedReceiptPhoto ? 1 : 0))})

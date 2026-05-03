@@ -143,6 +143,9 @@ CREATE TABLE IF NOT EXISTS purchase_orders (
     quoteValidity TEXT,
     vendorInvoicePhoto JSONB DEFAULT '[]'::jsonb,
     paymentProofPhoto JSONB DEFAULT '[]'::jsonb,
+    tax_name TEXT,
+    tax_amount NUMERIC DEFAULT 0,
+    tax_proof_photo JSONB DEFAULT '[]'::jsonb,
     paidDate TEXT,
     notes TEXT
 );

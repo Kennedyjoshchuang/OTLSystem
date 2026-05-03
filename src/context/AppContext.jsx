@@ -23,7 +23,10 @@ export const AppProvider = ({ children }) => {
   const [employees, setEmployees] = useState([]);
   const [employeeAccounts, setEmployeeAccounts] = useState([]);
   const [companyBankAccounts, setCompanyBankAccounts] = useState([]);
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('omega_user') || 'null'));
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('omega_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [theme, setTheme] = useState(() => localStorage.getItem('omega_theme') || 'dark');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -48,12 +51,13 @@ export const AppProvider = ({ children }) => {
   const login = (username, password) => {
     // 1. Check hardcoded/admin accounts
     const rolesMap = {
-      'owner': { name: 'Owner', role: 'owner', key: '1234' },
-      'marketing': { name: 'Marketing', role: 'marketing', key: '1234' },
-      'admin': { name: 'Admin Office', role: 'admin', key: '1234' },
-      'executor': { name: 'Executor', role: 'executor', key: '1234' },
-      'accounting': { name: 'Accounting', role: 'accounting', key: '1234' }
+      'owner': { name: 'Owner', role: 'owner', key: 'Haiga1899.2003' },
+      'marketing': { name: 'Marketing', role: 'marketing', key: 'Haiga1899.2003' },
+      'admin': { name: 'Admin Office', role: 'admin', key: 'Haiga1899.2003' },
+      'executor': { name: 'Executor', role: 'executor', key: 'Haiga1899.2003' },
+      'accounting': { name: 'Accounting', role: 'accounting', key: 'Haiga1899.2003' }
     };
+
 
     const userMatch = rolesMap[username];
     if (userMatch && password === userMatch.key) {
@@ -147,8 +151,8 @@ export const AppProvider = ({ children }) => {
       setProspects(Array.isArray(prosData) ? prosData : []);
       setQuotations(safeParse(quoData, ['items']));
       setJobOrders(safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName']));
-      setInvoices(safeParse(invData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted']));
-      setReceivables(safeParse(recData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted']));
+      setInvoices(safeParse(invData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']));
+      setReceivables(safeParse(recData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']));
       setVendors(safeParse(venData, ['services', 'assets']));
       setPurchaseOrders(safeParse(poData, ['items', 'vendorInvoicePhoto', 'paymentProofPhoto']));
       setSalaries(safeParse(salData, ['taxes']));
@@ -398,6 +402,7 @@ export const AppProvider = ({ children }) => {
       inv.id === invoiceId ? { 
         ...inv, 
         status: 'paid', 
+        paymentProofPhoto,
         tax_deduction: totalTax, 
         taxes_deducted: taxesDeducted,
         tax_deduction_proof: taxDeductionProof 
@@ -459,6 +464,7 @@ export const AppProvider = ({ children }) => {
       if (typeof finalPO.items === 'string') finalPO.items = JSON.parse(finalPO.items);
       if (typeof finalPO.vendorInvoicePhoto === 'string') finalPO.vendorInvoicePhoto = JSON.parse(finalPO.vendorInvoicePhoto);
       if (typeof finalPO.paymentProofPhoto === 'string') finalPO.paymentProofPhoto = JSON.parse(finalPO.paymentProofPhoto);
+      if (typeof finalPO.tax_proof_photo === 'string') finalPO.tax_proof_photo = JSON.parse(finalPO.tax_proof_photo);
       
       setPurchaseOrders(prev => [finalPO, ...prev]);
       return finalPO;
@@ -483,6 +489,12 @@ export const AppProvider = ({ children }) => {
       method: 'PUT', 
       body: JSON.stringify(data)
     });
+    setPurchaseOrders(prev => prev.map(p => p.id === poId ? { ...p, ...data } : p));
+  };
+
+  // Local-only patch: updates React state without hitting the API.
+  // Use this when the DB schema doesn't have a column yet but you need the UI to reflect the data.
+  const patchPurchaseOrderLocal = (poId, data) => {
     setPurchaseOrders(prev => prev.map(p => p.id === poId ? { ...p, ...data } : p));
   };
   const deleteProspect = async (id) => {
@@ -672,7 +684,7 @@ export const AppProvider = ({ children }) => {
       theme, toggleTheme, loading,
       customers, addCustomer, deleteCustomer,
       vendors, addVendor, updateVendor, deleteVendor,
-      purchaseOrders, createPurchaseOrder, issuePurchaseOrder, updatePurchaseOrder, deletePurchaseOrder,
+      purchaseOrders, createPurchaseOrder, issuePurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, patchPurchaseOrderLocal,
       prospects, addProspect, updateProspectStatus, convertProspectToCustomer, deleteProspect,
       prospectDrafts,
       quotations, createQuotation, approveQuotation, unapproveQuotation, deleteQuotation,

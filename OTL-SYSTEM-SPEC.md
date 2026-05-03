@@ -61,4 +61,5 @@ The database is initialized in `server/db.cjs`. Key tables include:
 1. Run `npm install`.
 2. Start backend: `node server/index.cjs`.
 3. Start frontend: `npm run dev`.
-4. Login: Role `Owner`, Password `1234`.
+4. Login: Role `Owner`, Password `Haiga1899.2003`.
+
