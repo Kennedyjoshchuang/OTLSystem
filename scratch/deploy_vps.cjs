@@ -2,7 +2,7 @@ const { Client } = require('ssh2');
 
 const VPS_IP = '76.13.196.51';
 const VPS_USER = 'root';
-const VPS_PASS = 'KENnEDY1899#2003#';
+const VPS_PASS = 'KENnEDY1899@2003@';
 
 const SUPABASE_URL = 'https://jlkmrmdfvfobvneqgjya.supabase.co';
 const SUPABASE_SERVICE_KEY = 'sb_secret_CJ1q9Hdv4_k6aK8VdtReWA_zElr42NH';
@@ -43,10 +43,11 @@ async function deploy(conn) {
 
   console.log('\n📥 Step 3: Cloning/updating repository...');
   const exists = await runSSH(conn, `[ -d ${APP_DIR}/.git ] && echo YES || echo NO`);
+  const branch = "OTL-(Version-2-Revision)";
   if (exists.includes('YES')) {
-    await runSSH(conn, `cd ${APP_DIR} && git pull origin main`, true);
+    await runSSH(conn, `cd ${APP_DIR} && git fetch origin && git checkout "${branch}" && git reset --hard "origin/${branch}"`, true);
   } else {
-    await runSSH(conn, `mkdir -p /var/www && git clone ${REPO_URL} ${APP_DIR}`, true);
+    await runSSH(conn, `mkdir -p /var/www && git clone -b "${branch}" ${REPO_URL} ${APP_DIR}`, true);
   }
 
   console.log('\n📦 Step 4: Installing npm dependencies...');
