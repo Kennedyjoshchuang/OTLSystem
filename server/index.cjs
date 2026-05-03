@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -544,17 +545,53 @@ app.get('/api/employees', async (req, res) => {
 });
 
 app.post('/api/employees', async (req, res) => {
-  const employee = req.body;
-  const { error } = await supabase.from('employees').insert(employee);
-  if (error) return handleError(res, error, 'POST employees');
-  res.status(201).json({ id: employee.id });
+  try {
+    const { id, name, position, phone, email, nik, npwp, bankName, accountNumber, bankAccount, address, baseSalary, accountName } = req.body;
+    // Explicitly build the employee object to avoid PostgREST schema cache issues
+    const employee = { id, name, position, phone, email, nik: nik || null, npwp: npwp || null, bankName: bankName || null, address: address || null };
+    if (accountNumber !== undefined) employee.accountNumber = accountNumber;
+    if (bankAccount !== undefined) employee.bankAccount = bankAccount;
+    if (baseSalary !== undefined) employee.baseSalary = baseSalary;
+    if (accountName !== undefined) employee.accountName = accountName;
+    const { error } = await supabase.from('employees').insert(employee);
+    if (error) {
+      // Fallback: if schema cache error, retry with only safe columns
+      if (error.code === 'PGRST204' || (error.message && error.message.includes('schema cache'))) {
+        console.warn('[POST /employees] Schema cache error, retrying with minimal fields...');
+        const safeEmployee = { id, name, position, phone, email, nik: nik || null, npwp: npwp || null, address: address || null };
+        if (bankName) safeEmployee.bankName = bankName;
+        const { error: retryErr } = await supabase.from('employees').insert(safeEmployee);
+        if (retryErr) return handleError(res, retryErr, 'POST employees (retry)');
+        return res.status(201).json({ id });
+      }
+      return handleError(res, error, 'POST employees');
+    }
+    res.status(201).json({ id: employee.id });
+  } catch (err) {
+    console.error('POST /employees error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.put('/api/employees/:id', async (req, res) => {
-  const updates = req.body;
-  const { error } = await supabase.from('employees').update(updates).eq('id', req.params.id);
-  if (error) return handleError(res, error, 'PUT employees');
-  res.sendStatus(200);
+  try {
+    const { name, position, phone, email, nik, npwp, bankName, accountNumber, bankAccount, address, baseSalary, accountName } = req.body;
+    const updates = { name, position, phone, email };
+    if (nik !== undefined) updates.nik = nik;
+    if (npwp !== undefined) updates.npwp = npwp;
+    if (bankName !== undefined) updates.bankName = bankName;
+    if (address !== undefined) updates.address = address;
+    if (accountNumber !== undefined) updates.accountNumber = accountNumber;
+    if (bankAccount !== undefined) updates.bankAccount = bankAccount;
+    if (baseSalary !== undefined) updates.baseSalary = baseSalary;
+    if (accountName !== undefined) updates.accountName = accountName;
+    const { error } = await supabase.from('employees').update(updates).eq('id', req.params.id);
+    if (error) return handleError(res, error, 'PUT employees');
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('PUT /employees error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.delete('/api/employees/:id', async (req, res) => {
