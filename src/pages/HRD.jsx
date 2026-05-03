@@ -35,6 +35,8 @@ const HRD = () => {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [isAccountSubmitting, setIsAccountSubmitting] = useState(false);
+  const [createAccountError, setCreateAccountError] = useState('');
   
   const [formData, setFormData] = useState({
     name: '',
@@ -93,18 +95,31 @@ const HRD = () => {
     e.preventDefault();
     if (!selectedEmployee) return;
     
-    if (isEditAccount) {
-      await updateEmployeeAccount(selectedEmployee.id, accountData);
-    } else {
-      await addEmployeeAccount({
-        id: selectedEmployee.id,
-        ...accountData
-      });
+    setIsAccountSubmitting(true);
+    setCreateAccountError('');
+    try {
+      if (isEditAccount) {
+        await updateEmployeeAccount(selectedEmployee.id, accountData);
+        toast.success('Akses sistem berhasil diperbarui!');
+      } else {
+        await addEmployeeAccount({
+          id: selectedEmployee.id,
+          ...accountData
+        });
+        toast.success('Akses sistem berhasil diberikan!');
+      }
+      setIsAccountModalOpen(false);
+      setIsEditAccount(false);
+      setSelectedEmployee(null);
+      setAccountData({ username: '', password: '', role: 'staff' });
+    } catch (err) {
+      console.error('Gagal membuat akun:', err);
+      const msg = err.message || 'Terjadi kesalahan. Coba lagi.';
+      setCreateAccountError(msg);
+      toast.error('Gagal memberi akses: ' + msg);
+    } finally {
+      setIsAccountSubmitting(false);
     }
-    setIsAccountModalOpen(false);
-    setIsEditAccount(false);
-    setSelectedEmployee(null);
-    setAccountData({ username: '', password: '', role: 'staff' });
   };
 
   const getAccount = (empId) => (employeeAccounts || []).find(acc => acc.id === empId);
@@ -376,9 +391,14 @@ const HRD = () => {
                   <option value="staff" style={{ background: '#ffffff', color: '#000000' }}>Staff (View Only)</option>
                 </select>
               </div>
+              {createAccountError && (
+                <div style={{ marginTop: '16px', padding: '12px 16px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '10px', color: '#ef4444', fontSize: '0.85rem' }}>
+                  ⚠️ {createAccountError}
+                </div>
+              )}
               <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  {isEditAccount ? 'Update Akses' : 'Buat Akun'}
+                <button type="submit" disabled={isAccountSubmitting} className="btn btn-primary" style={{ flex: 1 }}>
+                  {isAccountSubmitting ? 'Memproses...' : (isEditAccount ? 'Update Akses' : 'Buat Akun')}
                 </button>
               </div>
             </form>
