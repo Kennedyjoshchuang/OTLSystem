@@ -66,7 +66,7 @@ pm2 save
 pm2 startup systemd -u root --hp /root 2>/dev/null | tail -1 | bash 2>/dev/null || true
 
 # Step 8: Configure Nginx
-echo -e "\n${YELLOW}[8/8] Configuring Nginx...${NC}"
+echo -e "\n${YELLOW}[8/9] Configuring Nginx...${NC}"
 cat > /etc/nginx/sites-available/otlsystem << 'NGINX_EOF'
 server {
     listen 80;
@@ -96,6 +96,14 @@ NGINX_EOF
 ln -sf /etc/nginx/sites-available/otlsystem /etc/nginx/sites-enabled/otlsystem
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl restart nginx
+
+# Step 9: Configure Firewall (UFW)
+echo -e "\n${YELLOW}[9/9] Configuring Firewall...${NC}"
+ufw allow 22/tcp
+ufw allow 'Nginx Full'
+ufw deny 5000/tcp
+ufw --force enable
+ufw status
 
 # Done!
 VPS_IP=$(curl -s ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
