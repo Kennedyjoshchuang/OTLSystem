@@ -14,7 +14,7 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (login(role, password)) {
-      navigate('/');
+      navigate('/dashboard');
     } else {
       setError(t('invalidKey'));
       setPassword('');

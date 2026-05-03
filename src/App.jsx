@@ -19,6 +19,7 @@ import PrintInvoiceAttachment from './pages/PrintInvoiceAttachment';
 import PrintInvoiceReceipt from './pages/PrintInvoiceReceipt';
 import PrintInvoiceDelivery from './pages/PrintInvoiceDelivery';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
+import Portal from './pages/Portal';
 
 const ProtectedRoute = ({ children, useLayout = true }) => {
   const { user, loading } = useApp();
@@ -32,9 +33,10 @@ const AppRoutes = () => {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Portal />} />
         
         {/* Protected Dashboard Routes */}
-        <Route path="/" element={<ProtectedRoute><DashboardHome /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardHome /></ProtectedRoute>} />
         <Route path="/marketing" element={<ProtectedRoute><Marketing /></ProtectedRoute>} />
         <Route path="/quotations" element={<ProtectedRoute><QuotationList /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminHub /></ProtectedRoute>} />
@@ -53,7 +55,7 @@ const AppRoutes = () => {
         <Route path="/print/invoice-delivery" element={<ProtectedRoute useLayout={false}><PrintInvoiceDelivery /></ProtectedRoute>} />
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>
     </Router>
   );
