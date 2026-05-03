@@ -338,13 +338,17 @@ const HRD = () => {
               </div>
               <div className="input-group" style={{ marginTop: '20px' }}>
                 <label>Role / Akses</label>
-                <select value={accountData.role} onChange={e => setAccountData({ ...accountData, role: e.target.value })} style={{ color: '#000000' }}>
-                  <option value="marketing">Marketing</option>
-                  <option value="accounting">Accounting</option>
-                  <option value="executor">Executor</option>
-                  <option value="admin">Admin Office</option>
-                  <option value="hrd">HRD</option>
-                  <option value="staff">Staff (View Only)</option>
+                <select 
+                  value={accountData.role} 
+                  onChange={e => setAccountData({ ...accountData, role: e.target.value })} 
+                  style={{ background: '#ffffff', color: '#000000', border: '2px solid var(--secondary)', borderRadius: '12px', padding: '12px', width: '100%', fontWeight: '600' }}
+                >
+                  <option value="marketing" style={{ background: '#ffffff', color: '#000000' }}>Marketing</option>
+                  <option value="accounting" style={{ background: '#ffffff', color: '#000000' }}>Accounting</option>
+                  <option value="executor" style={{ background: '#ffffff', color: '#000000' }}>Executor</option>
+                  <option value="admin" style={{ background: '#ffffff', color: '#000000' }}>Admin Office</option>
+                  <option value="hrd" style={{ background: '#ffffff', color: '#000000' }}>HRD</option>
+                  <option value="staff" style={{ background: '#ffffff', color: '#000000' }}>Staff (View Only)</option>
                 </select>
               </div>
               <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>

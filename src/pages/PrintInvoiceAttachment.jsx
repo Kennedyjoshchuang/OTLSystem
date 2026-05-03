@@ -15,9 +15,11 @@ const PrintInvoiceAttachment = () => {
   );
 
   const { invoice, jo } = data;
-  const photos = Array.isArray(jo?.photos) ? jo.photos : [];
+  const operationalPhotos = Array.isArray(jo?.photos) ? jo.photos : [];
+  const signedDocs = [invoice?.signedInvoicePhoto, invoice?.signedReceiptPhoto].filter(Boolean);
+  const allPhotos = [...signedDocs, ...operationalPhotos];
 
-  if (photos.length === 0) return (
+  if (allPhotos.length === 0) return (
     <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'Inter, sans-serif', color: '#94a3b8' }}>
       <div style={{ fontSize: '3rem', marginBottom: '16px' }}>📷</div>
       <p style={{ fontWeight: '700', fontSize: '1.1rem' }}>Tidak ada foto dokumentasi untuk invoice ini.</p>
@@ -76,7 +78,7 @@ const PrintInvoiceAttachment = () => {
       </div>
 
       {/* Multiple A4 Attachment Pages - One per photo */}
-      {photos.map((p, i) => (
+      {allPhotos.map((p, i) => (
         <div 
           key={i} 
           className="page-container"
@@ -138,7 +140,7 @@ const PrintInvoiceAttachment = () => {
           {/* Footer */}
           <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <p style={{ fontSize: '0.65rem', color: '#94a3b8', margin: 0, fontWeight: '600' }}>
-              Halaman {i + 1} dari {photos.length} — Dokumen lampiran resmi.
+              Halaman {i + 1} dari {allPhotos.length} — Dokumen lampiran resmi.
             </p>
             <div style={{ textAlign: 'center', minWidth: '180px' }}>
               <div style={{ borderBottom: '1px solid #1e293b', width: '100%', marginBottom: '6px' }}></div>

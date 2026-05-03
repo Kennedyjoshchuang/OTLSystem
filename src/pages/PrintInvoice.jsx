@@ -71,12 +71,23 @@ const PrintInvoice = () => {
         </div>
         
         <div style={{ display: 'flex', gap: '12px' }}>
-          {photos.length > 0 && (
+          {(photos.length > 0 || invoice?.signedInvoicePhoto || invoice?.signedReceiptPhoto) && (
             <button
-              onClick={() => window.open('/print/invoice-attachment', '_blank')}
+              onClick={() => {
+                const allPhotos = [...photos];
+                if (invoice?.signedInvoicePhoto) allPhotos.push(invoice.signedInvoicePhoto);
+                if (invoice?.signedReceiptPhoto) allPhotos.push(invoice.signedReceiptPhoto);
+                
+                // Update localStorage with the merged photos before opening
+                localStorage.setItem('print_invoice_data', JSON.stringify({ 
+                  ...data, 
+                  jo: { ...jo, photos: allPhotos } 
+                }));
+                window.open('/print/invoice-attachment', '_blank');
+              }}
               style={{ background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '8px 16px', fontSize: '0.85rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
-              📎 Lampiran Foto ({photos.length})
+              📎 Lampiran Foto ({(photos.length + (invoice?.signedInvoicePhoto ? 1 : 0) + (invoice?.signedReceiptPhoto ? 1 : 0))})
             </button>
           )}
           <button
@@ -229,8 +240,8 @@ const PrintInvoice = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '3px 20px', fontSize: '0.85rem' }}>
             {[
               ['Bank', bankAccount?.bankName || 'Bank Mandiri (IDR)'], 
-              ['No. Rekening', bankAccount?.accountNo || '164-00-0255502-3'], 
-              ['Atas Nama', bankAccount?.name || 'PT. Omega Trust Logistik']
+              ['No. Rekening', bankAccount?.accountNumber || '164-00-0255502-3'], 
+              ['Atas Nama', bankAccount?.accountName || 'PT. Omega Trust Logistik']
             ].map(([l, v]) => (
               <React.Fragment key={l}>
                 <span style={{ color: '#64748b', fontWeight: '700' }}>{l}:</span>

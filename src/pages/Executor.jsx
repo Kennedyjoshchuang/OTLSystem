@@ -19,6 +19,7 @@ const Executor = () => {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyError, setVerifyError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [localData, setLocalData] = useState({}); // { [joId]: { containerNo: [], vehicleNo: [], driverName: [], activityStatus: '' } }
 
   const handlePrint = () => {
     window.print();
@@ -66,28 +67,74 @@ const Executor = () => {
     exportToExcel(dataToExport, fileName);
   };
 
-  const handleUpdate = (joId, field, value) => {
-    updateJOStatus(joId, { [field]: value });
+  const handleLocalUpdate = (joId, field, value) => {
+    setLocalData(prev => ({
+      ...prev,
+      [joId]: {
+        ...(prev[joId] || {}),
+        [field]: value
+      }
+    }));
   };
 
-  const handleListItemUpdate = (joId, field, index, value) => {
-    const jo = jobOrders.find(j => j.id === joId);
-    const current = Array.isArray(jo[field]) ? [...jo[field]] : [];
-    current[index] = value;
-    updateJOStatus(joId, { [field]: current });
+  const handleLocalListItemUpdate = (joId, field, index, value) => {
+    setLocalData(prev => {
+      const current = prev[joId]?.[field] || [];
+      const updated = [...current];
+      updated[index] = value;
+      return {
+        ...prev,
+        [joId]: {
+          ...(prev[joId] || {}),
+          [field]: updated
+        }
+      };
+    });
   };
 
-  const addListItem = (joId, field) => {
-    const jo = jobOrders.find(j => j.id === joId);
-    const current = Array.isArray(jo[field]) ? [...jo[field]] : [];
-    updateJOStatus(joId, { [field]: [...current, ''] });
+  const addLocalListItem = (joId, field) => {
+    setLocalData(prev => {
+      const current = prev[joId]?.[field] || [''];
+      return {
+        ...prev,
+        [joId]: {
+          ...(prev[joId] || {}),
+          [field]: [...current, '']
+        }
+      };
+    });
   };
 
-  const removeListItem = (joId, field, index) => {
-    const jo = jobOrders.find(j => j.id === joId);
-    const current = Array.isArray(jo[field]) ? [...jo[field]] : [];
-    const updated = current.filter((_, i) => i !== index);
-    updateJOStatus(joId, { [field]: updated });
+  const removeLocalListItem = (joId, field, index) => {
+    setLocalData(prev => {
+      const current = prev[joId]?.[field] || [];
+      const updated = current.filter((_, i) => i !== index);
+      return {
+        ...prev,
+        [joId]: {
+          ...(prev[joId] || {}),
+          [field]: updated
+        }
+      };
+    });
+  };
+
+  const toggleRow = (jo) => {
+    if (uploadingForId === jo.id) {
+      setUploadingForId(null);
+    } else {
+      setUploadingForId(jo.id);
+      // Initialize local data from current JO state
+      setLocalData(prev => ({
+        ...prev,
+        [jo.id]: {
+          containerNo: Array.isArray(jo.containerNo) && jo.containerNo.length > 0 ? [...jo.containerNo] : [jo.containerNo || ''],
+          vehicleNo: Array.isArray(jo.vehicleNo) && jo.vehicleNo.length > 0 ? [...jo.vehicleNo] : [jo.vehicleNo || ''],
+          driverName: Array.isArray(jo.driverName) && jo.driverName.length > 0 ? [...jo.driverName] : [jo.driverName || ''],
+          activityStatus: jo.activityStatus || ''
+        }
+      }));
+    }
   };
 
   const handlePhotoUpload = async (e) => {
@@ -129,12 +176,28 @@ const Executor = () => {
   };
 
   const handleDone = async (jo) => {
-    if (!jo.activityStatus) {
-      alert('Activity Status is required!');
+    const data = localData[jo.id] || {
+      containerNo: jo.containerNo,
+      vehicleNo: jo.vehicleNo,
+      driverName: jo.driverName,
+      activityStatus: jo.activityStatus
+    };
+    
+    // Basic validation for required fields
+    const hasContainer = Array.isArray(data.containerNo) ? data.containerNo.some(c => c && c.trim()) : (data.containerNo && data.containerNo.trim());
+    const hasVehicle = Array.isArray(data.vehicleNo) ? data.vehicleNo.some(v => v && v.trim()) : (data.vehicleNo && data.vehicleNo.trim());
+    const hasDriver = Array.isArray(data.driverName) ? data.driverName.some(d => d && d.trim()) : (data.driverName && data.driverName.trim());
+
+    if (!hasContainer || !hasVehicle || !hasDriver || !data.activityStatus) {
+      alert('Semua data wajib diisi: Container, Vehicle, Driver, dan Activity Status!');
       return;
     }
+
+    // Sync to server before completing
+    await updateJOStatus(jo.id, data);
     await completeJO(jo.id);
-    alert(`Job ${jo.id} completed and moved to Records!`);
+    alert(`Job ${jo.id} selesai dan dipindahkan ke Records!`);
+    setUploadingForId(null);
   };
 
   return (
@@ -294,7 +357,7 @@ const Executor = () => {
           <tbody>
             {filteredJOs.map(jo => (
               <React.Fragment key={jo.id}>
-                <tr style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }} className="table-row-hover" onClick={() => setUploadingForId(uploadingForId === jo.id ? null : jo.id)}>
+                <tr style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }} className="table-row-hover" onClick={() => toggleRow(jo)}>
                   <td style={{ padding: '15px', fontWeight: '800', color: 'var(--secondary)' }}>{jo.id}</td>
                   <td style={{ padding: '15px' }}>
                     <div style={{ fontWeight: '600' }}>{jo.customerName}</div>
@@ -358,7 +421,7 @@ const Executor = () => {
                         <button 
                           className="btn-icon" 
                           style={{ width: '38px', height: '38px', color: 'var(--gold-metallic)', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)' }}
-                          onClick={(e) => { e.stopPropagation(); setUploadingForId(uploadingForId === jo.id ? null : jo.id); }}
+                          onClick={(e) => { e.stopPropagation(); toggleRow(jo); }}
                           title="Edit Data Records"
                         >
                           <FileText size={20} />
@@ -394,16 +457,16 @@ const Executor = () => {
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
                                 {/* Multi Container */}
                                 <div className="input-group">
-                                  <label>Container Number</label>
-                                  {(Array.isArray(jo.containerNo) ? jo.containerNo : [jo.containerNo || '']).map((c, i, arr) => (
+                                  <label>Container Number <span style={{ color: '#ef4444' }}>*</span></label>
+                                  {(localData[jo.id]?.containerNo || []).map((c, i, arr) => (
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-                                      <input type="text" value={c} onChange={e => handleListItemUpdate(jo.id, 'containerNo', i, e.target.value)} placeholder="CONT-123456" />
+                                      <input type="text" value={c} onChange={e => handleLocalListItemUpdate(jo.id, 'containerNo', i, e.target.value)} placeholder="CONT-123456" />
                                       {arr.length > 1 && (
-                                        <button className="btn-icon" onClick={() => removeListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
+                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
                                           <X size={12} />
                                         </button>
                                       )}
-                                      <button className="btn-icon" onClick={() => addListItem(jo.id, 'containerNo')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Container">
+                                      <button className="btn-icon" onClick={() => addLocalListItem(jo.id, 'containerNo')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Container">
                                         <Plus size={12} />
                                       </button>
                                     </div>
@@ -412,16 +475,16 @@ const Executor = () => {
                                 
                                 {/* Multi Vehicle */}
                                 <div className="input-group">
-                                  <label>Vehicle Number</label>
-                                  {(Array.isArray(jo.vehicleNo) ? jo.vehicleNo : [jo.vehicleNo || '']).map((v, i, arr) => (
+                                  <label>Vehicle Number <span style={{ color: '#ef4444' }}>*</span></label>
+                                  {(localData[jo.id]?.vehicleNo || []).map((v, i, arr) => (
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-                                      <input type="text" value={v} onChange={e => handleListItemUpdate(jo.id, 'vehicleNo', i, e.target.value)} placeholder="B 1234 ABC" />
+                                      <input type="text" value={v} onChange={e => handleLocalListItemUpdate(jo.id, 'vehicleNo', i, e.target.value)} placeholder="B 1234 ABC" />
                                       {arr.length > 1 && (
-                                        <button className="btn-icon" onClick={() => removeListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
+                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
                                           <X size={12} />
                                         </button>
                                       )}
-                                      <button className="btn-icon" onClick={() => addListItem(jo.id, 'vehicleNo')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Kendaraan">
+                                      <button className="btn-icon" onClick={() => addLocalListItem(jo.id, 'vehicleNo')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Kendaraan">
                                         <Plus size={12} />
                                       </button>
                                     </div>
@@ -430,16 +493,16 @@ const Executor = () => {
 
                                 {/* Multi Driver */}
                                 <div className="input-group">
-                                  <label>Driver Name</label>
-                                  {(Array.isArray(jo.driverName) ? jo.driverName : [jo.driverName || '']).map((d, i, arr) => (
+                                  <label>Driver Name <span style={{ color: '#ef4444' }}>*</span></label>
+                                  {(localData[jo.id]?.driverName || []).map((d, i, arr) => (
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
-                                      <input type="text" value={d} onChange={e => handleListItemUpdate(jo.id, 'driverName', i, e.target.value)} placeholder="Nama Sopir" />
+                                      <input type="text" value={d} onChange={e => handleLocalListItemUpdate(jo.id, 'driverName', i, e.target.value)} placeholder="Nama Sopir" />
                                       {arr.length > 1 && (
-                                        <button className="btn-icon" onClick={() => removeListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
+                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title="Hapus">
                                           <X size={12} />
                                         </button>
                                       )}
-                                      <button className="btn-icon" onClick={() => addListItem(jo.id, 'driverName')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Driver">
+                                      <button className="btn-icon" onClick={() => addLocalListItem(jo.id, 'driverName')} style={{ padding: '5px', height: 'auto', color: '#10b981', background: 'rgba(16,185,129,0.1)' }} title="Tambah Driver">
                                         <Plus size={12} />
                                       </button>
                                     </div>
@@ -447,8 +510,13 @@ const Executor = () => {
                                 </div>
                               </div>
                               <div className="input-group">
-                                <label>Activity Status (Required)</label>
-                                <input type="text" value={jo.activityStatus || ''} onChange={e => handleUpdate(jo.id, 'activityStatus', e.target.value)} placeholder="Update status operasional terakhir..." disabled={activeTab !== 'active'} />
+                                <label>Activity Status <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input 
+                                  type="text" 
+                                  value={localData[jo.id]?.activityStatus || ''} 
+                                  onChange={e => handleLocalUpdate(jo.id, 'activityStatus', e.target.value)} 
+                                  placeholder="Update status operasional terakhir..." 
+                                />
                               </div>
                               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px' }}>
                                 <strong style={{ color: 'var(--text)' }}>Full Instruction:</strong> {jo.jobDescription}

@@ -57,8 +57,9 @@ const Accounting = () => {
   const [paymentProofModal, setPaymentProofModal] = useState(null);
   const [modalPhotos, setModalPhotos] = useState([]);
   const [batchPrintInvoices, setBatchPrintInvoices] = useState(null);
-  const [bankModal, setBankModal] = useState(null); // { id, name, accountNo, bankName }
+  const [bankModal, setBankModal] = useState(null);
   const [showBankSettings, setShowBankSettings] = useState(false);
+  const [isSavingBank, setIsSavingBank] = useState(false);
 
   // Invoice Bank Selection
   const [issuingInvoiceJoId, setIssuingInvoiceJoId] = useState(null);
@@ -66,6 +67,11 @@ const Accounting = () => {
   const [receivableProofModal, setReceivableProofModal] = useState(null); // invoice to upload proof for
   const [settleModal, setSettleModal] = useState(null); // { id, amount, ... }
   const [settleForm, setSettleForm] = useState({ paymentProof: '', taxes: [{ name: '', amount: 0 }], taxProof: '' });
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState(null); 
+  const [verifyStep, setVerifyStep] = useState(1);
+  const [verifyText, setVerifyText] = useState('');
+  const [otpInput, setOtpInput] = useState('');
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
 
   const { 
     jobOrders = [], invoices = [], createInvoice, settleInvoice, deleteInvoice, updateInvoice, 
@@ -73,7 +79,7 @@ const Accounting = () => {
     quotations = [],
     salaries = [], addSalary, deleteSalary, updateSalary,
     otherExpenses = [], addOtherExpense, deleteOtherExpense, updateOtherExpense,
-    employees = [], companyBankAccounts = [], updateCompanyBank,
+    employees = [], companyBankAccounts = [], updateCompanyBank, deleteCompanyBank,
     loading 
   } = context || {};
 
@@ -330,7 +336,7 @@ const Accounting = () => {
 
 
   const completedJOs = jobOrders
-    .filter(jo => jo.status === 'done' || jo.status === 'dispatched')
+    .filter(jo => jo.status === 'done')
     .filter(jo => filterByDate(jo.date))
     .filter(jo => {
       const id = jo.id || '';
@@ -387,8 +393,8 @@ const Accounting = () => {
       setIsIssuedCollapsed(false);
       setIssuingInvoiceJoId(null); // Reset modal
       
-      // Redirect to print page (arahkan page)
-      window.location.href = '/print/invoice';
+      // Open print page in a new tab
+      window.open('/print/invoice', '_blank');
       
     } catch (err) {
       console.error("Issue Invoice error:", err);
@@ -1513,6 +1519,18 @@ const Accounting = () => {
                           >
                             <Image size={14} /> Ops
                           </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} 
+                            onClick={() => {
+                              setDeleteConfirmModal(inv);
+                              setVerifyStep(1);
+                              setVerifyText('');
+                              setOtpInput('');
+                            }}
+                          >
+                            <Trash2 size={14} /> Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1684,6 +1702,18 @@ const Accounting = () => {
                               <ButtonWithLoading className="btn btn-gold" style={{ padding: '8px 16px', fontSize: '0.85rem' }} onClick={() => handleSettle(item)}>
                                 Mark as Settled
                               </ButtonWithLoading>
+                              <button 
+                                className="btn" 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} 
+                                onClick={() => {
+                                  setDeleteConfirmModal(item);
+                                  setVerifyStep(1);
+                                  setVerifyText('');
+                                  setOtpInput('');
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </>
                           ) : (
                             <>
@@ -1712,6 +1742,18 @@ const Accounting = () => {
                               )}
                               <button className="btn btn-primary" style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '5px' }} onClick={() => handleDownloadInvoice(item)}>
                                 <Download size={14} /> Doc
+                              </button>
+                              <button 
+                                className="btn" 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} 
+                                onClick={() => {
+                                  setDeleteConfirmModal(item);
+                                  setVerifyStep(1);
+                                  setVerifyText('');
+                                  setOtpInput('');
+                                }}
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </>
                           )}
@@ -3012,20 +3054,35 @@ const Accounting = () => {
               <h4 style={{ fontSize:'0.9rem', marginBottom:'20px', color:'var(--text-muted)' }}>Tambah / Edit Rekening</h4>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'15px', marginBottom:'15px' }}>
                 <input type="text" placeholder="Nama Bank (e.g. Mandiri IDR)" value={bankModal?.bankName || ''} onChange={e => setBankModal({...bankModal, bankName: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
-                <input type="text" placeholder="Nomor Rekening" value={bankModal?.accountNo || ''} onChange={e => setBankModal({...bankModal, accountNo: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
-                <input type="text" placeholder="Atas Nama" value={bankModal?.name || ''} onChange={e => setBankModal({...bankModal, name: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <input type="text" placeholder="Nomor Rekening" value={bankModal?.accountNumber || ''} onChange={e => setBankModal({...bankModal, accountNumber: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
+                <input type="text" placeholder="Atas Nama" value={bankModal?.accountName || ''} onChange={e => setBankModal({...bankModal, accountName: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
               </div>
-              <button 
-                className="btn btn-primary" 
-                style={{ width:'100%' }}
-                onClick={async () => {
-                  if (!bankModal?.bankName || !bankModal?.accountNo) return alert('Data tidak lengkap');
-                  await updateCompanyBank({ ...bankModal, id: bankModal.id || `BANK-${Date.now()}` });
-                  setBankModal(null);
-                }}
-              >
-                <Save size={18}/> Simpan Rekening
-              </button>
+              <div style={{ display:'flex', gap:'10px' }}>
+                <ButtonWithLoading 
+                  className="btn btn-primary" 
+                  style={{ flex:1 }}
+                  loading={isSavingBank}
+                  onClick={async () => {
+                    if (!bankModal?.bankName || !bankModal?.accountNumber || !bankModal?.accountName) return alert('Data tidak lengkap');
+                    setIsSavingBank(true);
+                    try {
+                      await updateCompanyBank({ ...bankModal, id: bankModal.id || `BANK-${Date.now()}` });
+                      setBankModal(null);
+                    } catch (err) {
+                      alert("Gagal menyimpan rekening: " + err.message);
+                    } finally {
+                      setIsSavingBank(false);
+                    }
+                  }}
+                >
+                  <Save size={18}/> Simpan Rekening
+                </ButtonWithLoading>
+                {bankModal && (
+                  <button className="btn" style={{ background:'rgba(255,255,255,0.1)', color:'var(--text)' }} onClick={() => setBankModal(null)}>
+                    Reset / Tambah Baru
+                  </button>
+                )}
+              </div>
             </div>
 
             <div style={{ display:'grid', gap:'15px' }}>
@@ -3033,10 +3090,19 @@ const Accounting = () => {
                 <div key={bank.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'15px', background:'rgba(255,255,255,0.05)', borderRadius:'10px', border:'1px solid var(--glass-border)' }}>
                   <div>
                     <div style={{ fontWeight:'700', fontSize:'1rem' }}>{bank.bankName}</div>
-                    <div style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>{bank.accountNo} - {bank.name}</div>
+                    <div style={{ color:'var(--text-muted)', fontSize:'0.85rem' }}>{bank.accountNumber} - {bank.accountName}</div>
                   </div>
                   <div style={{ display:'flex', gap:'10px' }}>
                     <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(59, 130, 246, 0.1)', color:'#3b82f6' }} onClick={() => setBankModal(bank)}><Edit3 size={14}/> Edit</button>
+                    <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(239, 68, 68, 0.1)', color:'#ef4444' }} onClick={async () => {
+                      if(window.confirm('Hapus rekening ini?')) {
+                        try {
+                          await deleteCompanyBank(bank.id);
+                        } catch (err) {
+                          alert("Gagal menghapus: " + err.message);
+                        }
+                      }
+                    }}><Trash2 size={14}/> Hapus</button>
                   </div>
                 </div>
               ))}
@@ -3188,7 +3254,7 @@ const Accounting = () => {
               >
                 {companyBankAccounts.map(bank => (
                   <option key={bank.id} value={bank.id}>
-                    {bank.bankName} - {bank.accountNo} ({bank.name})
+                    {bank.bankName} - {bank.accountNumber} ({bank.accountName})
                   </option>
                 ))}
                 {companyBankAccounts.length === 0 && <option value="">Belum ada rekening terdaftar</option>}
@@ -3227,9 +3293,99 @@ const Accounting = () => {
           </div>
         </div>
       )}
+
+      {/* Delete Invoice Verification Modal */}
+      {deleteConfirmModal && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.9)', zIndex:20000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+          <div className="glass-card" style={{ width:'100%', maxWidth:'450px', padding:'40px', textAlign:'center', border:'1px solid #ef4444' }}>
+            <div style={{ width:'70px', height:'70px', borderRadius:'50%', background:'rgba(239, 68, 68, 0.1)', color:'#ef4444', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 25px' }}>
+              <ShieldAlert size={35} />
+            </div>
+            
+            <h3 style={{ fontSize:'1.5rem', marginBottom:'15px', color:'var(--text)' }}>
+              {verifyStep === 1 ? 'Hapus Issued Invoice?' : 'Otoritas Keamanan'}
+            </h3>
+            
+            <p style={{ color:'var(--text-muted)', fontSize:'0.9rem', marginBottom:'30px', lineHeight:'1.5' }}>
+              {verifyStep === 1 
+                ? `Menghapus Invoice ${deleteConfirmModal.id} akan membatalkan status piutang. Ketik "DELETE" untuk melanjutkan.`
+                : 'Tindakan ini memerlukan kunci keamanan 4-digit (Security Key) dari System Control.'}
+            </p>
+
+            <div style={{ marginBottom:'30px' }}>
+              {verifyStep === 1 ? (
+                <input 
+                  type="text" 
+                  placeholder="Ketik DELETE" 
+                  value={verifyText}
+                  onChange={e => setVerifyText(e.target.value)}
+                  style={{ width:'100%', padding:'12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--text)', textAlign:'center', fontSize:'1.1rem', fontWeight:'800', letterSpacing:'2px' }}
+                />
+              ) : (
+                <input 
+                  type="password" 
+                  maxLength={4}
+                  placeholder="0000" 
+                  value={otpInput}
+                  onChange={e => setOtpInput(e.target.value)}
+                  style={{ width:'120px', padding:'12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--secondary)', textAlign:'center', fontSize:'1.5rem', fontWeight:'800', letterSpacing:'8px' }}
+                />
+              )}
+            </div>
+
+            <div style={{ display:'flex', gap:'15px' }}>
+              <button 
+                className="btn" 
+                onClick={() => {
+                  setDeleteConfirmModal(null);
+                  setVerifyStep(1);
+                  setVerifyText('');
+                  setOtpInput('');
+                }}
+                style={{ flex:1, background:'rgba(255,255,255,0.05)', color:'var(--text)' }}
+              >
+                Batal
+              </button>
+              <ButtonWithLoading
+                className="btn"
+                loading={isAuthorizing}
+                style={{ flex:1, background:'#ef4444', color:'white' }}
+                onClick={async () => {
+                  if (verifyStep === 1) {
+                    if (verifyText.toUpperCase() !== 'DELETE') return alert('Teks verifikasi tidak sesuai.');
+                    setVerifyStep(2);
+                  } else {
+                    if (otpInput.length < 4) return alert('Masukkan 4 digit security key.');
+                    setIsAuthorizing(true);
+                    try {
+                      const config = await getSystemConfig();
+                      if (!config || !config.otpKey || otpInput !== config.otpKey) {
+                        alert('Security Key Salah! Silakan cek OTP di menu System Control.');
+                        setOtpInput('');
+                        return;
+                      }
+                      await deleteInvoice(deleteConfirmModal.id);
+                      setDeleteConfirmModal(null);
+                      setVerifyStep(1);
+                      setVerifyText('');
+                      setOtpInput('');
+                      alert('Invoice berhasil dihapus.');
+                    } catch (err) {
+                      alert('Gagal menghapus: ' + err.message);
+                    } finally {
+                      setIsAuthorizing(false);
+                    }
+                  }
+                }}
+              >
+                {verifyStep === 1 ? 'Lanjut' : 'Hapus Permanen'}
+              </ButtonWithLoading>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default Accounting;
-

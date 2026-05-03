@@ -24,6 +24,11 @@ export async function apiRequest(endpoint, options = {}) {
   }
   // 204 No Content → undefined
   if (response.status === 204) return undefined;
-  return response.json();
+  
+  const contentType = response.headers.get("content-type");
+  if (contentType && contentType.includes("application/json")) {
+    return response.json();
+  }
+  return response.text();
 }
 

@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useCustomers } from '../api/hooks/useCustomers';
-import { apiRequest } from '../api/api';
+import { apiRequest, API_URL } from '../api/api';
 import { translations } from '../translations/translations';
 
 const AppContext = createContext();
 
-const API_URL = import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000/api`;
+// const API_URL is now imported from ../api/api
 
 export const AppProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => localStorage.getItem('omega_lang') || 'en');
@@ -181,9 +181,8 @@ export const AppProvider = ({ children }) => {
       date: new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }),
       status: 'followUp'
     };
-    await fetch(`${API_URL}/prospects`, {
+    await apiRequest('prospects', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newProspect)
     });
     setProspects(prev => [...prev, newProspect]);
@@ -191,9 +190,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateProspectStatus = async (id, status) => {
-    await fetch(`${API_URL}/prospects/${id}`, {
+    await apiRequest(`prospects/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status })
     });
     setProspects(prev => prev.map(p => p.id === id ? { ...p, status } : p));
@@ -220,27 +218,24 @@ export const AppProvider = ({ children }) => {
       date: new Date().toISOString(),
       status: 'pending'
     };
-    const response = await fetch(`${API_URL}/quotations`, {
+    const { id } = await apiRequest('quotations', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newQuotation)
     });
-    if (!response.ok) throw new Error(`Server returned ${response.status}`);
-    const { id } = await response.json();
     const finalQuotation = { ...newQuotation, id };
     setQuotations(prev => [...prev, finalQuotation]);
     return finalQuotation;
   };
 
   const approveQuotation = async (quotationId) => {
-    await fetch(`${API_URL}/quotations/${quotationId}/approve`, { method: 'PUT' });
+    await apiRequest(`quotations/${quotationId}/approve`, { method: 'PUT' });
     setQuotations(prev => prev.map(q => 
       q.id === quotationId ? { ...q, status: 'approved' } : q
     ));
   };
 
   const unapproveQuotation = async (quotationId) => {
-    await fetch(`${API_URL}/quotations/${quotationId}/unapprove`, { method: 'PUT' });
+    await apiRequest(`quotations/${quotationId}/unapprove`, { method: 'PUT' });
     setQuotations(prev => prev.map(q =>
       q.id === quotationId ? { ...q, status: 'pending' } : q
     ));
@@ -258,13 +253,10 @@ export const AppProvider = ({ children }) => {
       photos: [],
       date: new Date().toISOString()
     };
-    const response = await fetch(`${API_URL}/job-orders`, {
+    const { id } = await apiRequest('job-orders', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(joData)
     });
-    if (!response.ok) throw new Error(`Server returned ${response.status}`);
-    const { id } = await response.json();
     const finalJO = { ...newJO, id };
     setJobOrders(prev => [...prev, finalJO]);
     return finalJO;
@@ -275,15 +267,15 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateJOStatus = async (joId, updates) => {
-    const response = await fetch(`${API_URL}/job-orders/${joId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates)
-    });
-    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+    // Optimistic update
     setJobOrders(prev => prev.map(jo => 
       jo.id === joId ? { ...jo, ...updates } : jo
     ));
+
+    await apiRequest(`job-orders/${joId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
   };
 
   const completeJO = async (joId) => {
@@ -375,17 +367,10 @@ export const AppProvider = ({ children }) => {
     };
     
     try {
-      const response = await fetch(`${API_URL}/invoices`, {
+      const data = await apiRequest('invoices', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newInvoice)
       });
-      
-      const data = await response.json().catch(() => ({}));
-      
-      if (!response.ok) {
-        throw new Error(data.error || data.message || `Server error: ${response.status}`);
-      }
       
       const { id } = data;
       const finalInvoice = { ...newInvoice, id: id || newInvoice.id };
@@ -405,9 +390,8 @@ export const AppProvider = ({ children }) => {
   const settleInvoice = async (invoiceId, paymentProofPhoto, taxesDeducted, taxDeductionProof) => {
     const totalTax = Array.isArray(taxesDeducted) ? taxesDeducted.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0) : 0;
     
-    await fetch(`${API_URL}/invoices/${invoiceId}/settle`, { 
+    await apiRequest(`invoices/${invoiceId}/settle`, { 
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paymentProofPhoto, taxesDeducted, taxDeductionProof })
     });
     setInvoices(prev => prev.map(inv => 
@@ -437,25 +421,24 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteCustomer = async (id) => {
-    await fetch(`${API_URL}/customers/${id}`, { method: 'DELETE' });
+    await apiRequest(`customers/${id}`, { method: 'DELETE' });
     setCustomers(prev => prev.filter(c => c.id !== id));
   };
 
   const addVendor = async (data) => {
     const newVendor = { ...data, id: `VND-${Date.now().toString().slice(-6)}`, date: new Date().toISOString() };
-    const response = await fetch(`${API_URL}/vendors`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newVendor) });
-    if (!response.ok) throw new Error(`Server returned ${response.status}`);
-    const { id } = await response.json();
+    const res = await apiRequest('vendors', { method: 'POST', body: JSON.stringify(newVendor) });
+    const { id } = res;
     const finalVendor = { ...newVendor, id };
     setVendors(prev => [...prev, finalVendor]);
     return finalVendor;
   };
   const updateVendor = async (id, data) => {
-    await fetch(`${API_URL}/vendors/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    await apiRequest(`vendors/${id}`, { method: 'PUT', body: JSON.stringify(data) });
     setVendors(prev => prev.map(v => v.id === id ? { ...v, ...data } : v));
   };
   const deleteVendor = async (id) => {
-    await fetch(`${API_URL}/vendors/${id}`, { method: 'DELETE' });
+    await apiRequest(`vendors/${id}`, { method: 'DELETE' });
     setVendors(prev => prev.filter(v => v.id !== id));
   };
 
@@ -468,17 +451,10 @@ export const AppProvider = ({ children }) => {
     };
     
     try {
-      const response = await fetch(`${API_URL}/purchase-orders`, {
+      const finalPO = await apiRequest('purchase-orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(poData)
       });
-      
-      if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
-      }
-
-      const finalPO = await response.json();
       // Ensure items are parsed if server returns them as string
       if (typeof finalPO.items === 'string') finalPO.items = JSON.parse(finalPO.items);
       if (typeof finalPO.vendorInvoicePhoto === 'string') finalPO.vendorInvoicePhoto = JSON.parse(finalPO.vendorInvoicePhoto);
@@ -493,49 +469,38 @@ export const AppProvider = ({ children }) => {
   };
 
   const issuePurchaseOrder = async (poId) => {
-    await fetch(`${API_URL}/purchase-orders/${poId}/issue`, { method: 'PUT' });
+    await apiRequest(`purchase-orders/${poId}/issue`, { method: 'PUT' });
     setPurchaseOrders(prev => prev.map(p => p.id === poId ? { ...p, status: 'issued' } : p));
   };
 
   const deletePurchaseOrder = async (poId) => {
-    await fetch(`${API_URL}/purchase-orders/${poId}`, { method: 'DELETE' });
+    await apiRequest(`purchase-orders/${poId}`, { method: 'DELETE' });
     setPurchaseOrders(prev => prev.filter(p => p.id !== poId));
   };
 
   const updatePurchaseOrder = async (poId, data) => {
-    await fetch(`${API_URL}/purchase-orders/${poId}`, { 
+    await apiRequest(`purchase-orders/${poId}`, { 
       method: 'PUT', 
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     setPurchaseOrders(prev => prev.map(p => p.id === poId ? { ...p, ...data } : p));
   };
   const deleteProspect = async (id) => {
-    
-    try {
-      const response = await fetch(`${API_URL}/prospects/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        setProspects(prev => prev.filter(p => p.id !== id));
-      } else {
-        alert("Gagal menghapus di Server. Kode Error: " + response.status);
-      }
-    } catch (error) {
-      alert("Masalah Koneksi: Tidak bisa menghubungi server. " + error.message);
-    }
+    await apiRequest(`prospects/${id}`, { method: 'DELETE' });
+    setProspects(prev => prev.filter(p => p.id !== id));
   };
   const deleteJO = async (id) => {
-    await fetch(`${API_URL}/job-orders/${id}`, { method: 'DELETE' });
+    await apiRequest(`job-orders/${id}`, { method: 'DELETE' });
     setJobOrders(prev => prev.filter(jo => jo.id !== id));
   };
   const deleteInvoice = async (id) => {
-    await fetch(`${API_URL}/invoices/${id}`, { method: 'DELETE' });
+    await apiRequest(`invoices/${id}`, { method: 'DELETE' });
     setInvoices(prev => prev.filter(inv => inv.id !== id));
     setReceivables(prev => prev.filter(r => r.invoiceId !== id));
   };
   const updateInvoice = async (id, updates) => {
-    await fetch(`${API_URL}/invoices/${id}`, {
+    await apiRequest(`invoices/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
     setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, ...updates } : inv));
@@ -545,15 +510,11 @@ export const AppProvider = ({ children }) => {
   const deleteQuotation = async (id) => {
 
     try {
-      const response = await fetch(`${API_URL}/quotations/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        setQuotations(prev => prev.filter(q => q.id !== id));
-        // Also refresh other data since we implemented cascade delete on backend
-        fetchData();
-        console.log(`Berhasil menghapus penawaran: ${id}`);
-      } else {
-        alert("Gagal menghapus penawaran di server.");
-      }
+      await apiRequest(`quotations/${id}`, { method: 'DELETE' });
+      setQuotations(prev => prev.filter(q => q.id !== id));
+      // Also refresh other data since we implemented cascade delete on backend
+      fetchData();
+      console.log(`Berhasil menghapus penawaran: ${id}`);
     } catch (error) {
       console.error("Gagal menghapus:", error);
       alert("Masalah koneksi saat mencoba menghapus.");
@@ -566,9 +527,8 @@ export const AppProvider = ({ children }) => {
       id: `SAL-${Date.now().toString().slice(-6)}`,
       date: new Date().toISOString()
     };
-    await fetch(`${API_URL}/salaries`, {
+    await apiRequest('salaries', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newSalary)
     });
     setSalaries(prev => [newSalary, ...prev]);
@@ -576,14 +536,13 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteSalary = async (id) => {
-    await fetch(`${API_URL}/salaries/${id}`, { method: 'DELETE' });
+    await apiRequest(`salaries/${id}`, { method: 'DELETE' });
     setSalaries(prev => prev.filter(s => s.id !== id));
   };
 
   const updateSalary = async (id, updates) => {
-    await fetch(`${API_URL}/salaries/${id}`, {
+    await apiRequest(`salaries/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
     setSalaries(prev => prev.map(s => s.id === id ? { ...s, ...updates } : s));
@@ -595,9 +554,8 @@ export const AppProvider = ({ children }) => {
       id: `EXP-${Date.now().toString().slice(-6)}`,
       date: new Date().toISOString()
     };
-    await fetch(`${API_URL}/other-expenses`, {
+    await apiRequest('other-expenses', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newExpense)
     });
     setOtherExpenses(prev => [newExpense, ...prev]);
@@ -605,14 +563,12 @@ export const AppProvider = ({ children }) => {
   };
 
   const deleteOtherExpense = async (id) => {
-    await fetch(`${API_URL}/other-expenses/${id}`, { method: 'DELETE' });
+    await apiRequest(`other-expenses/${id}`, { method: 'DELETE' });
     setOtherExpenses(prev => prev.filter(e => e.id !== id));
   };
-
   const updateOtherExpense = async (id, updates) => {
-    await fetch(`${API_URL}/other-expenses/${id}`, {
+    await apiRequest(`other-expenses/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
     setOtherExpenses(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
@@ -620,7 +576,7 @@ export const AppProvider = ({ children }) => {
 
   const clearAllData = async () => {
     if (user?.role !== 'owner') return;
-    await fetch(`${API_URL}/system/clear`, { method: 'POST' });
+    await apiRequest('system/clear', { method: 'POST' });
     setCustomers([]);
     setProspects([]);
     setProspectDrafts([]);
@@ -630,14 +586,12 @@ export const AppProvider = ({ children }) => {
   };
 
   const getSystemConfig = async () => {
-    const res = await fetch(`${API_URL}/system/config`);
-    return await res.json();
+    return await apiRequest('system/config');
   };
 
   const updateSystemConfig = async (config) => {
-    await fetch(`${API_URL}/system/config`, {
+    await apiRequest('system/config', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(config)
     });
   };
@@ -645,9 +599,8 @@ export const AppProvider = ({ children }) => {
   // --- EMPLOYEE METHODS ---
   const addEmployee = async (employee) => {
     const newEmployee = { ...employee, id: `EMP-${Date.now().toString().slice(-6)}` };
-    await fetch(`${API_URL}/employees`, {
+    await apiRequest('employees', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newEmployee)
     });
     setEmployees(prev => [...prev, newEmployee]);
@@ -655,49 +608,42 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateEmployee = async (id, updates) => {
-    await fetch(`${API_URL}/employees/${id}`, {
+    await apiRequest(`employees/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
     setEmployees(prev => prev.map(e => e.id === id ? { ...e, ...updates } : e));
   };
 
   const deleteEmployee = async (id) => {
-    await fetch(`${API_URL}/employees/${id}`, { method: 'DELETE' });
+    await apiRequest(`employees/${id}`, { method: 'DELETE' });
     setEmployees(prev => prev.filter(e => e.id !== id));
     setEmployeeAccounts(prev => prev.filter(a => a.id !== id));
   };
 
   const addEmployeeAccount = async (account) => {
-    await fetch(`${API_URL}/employee-accounts`, {
+    await apiRequest('employee-accounts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(account)
     });
     setEmployeeAccounts(prev => [...prev, account]);
   };
   
   const updateEmployeeAccount = async (id, updates) => {
-    await fetch(`${API_URL}/employee-accounts/${id}`, {
+    await apiRequest(`employee-accounts/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates)
     });
     setEmployeeAccounts(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
   
   const deleteEmployeeAccount = async (id) => {
-    await fetch(`${API_URL}/employee-accounts/${id}`, { method: 'DELETE' });
+    await apiRequest(`employee-accounts/${id}`, { method: 'DELETE' });
     setEmployeeAccounts(prev => prev.filter(a => a.id !== id));
   };
 
   const updateCompanyBank = async (account) => {
-    await fetch(`${API_URL}/company-bank-accounts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(account)
-    });
+    // Optimistic update
     setCompanyBankAccounts(prev => {
       const idx = prev.findIndex(a => a.id === account.id);
       if (idx > -1) {
@@ -707,6 +653,16 @@ export const AppProvider = ({ children }) => {
       }
       return [...prev, account];
     });
+
+    await apiRequest('company-bank-accounts', {
+      method: 'POST',
+      body: JSON.stringify(account)
+    });
+  };
+
+  const deleteCompanyBank = async (id) => {
+    await apiRequest(`company-bank-accounts/${id}`, { method: 'DELETE' });
+    setCompanyBankAccounts(prev => prev.filter(b => b.id !== id));
   };
 
   return (
@@ -727,7 +683,7 @@ export const AppProvider = ({ children }) => {
       otherExpenses, addOtherExpense, deleteOtherExpense, updateOtherExpense,
       employees, addEmployee, updateEmployee, deleteEmployee,
       employeeAccounts, addEmployeeAccount, updateEmployeeAccount, deleteEmployeeAccount,
-      companyBankAccounts, updateCompanyBank,
+      companyBankAccounts, updateCompanyBank, deleteCompanyBank,
       maintenanceMode, setMaintenanceMode,
       clearAllData,
       getSystemConfig, updateSystemConfig

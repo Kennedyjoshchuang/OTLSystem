@@ -11,7 +11,8 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY || 'sb_secret_CJ1q9Hdv4_k6
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 // Helper to send supabase errors
 const handleError = (res, error, context = '') => {
@@ -601,6 +602,12 @@ app.post('/api/company-bank-accounts', async (req, res) => {
   const { error } = await supabase.from('company_bank_accounts').upsert(account);
   if (error) return handleError(res, error, 'POST company-bank-accounts');
   res.status(200).json({ id: account.id });
+});
+
+app.delete('/api/company-bank-accounts/:id', async (req, res) => {
+  const { error } = await supabase.from('company_bank_accounts').delete().eq('id', req.params.id);
+  if (error) return handleError(res, error, 'DELETE company-bank-accounts');
+  res.sendStatus(204);
 });
 
 app.listen(PORT, () => {
