@@ -18,7 +18,20 @@ app.use(express.urlencoded({ limit: '100mb', extended: true }));
 // Helper to send supabase errors
 const handleError = (res, error, context = '') => {
   console.error(`Error ${context}:`, error.message);
-  res.status(500).json({ error: error.message });
+  let message = error.message;
+  
+  if (message.includes('duplicate key value violates unique constraint')) {
+    if (message.includes('employee_accounts_username_key')) {
+      message = 'Username sudah digunakan, silakan pilih username lain.';
+    } else if (message.includes('employees_nik_key')) {
+      message = 'NIK sudah terdaftar di sistem.';
+    } else {
+      message = 'Data sudah ada (duplikat).';
+    }
+    return res.status(400).json({ error: message });
+  }
+  
+  res.status(500).json({ error: message });
 };
 
 // --- CUSTOMERS ---

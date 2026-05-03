@@ -20,7 +20,14 @@ export async function apiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`API error ${response.status}: ${errText}`);
+    let errMsg = errText;
+    try {
+      const parsed = JSON.parse(errText);
+      if (parsed.error) errMsg = parsed.error;
+    } catch (e) {
+      // Not JSON, use raw text
+    }
+    throw new Error(errMsg);
   }
   // 204 No Content → undefined
   if (response.status === 204) return undefined;
