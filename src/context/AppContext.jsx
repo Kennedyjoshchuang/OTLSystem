@@ -25,7 +25,7 @@ export const AppProvider = ({ children }) => {
   const [companyBankAccounts, setCompanyBankAccounts] = useState([]);
   const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('omega_user') || 'null'));
   const [theme, setTheme] = useState(() => localStorage.getItem('omega_theme') || 'dark');
-  const [maintenanceMode, setMaintenanceMode] = useState(true);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Translation function
