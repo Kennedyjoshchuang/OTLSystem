@@ -38,7 +38,7 @@ const Portal = () => {
         left: '-10%',
         width: window.innerWidth <= 768 ? '80%' : '40%',
         height: '40%',
-        background: 'radial-gradient(circle, rgba(6, 95, 70, 0.2) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(29, 49, 130, 0.2) 0%, transparent 70%)',
         zIndex: 0,
         borderRadius: '50%'
       }} />
@@ -57,7 +57,7 @@ const Portal = () => {
           <img src="/assets/logo.png" alt="Logo" style={{ height: '35px' }} />
           <div style={{ height: '30px', width: '1px', background: 'var(--border)' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '700', fontSize: '0.9rem', letterSpacing: '1px' }}>PT. OMEGA TRUST</span>
+            <span style={{ fontWeight: '700', fontSize: '0.9rem', letterSpacing: '1px' }}>PT. ALPHA LOGISTICS</span>
             <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Logistics Management</span>
           </div>
         </div>
@@ -119,12 +119,12 @@ const Portal = () => {
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
             <button 
               onClick={handleEnter}
-              className="btn btn-gold" 
+              className="btn btn-accent" 
               style={{ 
                 padding: window.innerWidth <= 768 ? '15px 35px' : '18px 45px', 
                 fontSize: window.innerWidth <= 768 ? '0.9rem' : '1rem', 
                 borderRadius: '100px',
-                boxShadow: '0 0 30px rgba(212, 175, 55, 0.3)'
+                boxShadow: '0 0 30px rgba(227, 6, 19, 0.3)'
               }}
             >
               <span>{language === 'en' ? 'ENTER SYSTEM' : 'MASUK SISTEM'}</span>
@@ -169,7 +169,7 @@ const Portal = () => {
         zIndex: 10,
         letterSpacing: '1px'
       }}>
-        © {new Date().getFullYear()} PT. OMEGA TRUST LOGISTIK.
+        © {new Date().getFullYear()} PT. ALPHA LOGISTICS PRAKARSA.
       </div>
     </div>
   );
