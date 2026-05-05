@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Send, CheckCircle, Plus, X, FileText, ShoppingCart, Trash2, FileCheck, Search, FileSpreadsheet, ChevronDown, ChevronUp } from 'lucide-react';
+import { Send, CheckCircle, Plus, X, FileText, ShoppingCart, Trash2, FileCheck, Search, FileSpreadsheet, ChevronDown, ChevronUp, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
@@ -28,11 +28,12 @@ const AdminHub = () => {
   const [isPOListMinimized, setIsPOListMinimized] = useState(false);
   const [deleteJOConfirm, setDeleteJOConfirm] = useState(null);
   const [deletePOConfirm, setDeletePOConfirm] = useState(null);
+  const [editingPOId, setEditingPOId] = useState(null);
   const [printPO, setPrintPO] = useState(null);
   const [poNotes, setPoNotes] = useState('');
 
   if (!context) return null;
-  const { quotations = [], jobOrders = [], createJO, dispatchJO, vendors = [], purchaseOrders = [], createPurchaseOrder, issuePurchaseOrder, deletePurchaseOrder, user, t, loading } = context;
+  const { quotations = [], jobOrders = [], createJO, dispatchJO, vendors = [], purchaseOrders = [], createPurchaseOrder, updatePurchaseOrder, issuePurchaseOrder, deletePurchaseOrder, user, t, loading } = context;
   
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--secondary)' }}>Loading Admin Hub...</div>;
@@ -158,6 +159,7 @@ const AdminHub = () => {
 
   const resetPOForm = () => {
     setShowPOModal(false);
+    setEditingPOId(null);
     setPoJoId('');
     setPoVendorId('');
     setPoItems([{ serviceIdx: '', qty: 1 }]);
@@ -166,12 +168,39 @@ const AdminHub = () => {
     setPoNotes('');
   };
 
+  const handleEditPO = (po) => {
+    setEditingPOId(po.id);
+    setPoJoId(po.joId);
+    setPoVendorId(po.vendorId);
+    setPoNotes(po.notes || '');
+
+    const vendor = vendorList.find(v => v.id === po.vendorId);
+    if (vendor && po.items) {
+      const mappedItems = po.items.map(poItem => {
+        const idx = vendor.services.findIndex(s => s.description === poItem.serviceDescription);
+        return {
+          serviceIdx: idx !== -1 ? String(idx) : '',
+          qty: poItem.qty
+        };
+      });
+      setPoItems(mappedItems.length > 0 ? mappedItems : [{ serviceIdx: '', qty: 1 }]);
+    } else {
+      setPoItems([{ serviceIdx: '', qty: 1 }]);
+    }
+
+    setShowPOModal(true);
+  };
+
   // Button: Simpan Draft
   const handleSaveDraft = async () => {
     try {
       const payload = buildPOPayload();
       if (!payload) return;
-      await createPurchaseOrder({ ...payload, status: 'draft' });
+      if (editingPOId) {
+        await updatePurchaseOrder(editingPOId, { ...payload, status: 'draft' });
+      } else {
+        await createPurchaseOrder({ ...payload, status: 'draft' });
+      }
       resetPOForm();
     } catch (err) {
       console.error('Error saving draft PO:', err);
@@ -186,7 +215,13 @@ const AdminHub = () => {
       if (!payload) return;
       
       const poToCreate = { ...payload, status: 'issued' };
-      const createdPO = await createPurchaseOrder(poToCreate);
+      let createdPO;
+      if (editingPOId) {
+        await updatePurchaseOrder(editingPOId, poToCreate);
+        createdPO = { id: editingPOId, ...poToCreate };
+      } else {
+        createdPO = await createPurchaseOrder(poToCreate);
+      }
       
       if (createdPO) {
         resetPOForm();
@@ -370,7 +405,7 @@ const AdminHub = () => {
             <motion.div initial={{scale:0.9,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.9,opacity:0}}
               className="glass-card" style={{width:'100%',maxWidth:'720px',padding:'40px',maxHeight:'90vh',overflowY:'auto',position:'relative'}}>
               <button onClick={()=>setShowPOModal(false)} style={{position:'absolute',top:'15px',right:'15px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer'}}><X size={20}/></button>
-              <h3 style={{color:'var(--secondary)',marginBottom:'25px',display:'flex',alignItems:'center',gap:'10px'}}><ShoppingCart size={22}/> Buat Purchase Order</h3>
+              <h3 style={{color:'var(--secondary)',marginBottom:'25px',display:'flex',alignItems:'center',gap:'10px'}}><ShoppingCart size={22}/> {editingPOId ? `Edit Purchase Order (${editingPOId})` : 'Buat Purchase Order'}</h3>
               <form onSubmit={e => e.preventDefault()}>
                 {/* Step 1: Select JO */}
                 <div className="input-group" style={{marginBottom:'20px'}}>
@@ -496,7 +531,7 @@ const AdminHub = () => {
                     style={{flex:1.5,background:'rgba(212,175,55,0.1)',color:'var(--secondary)',border:'1px solid var(--secondary)'}}
                     disabled={!poJoId||!poVendorId}
                   >
-                    💾 Simpan Draft
+                    💾 {editingPOId ? 'Update Draft' : 'Simpan Draft'}
                   </ButtonWithLoading>
                   <ButtonWithLoading
                     type="button"
@@ -505,7 +540,7 @@ const AdminHub = () => {
                     style={{flex:2}}
                     disabled={!poJoId||!poVendorId}
                   >
-                    <CheckCircle size={16}/> Langsung Terbitkan
+                    <CheckCircle size={16}/> {editingPOId ? 'Update & Terbitkan' : 'Langsung Terbitkan'}
                   </ButtonWithLoading>
                 </div>
               </form>
@@ -831,6 +866,9 @@ const AdminHub = () => {
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <button className="btn-icon" onClick={() => handleEditPO(po)} title="Edit PO" style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.1)' }}>
+                        <Edit size={15} />
+                      </button>
                       <button className="btn-icon" onClick={() => setPrintPO(po)} title="Print PO" style={{ color: 'var(--secondary)', background: 'rgba(212,175,55,0.1)' }}>
                         <FileText size={15} />
                       </button>

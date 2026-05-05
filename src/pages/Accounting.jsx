@@ -572,6 +572,26 @@ const Accounting = () => {
     }
   };
 
+  const handleUndoPaidInvoice = async (inv) => {
+    if (window.confirm(`Undo payment for Invoice ${inv.id}? It will be moved back to Outstanding Receivables.`)) {
+      try {
+        await updateInvoice(inv.id, { status: 'issued' });
+      } catch (err) {
+        alert('Failed to undo invoice: ' + err.message);
+      }
+    }
+  };
+
+  const handleUndoPaidPO = async (po) => {
+    if (window.confirm(`Undo payment for PO ${po.id}? It will be moved back to Outstanding Payables.`)) {
+      try {
+        await updatePurchaseOrder(po.id, { status: 'issued' });
+      } catch (err) {
+        alert('Failed to undo PO payment: ' + err.message);
+      }
+    }
+  };
+
   const handleSaveInvoiceEdit = async () => {
     if (!editingInvoice) return;
     const extraChargesTotal = (editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
@@ -632,6 +652,21 @@ const Accounting = () => {
     if (selectedPayables.size === 0) return;
     const selectedList = purchaseOrders.filter(po => selectedPayables.has(po.id));
     setBatchPrintPOs(selectedList);
+  };
+
+  const handleBatchDownloadVendorInvoice = () => {
+    if (selectedPayables.size === 0) return;
+    const selectedList = purchaseOrders.filter(po => selectedPayables.has(po.id));
+    let downloaded = 0;
+    selectedList.forEach(po => {
+      if (po.vendorInvoicePhoto && po.vendorInvoicePhoto.length > 0) {
+        downloadPhotos(po.vendorInvoicePhoto, `Invoice_Vendor_${po.vendorName}_${po.id}`);
+        downloaded++;
+      }
+    });
+    if (downloaded === 0) {
+      alert('Tidak ada invoice vendor yang tersedia untuk di-download pada PO yang dipilih.');
+    }
   };
 
   const toggleIssuedSelection = (id) => {
@@ -2365,6 +2400,26 @@ const Accounting = () => {
                           ) : (
                             <>
                               <button 
+                                className="btn btn-gold" 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', gap: '5px' }} 
+                                onClick={() => {
+                                  setReceivableProofModal(item);
+                                  setModalPhotos(item.paymentProofPhoto ? (Array.isArray(item.paymentProofPhoto) ? item.paymentProofPhoto : [item.paymentProofPhoto]) : []);
+                                  setModalTaxPhotos(item.tax_deduction_proof ? (Array.isArray(item.tax_deduction_proof) ? item.tax_deduction_proof : [item.tax_deduction_proof]) : []);
+                                }}
+                                title="Upload Tax Proof / Payment Proof"
+                              >
+                                <Image size={14} /> Upload Tax Proof
+                              </button>
+                              <button 
+                                className="btn" 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', gap: '5px' }} 
+                                onClick={() => handleUndoPaidInvoice(item)}
+                                title="Undo Payment"
+                              >
+                                <RotateCcw size={14} /> Undo
+                              </button>
+                              <button 
                                 className="btn btn-primary" 
                                 style={{ padding: '8px 16px', fontSize: '0.85rem', gap: '5px' }} 
                                 onClick={() => handleDownloadInvoice(item)}
@@ -2603,15 +2658,13 @@ const Accounting = () => {
             <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--glass-border)' }}>
-                  {payableSubTab === 'lunas' && (
-                    <th style={{ padding: '15px', width: '40px' }}>
-                      <input 
-                        type="checkbox" 
-                        checked={selectedPayables.size > 0 && selectedPayables.size === purchaseOrders.filter(po => po.status === 'paid' && filterByDate(po.date) && (po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))).length}
-                        onChange={() => toggleAllPayables(purchaseOrders.filter(po => po.status === 'paid' && filterByDate(po.date) && (po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))))}
-                      />
-                    </th>
-                  )}
+                  <th style={{ padding: '15px', width: '40px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={selectedPayables.size > 0 && selectedPayables.size === purchaseOrders.filter(po => po.status === (payableSubTab === 'outstanding' ? 'issued' : 'paid') && filterByDate(po.date) && (po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))).length}
+                      onChange={() => toggleAllPayables(purchaseOrders.filter(po => po.status === (payableSubTab === 'outstanding' ? 'issued' : 'paid') && filterByDate(po.date) && (po.id.toLowerCase().includes(searchTerm.toLowerCase()) || po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))))}
+                    />
+                  </th>
                   <th style={{ padding: '15px' }}>PO ID / JO</th>
                   <th style={{ padding: '15px' }}>Vendor Name</th>
                   <th style={{ padding: '15px' }}>Date</th>
@@ -2638,15 +2691,13 @@ const Accounting = () => {
                   
                   return filteredPOs.map(po => (
                     <tr key={po.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
-                      {payableSubTab === 'lunas' && (
-                        <td style={{ padding: '15px' }}>
-                          <input 
-                            type="checkbox" 
-                            checked={selectedPayables.has(po.id)}
-                            onChange={() => togglePayableSelection(po.id)}
-                          />
-                        </td>
-                      )}
+                      <td style={{ padding: '15px' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedPayables.has(po.id)}
+                          onChange={() => togglePayableSelection(po.id)}
+                        />
+                      </td>
                       <td style={{ padding: '15px' }}>
                         <div style={{ fontWeight: '700', color: 'var(--secondary)' }}>{po.id}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {po.joId}</div>
@@ -2757,16 +2808,26 @@ const Accounting = () => {
                         ) : (
                           <div style={{ textAlign:'center' }}>
                             <div style={{ color:'#10b981', fontWeight:'700', fontSize:'0.8rem' }}>Settled on {po.paidDate}</div>
-                            <button 
-                              className="btn btn-gold" 
-                              style={{ padding: '4px 10px', fontSize: '0.65rem', marginTop: '6px', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius:'6px' }}
-                              onClick={() => {
-                                localStorage.setItem('print_po_data', JSON.stringify(po));
-                                window.open('/print/po-attachment', '_blank');
-                              }}
-                            >
-                              <ExternalLink size={12}/> View (Full Doc)
-                            </button>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '5px', marginTop: '6px' }}>
+                              <button 
+                                className="btn" 
+                                style={{ padding: '4px 10px', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius:'6px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)' }}
+                                onClick={() => handleUndoPaidPO(po)}
+                                title="Undo Payment"
+                              >
+                                <RotateCcw size={12}/> Undo
+                              </button>
+                              <button 
+                                className="btn btn-gold" 
+                                style={{ padding: '4px 10px', fontSize: '0.65rem', display: 'inline-flex', alignItems: 'center', gap: '5px', borderRadius:'6px' }}
+                                onClick={() => {
+                                  localStorage.setItem('print_po_data', JSON.stringify(po));
+                                  window.open('/print/po-attachment', '_blank');
+                                }}
+                              >
+                                <ExternalLink size={12}/> View (Full Doc)
+                              </button>
+                            </div>
                           </div>
                         )}
                       </td>
@@ -2785,6 +2846,15 @@ const Accounting = () => {
                 <span style={{ fontWeight: '600', color:'var(--text)' }}>{selectedPayables.size} PO Selected</span>
                 <button className="btn btn-gold" onClick={handleBatchPrintPayable} style={{ background:'#10b981', borderColor:'#10b981', color:'white', display:'flex', alignItems:'center', gap:'8px' }}>
                   <ExternalLink size={16} /> Batch View (Full Docs)
+                </button>
+              </div>
+            )}
+
+            {payableSubTab === 'outstanding' && selectedPayables.size > 0 && (
+              <div style={{ marginTop: '20px', padding: '15px', background: 'rgba(245,158,11,0.05)', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #f59e0b' }}>
+                <span style={{ fontWeight: '600', color:'var(--text)' }}>{selectedPayables.size} PO Selected</span>
+                <button className="btn btn-gold" onClick={handleBatchDownloadVendorInvoice} style={{ background:'#f59e0b', borderColor:'#f59e0b', color:'white', display:'flex', alignItems:'center', gap:'8px' }}>
+                  <Download size={16} /> Download Invoice Vendor (Massal)
                 </button>
               </div>
             )}

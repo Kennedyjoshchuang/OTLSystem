@@ -24,7 +24,7 @@ export const AppProvider = ({ children }) => {
   const [employeeAccounts, setEmployeeAccounts] = useState([]);
   const [companyBankAccounts, setCompanyBankAccounts] = useState([]);
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('omega_user');
+    const saved = sessionStorage.getItem('omega_user');
     return saved ? JSON.parse(saved) : null;
   });
   const [theme, setTheme] = useState(() => localStorage.getItem('omega_theme') || 'dark');
@@ -63,7 +63,7 @@ export const AppProvider = ({ children }) => {
     if (userMatch && password === userMatch.key) {
       const userData = { name: userMatch.name, role: userMatch.role };
       setUser(userData);
-      localStorage.setItem('omega_user', JSON.stringify(userData));
+      sessionStorage.setItem('omega_user', JSON.stringify(userData));
       return true;
     }
 
@@ -77,7 +77,7 @@ export const AppProvider = ({ children }) => {
         employeeId: empAccount.id 
       };
       setUser(userData);
-      localStorage.setItem('omega_user', JSON.stringify(userData));
+      sessionStorage.setItem('omega_user', JSON.stringify(userData));
       return true;
     }
 
@@ -86,7 +86,7 @@ export const AppProvider = ({ children }) => {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('omega_user');
+    sessionStorage.removeItem('omega_user');
   };
 
   // Fetch all data from API (excluding customers, which are handled by useCustomers)
