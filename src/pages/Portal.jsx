@@ -57,7 +57,7 @@ const Portal = () => {
           <img src="/assets/logo.png" alt="Logo" style={{ height: '35px' }} />
           <div style={{ height: '30px', width: '1px', background: 'var(--border)' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontWeight: '700', fontSize: '0.9rem', letterSpacing: '1px' }}>PT. ALPHA LOGISTICS</span>
+            <span style={{ fontWeight: '700', fontSize: '0.9rem', letterSpacing: '1px' }}>PT. OMEGA TRUST LOGISTIK</span>
             <span style={{ fontSize: '0.55rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Logistics Management</span>
           </div>
         </div>
