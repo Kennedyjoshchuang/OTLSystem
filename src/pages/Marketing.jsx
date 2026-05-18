@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Download, CheckCircle, XCircle, FileText, UserPlus, Search, Trash2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Download, CheckCircle, XCircle, FileText, UserPlus, Search, Trash2, FileSpreadsheet, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
@@ -19,6 +19,8 @@ const Marketing = () => {
   const [endDate, setEndDate] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editProspect, setEditProspect] = useState(null);
+  const [editProspectData, setEditProspectData] = useState({});
   const [activeProspectForQuote, setActiveProspectForQuote] = useState(null);
   const [quoteGeneralNotes, setQuoteGeneralNotes] = useState('');
   const [quotePic, setQuotePic] = useState('');
@@ -48,7 +50,7 @@ const Marketing = () => {
   if (!context) return null;
   const {
     customers = [], addCustomer,
-    prospects = [], addProspect, updateProspectStatus, deleteProspect,
+    prospects = [], addProspect, updateProspect, updateProspectStatus, deleteProspect,
     prospectDrafts = [], generateProspectDraft,
     quotations = [], createQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
     employees = [],
@@ -97,6 +99,14 @@ const Marketing = () => {
     addProspect(prospectData);
     setProspectData({ name: '', address: '', phone: '', email: '', pic: '', notes: '', description: '', marketingName: '', marketingPhone: '', marketingEmail: '', companyAddress: '' });
     setShowProspectForm(false);
+  };
+
+  const handleEditProspectSubmit = async (e) => {
+    e.preventDefault();
+    if (!editProspect) return;
+    await updateProspect(editProspect.id, editProspectData);
+    setEditProspect(null);
+    setEditProspectData({});
   };
 
   const handleCreateProspectQuotation = async (e) => {
@@ -280,6 +290,98 @@ const Marketing = () => {
   return (
     <div className="marketing-container" style={{ display: 'grid', gap: '25px' }}>
 
+
+      {/* Edit Prospect Modal */}
+      <AnimatePresence>
+        {editProspect && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.85)', zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '20px'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-card"
+              style={{ padding: '40px', maxWidth: '700px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}
+            >
+              <h3 style={{ marginBottom: '25px', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Pencil size={20} /> Edit Calon Pelanggan
+              </h3>
+              <form onSubmit={handleEditProspectSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                <div className="input-group">
+                  <label>{t('customerName')}</label>
+                  <input required type="text" value={editProspectData.name || ''} onChange={e => setEditProspectData({ ...editProspectData, name: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>PIC (Person In Charge)</label>
+                  <input required type="text" value={editProspectData.pic || ''} onChange={e => setEditProspectData({ ...editProspectData, pic: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>{t('phoneNumber')}</label>
+                  <input required type="text" value={editProspectData.phone || ''} onChange={e => setEditProspectData({ ...editProspectData, phone: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>{t('emailAddress')}</label>
+                  <input required type="email" value={editProspectData.email || ''} onChange={e => setEditProspectData({ ...editProspectData, email: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>{t('address')}</label>
+                  <input required type="text" value={editProspectData.address || ''} onChange={e => setEditProspectData({ ...editProspectData, address: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>Notes</label>
+                  <input type="text" value={editProspectData.notes || ''} onChange={e => setEditProspectData({ ...editProspectData, notes: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>Nama Marketing</label>
+                  <select
+                    value={editProspectData.marketingName || ''}
+                    onChange={e => {
+                      const emp = employees.find(emp => emp.name === e.target.value);
+                      setEditProspectData({
+                        ...editProspectData,
+                        marketingName: e.target.value,
+                        marketingPhone: emp?.phone || editProspectData.marketingPhone,
+                        marketingEmail: emp?.email || editProspectData.marketingEmail
+                      });
+                    }}
+                    style={{ background: '#ffffff', border: '2px solid var(--secondary)', borderRadius: '12px', color: '#000000', padding: '12px', fontWeight: '600' }}
+                  >
+                    <option value="" style={{ background: '#ffffff', color: '#000000' }}>-- Pilih Marketing --</option>
+                    {employees.filter(e => e.position?.toLowerCase().includes('marketing')).map(e => (
+                      <option key={e.id} value={e.name} style={{ background: '#ffffff', color: '#000000' }}>{e.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="input-group">
+                  <label>Nomor Telpon Marketing</label>
+                  <input type="text" value={editProspectData.marketingPhone || ''} onChange={e => setEditProspectData({ ...editProspectData, marketingPhone: e.target.value })} placeholder="+62 812..." />
+                </div>
+                <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                  <label>Email Marketing</label>
+                  <input type="email" value={editProspectData.marketingEmail || ''} onChange={e => setEditProspectData({ ...editProspectData, marketingEmail: e.target.value })} />
+                </div>
+                <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                  <label>Alamat OTL (Tampil Di Header Penawaran)</label>
+                  <input type="text" value={editProspectData.companyAddress || ''} onChange={e => setEditProspectData({ ...editProspectData, companyAddress: e.target.value })} />
+                </div>
+                <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                  <label>{t('prospectJob')}</label>
+                  <textarea required rows="2" value={editProspectData.description || ''} onChange={e => setEditProspectData({ ...editProspectData, description: e.target.value })} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '15px', width: '100%', fontFamily: 'inherit' }} />
+                </div>
+                <div style={{ gridColumn: 'span 2', display: 'flex', gap: '12px' }}>
+                  <button type="button" className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }} onClick={() => { setEditProspect(null); setEditProspectData({}); }}>Batal</button>
+                  <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1 }} onClick={handleEditProspectSubmit}>Simpan Perubahan</ButtonWithLoading>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
@@ -1002,6 +1104,14 @@ const Marketing = () => {
                         <button className="btn btn-gold" style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setActiveProspectForQuote(prospect)}>
                           <FileText size={14} />
                           {t('createQuotation')}
+                        </button>
+                        <button
+                          className="btn-icon"
+                          style={{ color: '#3b82f6', background: 'rgba(59, 130, 246, 0.1)', height: '28px', width: '28px' }}
+                          onClick={() => { setEditProspect(prospect); setEditProspectData({ ...prospect }); }}
+                          title="Edit Data Calon Pelanggan"
+                        >
+                          <Pencil size={14} />
                         </button>
                         {prospect.status === 'deal' && (
                           <button

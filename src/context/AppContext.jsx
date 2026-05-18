@@ -501,6 +501,14 @@ export const AppProvider = ({ children }) => {
     await apiRequest(`prospects/${id}`, { method: 'DELETE' });
     setProspects(prev => prev.filter(p => p.id !== id));
   };
+
+  const updateProspect = async (id, updates) => {
+    await apiRequest(`prospects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
+    });
+    setProspects(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
   const deleteJO = async (id) => {
     await apiRequest(`job-orders/${id}`, { method: 'DELETE' });
     setJobOrders(prev => prev.filter(jo => jo.id !== id));
@@ -685,7 +693,7 @@ export const AppProvider = ({ children }) => {
       customers, addCustomer, deleteCustomer,
       vendors, addVendor, updateVendor, deleteVendor,
       purchaseOrders, createPurchaseOrder, issuePurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, patchPurchaseOrderLocal,
-      prospects, addProspect, updateProspectStatus, convertProspectToCustomer, deleteProspect,
+      prospects, addProspect, updateProspect, updateProspectStatus, convertProspectToCustomer, deleteProspect,
       prospectDrafts,
       quotations, createQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
       jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO,
