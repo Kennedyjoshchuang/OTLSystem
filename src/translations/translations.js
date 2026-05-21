@@ -91,7 +91,6 @@ export const translations = {
     searchProspects: "Search by company name...",
     quotationListPage: "Quotation List",
     quotationList: "Quotation List",
-    activeJobOrders: "Active Job Orders",
     searchQuotations: "Search by customer name...",
     searchJobOrders: "Search Job Orders..."
   },
@@ -187,7 +186,6 @@ export const translations = {
     searchProspects: "Cari berdasarkan nama...",
     quotationListPage: "Daftar Penawaran",
     quotationList: "Daftar Penawaran",
-    activeJobOrders: "Job Order Aktif",
     searchQuotations: "Cari berdasarkan nama customer...",
     searchJobOrders: "Cari Job Order..."
   }

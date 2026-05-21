@@ -453,10 +453,16 @@ const Accounting = () => {
         ? quotations.find(q => String(q.id) === String(linkedJO.quotationId))
         : null;
 
+      // Find all consolidated JOs
+      const consolidatedJOs = newInv.consolidatedJOs 
+        ? jobOrders.filter(j => newInv.consolidatedJOs.includes(j.id))
+        : linkedJO ? [linkedJO] : [];
+
       // Store data for the print page
       const printData = {
         invoice: newInv,
         jo: linkedJO || null,
+        consolidatedJOs: consolidatedJOs,
         quotation: linkedQuo || null,
         bankAccount: bankAccount // Pass selected bank
       };
@@ -503,9 +509,14 @@ const Accounting = () => {
     // Pass the enriched invoice object (merging receivable and original invoice data)
     const enrichedInv = { ...originalInv, ...inv };
     
+    const consolidatedJOs = enrichedInv.consolidatedJOs 
+      ? jobOrders.filter(j => enrichedInv.consolidatedJOs.includes(j.id))
+      : linkedJO ? [linkedJO] : [];
+
     localStorage.setItem('print_invoice_data', JSON.stringify({ 
       invoice: enrichedInv, 
       jo: linkedJO, 
+      consolidatedJOs: consolidatedJOs,
       quotation: linkedQuo 
     }));
 
@@ -2170,6 +2181,13 @@ const Accounting = () => {
                           </button>
                           <button 
                             className="btn" 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }} 
+                            onClick={() => setEditingInvoice(inv)}
+                          >
+                            <Edit3 size={14} /> Edit
+                          </button>
+                          <button 
+                            className="btn" 
                             style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} 
                             onClick={() => {
                               const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
@@ -2377,6 +2395,16 @@ const Accounting = () => {
                             onClick={() => handleDownloadInvoice(item)}
                           >
                             <ShieldCheck size={14} /> Doc
+                          </button>
+                          <button 
+                            className="btn" 
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}
+                            onClick={() => {
+                              const originalInv = invoices.find(i => i.id === item.id || i.id === item.invoiceId);
+                              setEditingInvoice(originalInv || item);
+                            }}
+                          >
+                            <Edit3 size={14} /> Edit
                           </button>
 
                           {receivableSubTab === 'outstanding' ? (

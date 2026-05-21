@@ -14,8 +14,9 @@ const PrintInvoiceAttachment = () => {
     </div>
   );
 
-  const { invoice, jo } = data;
-  const operationalPhotos = Array.isArray(jo?.photos) ? jo.photos : [];
+  const { invoice, jo, consolidatedJOs } = data;
+  const targetJOs = Array.isArray(consolidatedJOs) && consolidatedJOs.length > 0 ? consolidatedJOs : (jo ? [jo] : []);
+  const operationalPhotos = targetJOs.reduce((acc, currJo) => acc.concat(Array.isArray(currJo.photos) ? currJo.photos : []), []);
   
   const docs = [
     { src: invoice?.signedInvoicePhoto, label: 'SIGNED INVOICE' },

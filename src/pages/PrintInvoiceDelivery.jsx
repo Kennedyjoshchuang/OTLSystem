@@ -14,7 +14,7 @@ const PrintInvoiceDelivery = () => {
     </div>
   );
 
-  const { invoice, jo, bankAccount } = data;
+  const { invoice, jo, consolidatedJOs, bankAccount } = data;
 
   const fmtDate = (d) => {
     if (!d) return '—';
@@ -83,7 +83,7 @@ const PrintInvoiceDelivery = () => {
                 ['Nama Customer', invoice?.customerName],
                 ['Tanggal Invoice', fmtDate(invoice?.date)],
                 ['Nominal Tagihan', `Rp ${parseFloat(invoice?.amount || 0).toLocaleString('id-ID')}`],
-                ['Referensi JO', invoice?.joId],
+                ['Referensi JO', Array.isArray(consolidatedJOs) && consolidatedJOs.length > 0 ? consolidatedJOs.map(j => j.id).join(', ') : invoice?.joId],
                 ['Status Pengantaran', (invoice?.deliveryStatus === 'delivered' ? 'SUDAH TERANTAR' : 'DALAM PROSES / BELUM TERANTAR')],
               ].map(([l, v]) => (
                 <tr key={l}>

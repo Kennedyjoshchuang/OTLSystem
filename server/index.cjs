@@ -352,12 +352,6 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
   }
 });
 
-app.put('/api/invoices/:id', async (req, res) => {
-  const updates = req.body;
-  const { error } = await supabase.from('invoices').update(updates).eq('id', req.params.id);
-  if (error) return handleError(res, error, 'PUT invoices');
-  res.sendStatus(200);
-});
 
 app.delete('/api/invoices/:id', async (req, res) => {
   await supabase.from('receivables').delete().eq('invoiceId', req.params.id);

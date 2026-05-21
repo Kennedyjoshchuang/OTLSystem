@@ -9,7 +9,7 @@ const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [language, setLanguage] = useState(() => localStorage.getItem('omega_lang') || 'en');
-  const { customers, addCustomer: addCustomerHook, isLoading: customersLoading, error: customersError } = useCustomers();
+  const { customers, addCustomer: addCustomerHook, isLoading: customersLoading, error: customersError, refetch: refetchCustomers } = useCustomers();
   const [prospects, setProspects] = useState([]);
   const [prospectDrafts, setProspectDrafts] = useState([]);
   const [quotations, setQuotations] = useState([]);
@@ -323,52 +323,60 @@ export const AppProvider = ({ children }) => {
       return null;
     }
     
-    const quotation = jo.quotationId 
-      ? quotations.find(q => String(q.id) === String(jo.quotationId))
-      : null;
+    // Find all JOs sharing the same quotationId and customerName, and are in 'done' status.
+    let targetJOs = [jo];
+    if (jo.quotationId) {
+      targetJOs = jobOrders.filter(j => 
+        String(j.quotationId) === String(jo.quotationId) && 
+        (j.status === 'done' || String(j.id) === String(joId)) &&
+        j.customerName === jo.customerName
+      );
+    }
     
-    // Defensive parsing for quotation items
-    let items = [];
-    if (quotation && quotation.items) {
-      try {
-        items = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
-      } catch (e) {
-        console.error("Failed to parse quotation items:", e);
-        items = [];
+    // Calculate total amount across all target JOs
+    let totalAmount = 0;
+    targetJOs.forEach(targetJo => {
+      const quotation = targetJo.quotationId 
+        ? quotations.find(q => String(q.id) === String(targetJo.quotationId))
+        : null;
+      
+      let items = [];
+      if (quotation && quotation.items) {
+        try {
+          items = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
+        } catch (e) {
+          items = [];
+        }
       }
-    }
-
-    if (!Array.isArray(items)) items = [];
+      if (!Array.isArray(items)) items = [];
+      
+      const targetDesc = (targetJo.instruction || targetJo.jobDescription || "").trim().toLowerCase();
+      const item = items.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
+      
+      let rate = 0;
+      if (item && item.rate) {
+        rate = cleanNumber(item.rate);
+      } else {
+        rate = cleanNumber(targetJo.rate);
+      }
+      const qty = cleanNumber(targetJo.issueQuantity || targetJo.quantity || 1);
+      totalAmount += rate * qty;
+    });
     
-    // Find rate for selected activity (using description as matched in AdminHub)
-    const targetDesc = (jo.instruction || jo.jobDescription || "").trim().toLowerCase();
-    const item = items.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
-    
-    // Ensure rate is a valid number using cleanNumber
-    let rate = 0;
-    if (item && item.rate) {
-      rate = cleanNumber(item.rate);
-    } else {
-      rate = cleanNumber(jo.rate);
-    }
-
-    const qty = cleanNumber(jo.issueQuantity || jo.quantity || 1);
-    const amount = rate * qty;
-    
-    console.log(`Calculated amount: ${amount} (Rate: ${rate}, Qty: ${qty})`);
-    
-    if (isNaN(amount)) {
-      console.error("Calculated amount is NaN. Rate:", rate, "Qty:", qty);
+    if (isNaN(totalAmount)) {
       throw new Error("Gagal menghitung nominal invoice (Data tidak valid).");
     }
 
+    const newInvoiceId = `INV-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    const consolidatedJOs = targetJOs.map(j => j.id);
+
     const newInvoice = {
-      // Use more robust ID generation
-      id: `INV-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
-      joId,
+      id: newInvoiceId,
+      joId, // Primary JO reference
+      consolidatedJOs, // Array of consolidated JO IDs
       customerName: jo.customerName || 'Pelanggan',
-      amount: amount,
-      subtotal: amount,
+      amount: totalAmount,
+      subtotal: totalAmount,
       tax: 0,
       date: new Date().toISOString(),
       status: 'unpaid',
@@ -384,13 +392,15 @@ export const AppProvider = ({ children }) => {
         body: JSON.stringify(newInvoice)
       });
       
-      const { id } = data;
-      const finalInvoice = { ...newInvoice, id: id || newInvoice.id };
+      const finalInvoice = { ...newInvoice, id: data.id || newInvoice.id };
       
-      // Update local state
       setInvoices(prev => [...prev, finalInvoice]);
       setReceivables(prev => [...prev, { ...finalInvoice, balance: finalInvoice.amount }]);
-      setJobOrders(prev => prev.map(j => String(j.id) === String(joId) ? { ...j, status: 'invoiced' } : j));
+      
+      // Update all consolidated JOs to 'invoiced'
+      setJobOrders(prev => prev.map(j => 
+        consolidatedJOs.includes(j.id) ? { ...j, status: 'invoiced' } : j
+      ));
       
       return finalInvoice;
     } catch (error) {
@@ -435,7 +445,7 @@ export const AppProvider = ({ children }) => {
 
   const deleteCustomer = async (id) => {
     await apiRequest(`customers/${id}`, { method: 'DELETE' });
-    setCustomers(prev => prev.filter(c => c.id !== id));
+    refetchCustomers();
   };
 
   const addVendor = async (data) => {
@@ -516,6 +526,15 @@ export const AppProvider = ({ children }) => {
     setJobOrders(prev => prev.filter(jo => jo.id !== id));
   };
   const deleteInvoice = async (id) => {
+    // Revert JO status before deleting
+    const invoiceToDelete = invoices.find(inv => inv.id === id);
+    if (invoiceToDelete) {
+      const joIdsToRevert = invoiceToDelete.consolidatedJOs || [invoiceToDelete.joId];
+      setJobOrders(prev => prev.map(jo => 
+        joIdsToRevert.includes(jo.id) ? { ...jo, status: 'done' } : jo
+      ));
+    }
+
     await apiRequest(`invoices/${id}`, { method: 'DELETE' });
     setInvoices(prev => prev.filter(inv => inv.id !== id));
     setReceivables(prev => prev.filter(r => r.invoiceId !== id));
@@ -599,7 +618,7 @@ export const AppProvider = ({ children }) => {
   const clearAllData = async () => {
     if (user?.role !== 'owner') return;
     await apiRequest('system/clear', { method: 'POST' });
-    setCustomers([]);
+    refetchCustomers();
     setProspects([]);
     setProspectDrafts([]);
     setJobOrders([]);

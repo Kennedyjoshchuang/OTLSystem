@@ -14,9 +14,10 @@ const PrintInvoice = () => {
     </div>
   );
 
-  const { invoice, jo, quotation, bankAccount } = data;
+  const { invoice, jo, consolidatedJOs, quotation, bankAccount } = data;
   const extraCharges = Array.isArray(invoice?.extra_charges) ? invoice.extra_charges : [];
-  const photos = Array.isArray(jo?.photos) ? jo.photos : [];
+  const targetJOs = Array.isArray(consolidatedJOs) && consolidatedJOs.length > 0 ? consolidatedJOs : (jo ? [jo] : []);
+  const photos = targetJOs.reduce((acc, currJo) => acc.concat(Array.isArray(currJo.photos) ? currJo.photos : []), []);
 
   const fmtDate = (d) => {
     if (!d) return '—';
@@ -155,51 +156,57 @@ const PrintInvoice = () => {
           </thead>
           <tbody>
             {/* Main JO Items */}
-            {Array.isArray(jo?.items) && jo.items.length > 0 ? (
-              jo.items.map((item, idx) => (
-                <tr key={`jo-${idx}`} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                  <td style={{ padding: '15px 14px' }}>
-                    <div style={{ fontWeight: '800', fontSize: '1rem' }}>{item.serviceType || 'Logistics Service'}</div>
-                    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px', fontWeight: '600' }}>
-                      Container: {item.containerNo || '-'} | Vehicle: {item.vehicleNo || '-'}
-                    </div>
-                    {item.driverName && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Driver: {item.driverName}</div>}
-                  </td>
-                  <td style={{ padding: '15px 14px', textAlign: 'center', fontWeight: '800', fontSize: '1.05rem' }}>
-                    {item.quantity || 1}
-                  </td>
-                  <td style={{ padding: '15px 14px', textAlign: 'right', color: '#475569', fontWeight: '700' }}>
-                    Rp {parseFloat(item.rate || 0).toLocaleString('id-ID')}
-                  </td>
-                  <td style={{ padding: '15px 14px', textAlign: 'right', fontWeight: '900', fontSize: '1.1rem' }}>
-                    Rp {(parseFloat(item.rate || 0) * (item.quantity || 1)).toLocaleString('id-ID')}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                <td style={{ padding: '18px 14px' }}>
-                  <div style={{ fontWeight: '800', fontSize: '1rem' }}>Freight &amp; Logistics Services</div>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px', fontWeight: '600' }}>
-                    {jo?.instruction || jo?.jobDescription || 'Freight Forwarding Services'}
-                  </div>
-                  {jo?.containerNo && (
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
-                      Container: {jo.containerNo}{jo.vehicleNo ? ` | Vehicle: ${jo.vehicleNo}` : ''}
-                    </div>
-                  )}
-                </td>
-                <td style={{ padding: '18px 14px', textAlign: 'center', fontWeight: '800', fontSize: '1.05rem' }}>
-                  {jo?.issueQuantity || jo?.quantity || 1}
-                </td>
-                <td style={{ padding: '18px 14px', textAlign: 'right', color: '#475569', fontWeight: '700' }}>
-                  Rp {parseFloat(jo?.rate || 0).toLocaleString('id-ID')}
-                </td>
-                <td style={{ padding: '18px 14px', textAlign: 'right', fontWeight: '900', fontSize: '1.1rem' }}>
-                  Rp {parseFloat(invoice?.subtotal || invoice?.amount || 0).toLocaleString('id-ID')}
-                </td>
-              </tr>
-            )}
+            {targetJOs.map((targetJo, joIdx) => {
+              if (Array.isArray(targetJo.items) && targetJo.items.length > 0) {
+                return targetJo.items.map((item, idx) => (
+                  <tr key={`jo-${targetJo.id}-item-${idx}`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '15px 14px' }}>
+                      <div style={{ fontWeight: '800', fontSize: '1rem' }}>{item.serviceType || 'Logistics Service'}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px', fontWeight: '600' }}>
+                        Container: {Array.isArray(item.containerNo) ? item.containerNo.join(', ') : (item.containerNo || '-')} | Vehicle: {Array.isArray(item.vehicleNo) ? item.vehicleNo.join(', ') : (item.vehicleNo || '-')}
+                      </div>
+                      {item.driverName && <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Driver: {Array.isArray(item.driverName) ? item.driverName.join(', ') : item.driverName}</div>}
+                    </td>
+                    <td style={{ padding: '15px 14px', textAlign: 'center', fontWeight: '800', fontSize: '1.05rem' }}>
+                      {item.quantity || 1}
+                    </td>
+                    <td style={{ padding: '15px 14px', textAlign: 'right', color: '#475569', fontWeight: '700' }}>
+                      Rp {parseFloat(item.rate || 0).toLocaleString('id-ID')}
+                    </td>
+                    <td style={{ padding: '15px 14px', textAlign: 'right', fontWeight: '900', fontSize: '1.1rem' }}>
+                      Rp {(parseFloat(item.rate || 0) * (item.quantity || 1)).toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                ));
+              } else {
+                const qty = targetJo.issueQuantity || targetJo.quantity || 1;
+                const rate = targetJo.rate || 0;
+                return (
+                  <tr key={`jo-${targetJo.id || joIdx}`} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '18px 14px' }}>
+                      <div style={{ fontWeight: '800', fontSize: '1rem' }}>Freight &amp; Logistics Services</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '3px', fontWeight: '600' }}>
+                        {targetJo.instruction || targetJo.jobDescription || 'Freight Forwarding Services'}
+                      </div>
+                      {targetJo.containerNo && (
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginTop: '2px' }}>
+                          Container: {Array.isArray(targetJo.containerNo) ? targetJo.containerNo.join(', ') : targetJo.containerNo}{targetJo.vehicleNo ? ` | Vehicle: ${Array.isArray(targetJo.vehicleNo) ? targetJo.vehicleNo.join(', ') : targetJo.vehicleNo}` : ''}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '18px 14px', textAlign: 'center', fontWeight: '800', fontSize: '1.05rem' }}>
+                      {qty}
+                    </td>
+                    <td style={{ padding: '18px 14px', textAlign: 'right', color: '#475569', fontWeight: '700' }}>
+                      Rp {parseFloat(rate).toLocaleString('id-ID')}
+                    </td>
+                    <td style={{ padding: '18px 14px', textAlign: 'right', fontWeight: '900', fontSize: '1.1rem' }}>
+                      Rp {(parseFloat(rate) * parseFloat(qty)).toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                );
+              }
+            })}
 
             {/* Extra Charges */}
             {extraCharges.map((ec, i) => (
@@ -241,17 +248,23 @@ const PrintInvoice = () => {
         </div>
 
         {/* Operational Details */}
-        {(jo?.containerNo || jo?.vehicleNo || jo?.driverName || jo?.activityStatus) && (
+        {targetJOs.some(j => j.containerNo || j.vehicleNo || j.driverName || j.activityStatus) && (
           <div style={{ padding: '12px 18px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', marginBottom: '20px' }}>
             <p style={{ margin: '0 0 8px 0', fontSize: '0.65rem', fontWeight: '800', color: '#065f46', textTransform: 'uppercase', letterSpacing: '1.5px' }}>Detail Operasional</p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', fontSize: '0.82rem' }}>
-              {[['Container No.', jo?.containerNo], ['Vehicle No.', jo?.vehicleNo], ['Driver', jo?.driverName], ['Status', jo?.activityStatus]].filter(([, v]) => v).map(([l, v]) => (
-                <div key={l}>
-                  <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase', marginBottom: '2px' }}>{l}</div>
-                  <div style={{ fontWeight: '800', color: '#065f46' }}>{v}</div>
+            {targetJOs.map(targetJo => (
+              (targetJo.containerNo || targetJo.vehicleNo || targetJo.driverName || targetJo.activityStatus) ? (
+                <div key={`op-${targetJo.id}`} style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', fontSize: '0.82rem', marginBottom: '10px', borderBottom: '1px dashed #bbf7d0', paddingBottom: '10px' }}>
+                  {[['Container No.', targetJo.containerNo], ['Vehicle No.', targetJo.vehicleNo], ['Driver', targetJo.driverName], ['Status', targetJo.activityStatus]].filter(([, v]) => v).map(([l, v]) => (
+                    <div key={l}>
+                      <div style={{ fontSize: '0.65rem', color: '#6b7280', fontWeight: '700', textTransform: 'uppercase', marginBottom: '2px' }}>{l}</div>
+                      <div style={{ fontWeight: '700', color: '#111827' }}>
+                        {Array.isArray(v) ? v.map((val, i) => <div key={i}>{val}</div>) : v}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : null
+            ))}
           </div>
         )}
 
