@@ -654,6 +654,15 @@ app.delete('/api/company-bank-accounts/:id', async (req, res) => {
   res.sendStatus(204);
 });
 
+// Serve frontend static files
+const path = require('path');
+app.use(express.static(path.join(__dirname, '../dist')));
+
+// Catch-all route for SPA
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT} (Supabase backend)`);
 });
