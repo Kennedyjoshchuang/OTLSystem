@@ -79,7 +79,9 @@ CREATE TABLE IF NOT EXISTS job_orders (
     date TEXT,
     phone TEXT,
     email TEXT,
-    rate NUMERIC
+    rate NUMERIC,
+    dispatchedAt TEXT,
+    completedAt TEXT
 );
 
 -- 6. Invoices

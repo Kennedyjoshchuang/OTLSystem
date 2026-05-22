@@ -40,10 +40,10 @@ const Layout = ({ children }) => {
   const menuItems = [
     { path: '/marketing', label: t('marketing'), icon: Users, roles: ['owner', 'marketing'] },
     { path: '/admin', label: t('adminOffice'), icon: Briefcase, roles: ['owner', 'admin'] },
-    { path: '/procurement', label: 'Procurement', icon: ShoppingCart, roles: ['owner', 'admin'] },
+    { path: '/procurement', label: t('procurement'), icon: ShoppingCart, roles: ['owner', 'admin'] },
     { path: '/executor', label: t('executor'), icon: PlayCircle, roles: ['owner', 'executor'] },
     { path: '/accounting', label: t('accounting'), icon: CreditCard, roles: ['owner', 'accounting'] },
-    { path: '/hrd', label: 'HRD', icon: UserCheck, roles: ['owner', 'hrd'] },
+    { path: '/hrd', label: t('hrd'), icon: UserCheck, roles: ['owner', 'hrd'] },
     { path: '/system-control', label: t('systemControl'), icon: ShieldAlert, roles: ['owner'] },
   ].filter(item => item.roles.includes(user?.role));
 

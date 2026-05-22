@@ -150,6 +150,20 @@ body {
   box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
 }
 
+select option {
+  background-color: #111827 !important; /* opaque dark slate */
+  color: #ecfdf5 !important;            /* light green text */
+}
+
+.light-theme select option {
+  background-color: #ffffff !important; /* pure white */
+  color: #042f2e !important;            /* dark text */
+}
+
+select option:disabled {
+  color: #64748b !important;
+}
+
 h1, h2, h3 {
   background: var(--gold-metallic);
   -webkit-background-clip: text;

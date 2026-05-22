@@ -275,7 +275,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const dispatchJO = async (joId, quantity) => {
-    await updateJOStatus(joId, { status: 'dispatched', issueQuantity: quantity });
+    const dispatchedAt = new Date().toISOString();
+    await updateJOStatus(joId, { status: 'dispatched', issueQuantity: quantity, dispatchedAt });
   };
 
   const updateJOStatus = async (joId, updates) => {
@@ -291,7 +292,8 @@ export const AppProvider = ({ children }) => {
   };
 
   const completeJO = async (joId) => {
-    await updateJOStatus(joId, { status: 'done' });
+    const completedAt = new Date().toISOString();
+    await updateJOStatus(joId, { status: 'done', completedAt });
   };
 
   const cleanNumber = (val) => {

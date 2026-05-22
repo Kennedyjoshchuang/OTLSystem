@@ -520,11 +520,11 @@ const Marketing = () => {
                         marketingEmail: emp?.email || ''
                       });
                     }}
-                    style={{ background: '#ffffff', border: '2px solid var(--secondary)', borderRadius: '12px', color: '#000000', padding: '12px', fontWeight: '600', width: '100%' }}
+                    style={{ background: 'var(--input-bg)', border: '2px solid var(--secondary)', borderRadius: '12px', color: 'var(--text)', padding: '12px', fontWeight: '600', width: '100%' }}
                   >
-                    <option value="" style={{ background: '#ffffff', color: '#000000' }}>-- Pilih Marketing --</option>
+                    <option value="" style={{ background: 'var(--bg)', color: 'var(--text)' }}>-- Pilih Marketing --</option>
                     {employees.filter(e => e.position?.toLowerCase().includes('marketing')).map(e => (
-                      <option key={e.id} value={e.name} style={{ background: '#ffffff', color: '#000000' }}>{e.name}</option>
+                      <option key={e.id} value={e.name} style={{ background: 'var(--bg)', color: 'var(--text)' }}>{e.name}</option>
                     ))}
                   </select>
                 </div>
@@ -839,11 +839,11 @@ const Marketing = () => {
                       marketingEmail: emp?.email || ''
                     });
                   }}
-                  style={{ background: '#ffffff', border: '2px solid var(--secondary)', borderRadius: '12px', color: '#000000', padding: '12px', fontWeight: '600' }}
+                  style={{ background: 'var(--input-bg)', border: '2px solid var(--secondary)', borderRadius: '12px', color: 'var(--text)', padding: '12px', fontWeight: '600' }}
                 >
-                  <option value="" style={{ background: '#ffffff', color: '#000000' }}>-- Pilih Marketing --</option>
+                  <option value="" style={{ background: 'var(--bg)', color: 'var(--text)' }}>-- Pilih Marketing --</option>
                   {employees.filter(e => e.position?.toLowerCase().includes('marketing')).map(e => (
-                    <option key={e.id} value={e.name} style={{ background: '#ffffff', color: '#000000' }}>{e.name}</option>
+                    <option key={e.id} value={e.name} style={{ background: 'var(--bg)', color: 'var(--text)' }}>{e.name}</option>
                   ))}
                 </select>
               </div>
@@ -1117,10 +1117,10 @@ const Marketing = () => {
                     </td>
                     <td style={{ padding: '15px' }}>
                       <select value={prospect.status} onChange={(e) => updateProspectStatus(prospect.id, e.target.value)} style={{ padding: '6px 10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--secondary)', fontSize: '0.8rem' }}>
-                        <option value="followUp">{t('followUp')}</option>
-                        <option value="negotiation">{t('negotiation')}</option>
-                        <option value="deal">{t('deal')}</option>
-                        <option value="lost">{t('lost')}</option>
+                        <option value="followUp" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{t('followUp')}</option>
+                        <option value="negotiation" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{t('negotiation')}</option>
+                        <option value="deal" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{t('deal')}</option>
+                        <option value="lost" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{t('lost')}</option>
                       </select>
                     </td>
                     <td style={{ padding: '15px' }}>

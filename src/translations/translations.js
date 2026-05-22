@@ -13,6 +13,9 @@ export const translations = {
     systemRole: "System",
     logistikSystem: "PT. Omega Trust Logistik",
     systemControl: "System Control",
+    procurement: "Procurement",
+    hrd: "HRD",
+    
     
     // Auth
     loginTitle: "Command Center Access",
@@ -108,6 +111,9 @@ export const translations = {
     systemRole: "Sistem",
     logistikSystem: "PT. Omega Trust Logistik",
     systemControl: "Kontrol Sistem",
+    procurement: "Pengadaan",
+    hrd: "HRD",
+    
     
     // Auth
     loginTitle: "Akses Pusat Komando",
