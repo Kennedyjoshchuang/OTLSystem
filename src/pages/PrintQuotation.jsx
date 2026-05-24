@@ -118,23 +118,24 @@ const PrintQuotation = () => {
         }}
       >
         {/* Header Section (Kop Surat) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', borderBottom: '2.5px solid #0f172a', paddingBottom: '15px', marginBottom: '25px' }}>
-          <img src="/assets/logo.png" alt="Logo" style={{ width: '85px', height: '85px', objectFit: 'contain' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '24px', borderBottom: '3px solid #0f172a', paddingBottom: '18px', marginBottom: '28px' }}>
+          <img src="/assets/logo.png" alt="Logo" style={{ width: '105px', height: '105px', objectFit: 'contain' }} />
           <div style={{ flex: 1 }}>
             <h1 style={{ 
               margin: 0, 
               fontFamily: "'Playfair Display', Georgia, serif", 
               fontWeight: '700', 
-              fontSize: '1.75rem', 
+              fontSize: '2.15rem', 
               color: '#15803d', 
-              letterSpacing: '0.5px' 
+              letterSpacing: '0.5px',
+              lineHeight: '1.2'
             }}>
               PT. OMEGA TRUST LOGISTIK
             </h1>
             <div style={{ 
-              fontSize: '0.85rem', 
+              fontSize: '0.98rem', 
               lineHeight: '1.5', 
-              marginTop: '4px', 
+              marginTop: '6px', 
               fontWeight: '700', 
               color: '#475569'
             }}>

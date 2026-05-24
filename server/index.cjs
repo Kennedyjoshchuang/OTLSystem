@@ -107,6 +107,22 @@ app.post('/api/quotations', async (req, res) => {
   }
 });
 
+app.put('/api/quotations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pic, generalNotes, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress } = req.body;
+    const { error } = await supabase.from('quotations').update({
+      pic, generalNotes, items: items || [], total, marketingName, marketingPhone, marketingEmail,
+      validFrom, validTo, companyAddress
+    }).eq('id', id);
+    if (error) return handleError(res, error, 'PUT quotations');
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Update Quotation Error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.put('/api/quotations/:id/approve', async (req, res) => {
   const { error } = await supabase.from('quotations').update({ status: 'approved' }).eq('id', req.params.id);
   if (error) return handleError(res, error, 'approve quotation');

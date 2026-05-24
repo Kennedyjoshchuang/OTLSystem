@@ -35,6 +35,14 @@ const Marketing = () => {
     name: '', address: '', phone: '', email: '', pic: '', notes: '', description: '', marketingName: '', marketingPhone: '', marketingEmail: '', companyAddress: ''
   });
 
+  const [activeQuotationForEdit, setActiveQuotationForEdit] = useState(null);
+  const [editQuotePic, setEditQuotePic] = useState('');
+  const [editQuoteValidFrom, setEditQuoteValidFrom] = useState('');
+  const [editQuoteValidTo, setEditQuoteValidTo] = useState('');
+  const [editQuoteItems, setEditQuoteItems] = useState([{ description: '', rate: '', quantity: '1', unit: '' }]);
+  const [editQuoteGeneralNotes, setEditQuoteGeneralNotes] = useState('');
+  const [editQuoteCompanyAddress, setEditQuoteCompanyAddress] = useState('');
+
   // Pre-fill PIC and Description when modal opens
   React.useEffect(() => {
     if (activeProspectForQuote) {
@@ -54,7 +62,7 @@ const Marketing = () => {
     customers = [], addCustomer,
     prospects = [], addProspect, updateProspect, updateProspectStatus, deleteProspect,
     prospectDrafts = [], generateProspectDraft,
-    quotations = [], createQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
+    quotations = [], createQuotation, updateQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
     employees = [],
     user,
     t,
@@ -202,6 +210,75 @@ const Marketing = () => {
       console.error("Quotation creation failed:", error);
       throw error; // Re-throw so ButtonWithLoading can handle it
     }
+  };
+
+  const handleOpenEditQuotationModal = (quote) => {
+    setActiveQuotationForEdit(quote);
+    setEditQuotePic(quote.pic || '');
+    setEditQuoteValidFrom(quote.validFrom || '');
+    setEditQuoteValidTo(quote.validTo || '');
+    setEditQuoteItems(Array.isArray(quote.items) ? quote.items.map(item => ({
+      description: item.description || '',
+      rate: item.rate || '',
+      quantity: item.quantity || '1',
+      unit: item.unit || ''
+    })) : [{ description: '', rate: '', quantity: '1', unit: '' }]);
+    setEditQuoteGeneralNotes(quote.generalNotes || '');
+    setEditQuoteCompanyAddress(quote.companyAddress || '');
+  };
+
+  const handleSaveQuotationEdit = async (e) => {
+    if (e) e.preventDefault();
+    if (!activeQuotationForEdit) return;
+
+    if (editQuoteItems.length === 0 || editQuoteItems.some(item => !item.description || !item.rate || !item.quantity)) {
+      alert("Please fill in all item details (Description, Rate, and Quantity).");
+      return;
+    }
+
+    const totalAmount = editQuoteItems.reduce((sum, item) => {
+      const r = parseFloat(item.rate) || 0;
+      const q = parseFloat(item.quantity) || 0;
+      return sum + (r * q);
+    }, 0);
+
+    const combinedDescription = editQuoteItems.map(item =>
+      `${item.description} (Qty: ${item.quantity} ${item.unit || ''} @ Rp ${parseFloat(item.rate).toLocaleString()})`
+    ).join('\n');
+
+    try {
+      await updateQuotation(activeQuotationForEdit.id, {
+        pic: editQuotePic,
+        jobDescription: combinedDescription,
+        items: editQuoteItems,
+        generalNotes: editQuoteGeneralNotes,
+        total: totalAmount,
+        rate: totalAmount,
+        validFrom: editQuoteValidFrom,
+        validTo: editQuoteValidTo,
+        companyAddress: editQuoteCompanyAddress
+      });
+      setActiveQuotationForEdit(null);
+    } catch (error) {
+      console.error("Quotation edit failed:", error);
+      alert("Gagal menyimpan perubahan penawaran.");
+    }
+  };
+
+  const addEditQuoteItem = () => {
+    setEditQuoteItems([...editQuoteItems, { description: '', rate: '', quantity: '1', unit: '' }]);
+  };
+
+  const removeEditQuoteItem = (index) => {
+    if (editQuoteItems.length > 1) {
+      setEditQuoteItems(editQuoteItems.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateEditQuoteItem = (index, field, value) => {
+    const newItems = [...editQuoteItems];
+    newItems[index][field] = value;
+    setEditQuoteItems(newItems);
   };
 
   const handlePrint = () => {
@@ -456,6 +533,114 @@ const Marketing = () => {
                   <button type="button" onClick={() => setActiveProspectForQuote(null)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>Close Form</button>
                   <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1, background: 'var(--secondary)', color: 'white' }} onClick={handleCreateProspectQuotation}>
                     {t('createQuotation')}
+                  </ButtonWithLoading>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Quotation Form Modal */}
+      <AnimatePresence>
+        {activeQuotationForEdit && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.8)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '20px'
+          }}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-card" style={{ width: '100%', maxWidth: '900px', padding: '40px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}
+            >
+              <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>Edit Penawaran (Quotation) - {activeQuotationForEdit.id}</h3>
+              <h5 style={{ marginTop: '-15px', marginBottom: '25px', color: 'var(--text-muted)' }}>Pelanggan: {activeQuotationForEdit.customerName}</h5>
+              <form onSubmit={handleSaveQuotationEdit}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                  <div className="input-group">
+                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Attn: PIC Name</label>
+                    <input
+                      required
+                      type="text"
+                      value={editQuotePic}
+                      onChange={e => setEditQuotePic(e.target.value)}
+                      placeholder="Nama PIC..."
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%' }}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Dari</label>
+                    <input
+                      required
+                      type="date"
+                      value={editQuoteValidFrom}
+                      onChange={e => setEditQuoteValidFrom(e.target.value)}
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%' }}
+                    />
+                  </div>
+                  <div className="input-group">
+                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Sampai</label>
+                    <input
+                      required
+                      type="date"
+                      value={editQuoteValidTo}
+                      onChange={e => setEditQuoteValidTo(e.target.value)}
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  <div>{t('activity') || 'Deskripsi Pekerjaan'}</div>
+                  <div>{t('ratePerTrip') || 'Tarif'}</div>
+                  <div>{t('quantity') || 'Jumlah'}</div>
+                  <div>Satuan</div>
+                  <div></div>
+                </div>
+
+                {editQuoteItems.map((item, index) => (
+                  <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '15px' }}>
+                    <input required type="text" value={item.description} onChange={e => updateEditQuoteItem(index, 'description', e.target.value)} placeholder="Service description..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input required type="number" value={item.rate} onChange={e => updateEditQuoteItem(index, 'rate', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input required type="number" value={item.quantity} onChange={e => updateEditQuoteItem(index, 'quantity', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input type="text" value={item.unit} onChange={e => updateEditQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <button type="button" onClick={() => removeEditQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                  </div>
+                ))}
+
+                <button type="button" onClick={addEditQuoteItem} className="btn" style={{ marginBottom: '20px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px dashed var(--secondary)', width: '100%' }}>
+                  + Add Item
+                </button>
+
+                <div className="input-group" style={{ marginBottom: '20px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Alamat OTL (Tampil Di Header Penawaran)</label>
+                  <input
+                    required
+                    type="text"
+                    value={editQuoteCompanyAddress}
+                    onChange={e => setEditQuoteCompanyAddress(e.target.value)}
+                    placeholder="Masukkan alamat cabang OTL untuk penawaran ini..."
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%', border: '2px solid var(--secondary)' }}
+                  />
+                </div>
+
+                <div className="input-group" style={{ marginBottom: '20px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Catatan Penawaran (Tampil di bagian bawah)</label>
+                  <textarea
+                    rows="3"
+                    value={editQuoteGeneralNotes}
+                    onChange={e => setEditQuoteGeneralNotes(e.target.value)}
+                    placeholder="Syarat & ketentuan..."
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '15px', width: '100%', fontFamily: 'inherit' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
+                  <button type="button" onClick={() => setActiveQuotationForEdit(null)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>Close Form</button>
+                  <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1, background: 'var(--secondary)', color: 'white' }} onClick={handleSaveQuotationEdit}>
+                    Simpan Perubahan
                   </ButtonWithLoading>
                 </div>
               </form>
@@ -1058,6 +1243,14 @@ const Marketing = () => {
                             title="Print Draft Quotation"
                           >
                             <FileText size={16} />
+                          </button>
+                          <button
+                            className="btn-icon"
+                            style={{ color: 'var(--secondary)', background: 'rgba(212, 175, 55, 0.1)' }}
+                            onClick={() => handleOpenEditQuotationModal(quote)}
+                            title="Edit Quotation"
+                          >
+                            <Edit size={16} />
                           </button>
                           {user?.role === 'owner' && (
                             <button

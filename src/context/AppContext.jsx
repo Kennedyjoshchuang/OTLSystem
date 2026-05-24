@@ -239,6 +239,16 @@ export const AppProvider = ({ children }) => {
     return finalQuotation;
   };
 
+  const updateQuotation = async (quotationId, quotationData) => {
+    await apiRequest(`quotations/${quotationId}`, {
+      method: 'PUT',
+      body: JSON.stringify(quotationData)
+    });
+    setQuotations(prev => prev.map(q => 
+      q.id === quotationId ? { ...q, ...quotationData } : q
+    ));
+  };
+
   const approveQuotation = async (quotationId) => {
     await apiRequest(`quotations/${quotationId}/approve`, { method: 'PUT' });
     setQuotations(prev => prev.map(q => 
@@ -718,7 +728,7 @@ export const AppProvider = ({ children }) => {
       purchaseOrders, createPurchaseOrder, issuePurchaseOrder, updatePurchaseOrder, deletePurchaseOrder, patchPurchaseOrderLocal,
       prospects, addProspect, updateProspectStatus, convertProspectToCustomer, deleteProspect, updateProspect,
       prospectDrafts,
-      quotations, createQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
+      quotations, createQuotation, updateQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
       jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO,
       invoices, createInvoice, settleInvoice, deleteInvoice, updateInvoice,
       receivables, settleReceivable,

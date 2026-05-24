@@ -4,6 +4,39 @@ import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, D
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 
+const defaultSubcategories = {
+  'Gaji': [
+    { id: 'Gaji Pokok', en: 'Base Salary' },
+    { id: 'Lembur', en: 'Overtime' },
+    { id: 'Tunjangan', en: 'Allowance' },
+    { id: 'THR', en: 'Holiday Allowance' },
+    { id: 'Lain-lain', en: 'Others' }
+  ],
+  'Operasional': [
+    { id: 'Listrik & Air', en: 'Electricity & Water' },
+    { id: 'Internet & Telepon', en: 'Internet & Phone' },
+    { id: 'ATK / Perlengkapan Kantor', en: 'Office Supplies' },
+    { id: 'Bensin & Transportasi', en: 'Fuel & Transport' },
+    { id: 'Konsumsi', en: 'Meals/Consumption' },
+    { id: 'Perbaikan & Pemeliharaan', en: 'Maintenance & Repairs' },
+    { id: 'Lain-lain', en: 'Others' }
+  ],
+  'Bonus': [
+    { id: 'Bonus Kinerja', en: 'Performance Bonus' },
+    { id: 'Insentif Penjualan', en: 'Sales Incentive' },
+    { id: 'Lain-lain', en: 'Others' }
+  ],
+  'Sewa': [
+    { id: 'Sewa Kantor', en: 'Office Rent' },
+    { id: 'Sewa Gudang', en: 'Warehouse Rent' },
+    { id: 'Sewa Kendaraan', en: 'Vehicle Rent' },
+    { id: 'Lain-lain', en: 'Others' }
+  ],
+  'Lain-lain': [
+    { id: 'Lain-lain', en: 'Others' }
+  ]
+};
+
 const Accounting = () => {
   const context = useApp();
   
@@ -56,6 +89,10 @@ const Accounting = () => {
     type: 'expense',
     category: 'Lain-lain',
     customCategory: '',
+    subcategory: '',
+    customSubcategory: '',
+    companyBankAccountId: '',
+    customSourceTarget: '',
     employeeId: '',
     employeeName: '',
     position: '',
@@ -67,6 +104,24 @@ const Accounting = () => {
     taxes: [],
     proofPhoto: '',
     expenseDate: ''
+  });
+
+  // Reimbursement States
+  const [reimbursementModal, setReimbursementModal] = useState(false);
+  const [reimbursementForm, setReimbursementForm] = useState({
+    id: null,
+    employeeId: '',
+    employeeName: '',
+    expenseDate: new Date().toISOString().substring(0, 10),
+    items: [{ details: '', amount: '', receiptPhoto: '' }],
+    recipientBankName: '',
+    recipientBankAccount: '',
+    companyBankAccountId: '',
+    customSourceTarget: '',
+    status: 'pending',
+    notes: '',
+    totalCost: 0,
+    proofPhoto: '' // overall proof of payment if any
   });
 
 
@@ -135,7 +190,7 @@ const Accounting = () => {
 
   const parsePolymorphicDescription = (desc) => {
     if (!desc || typeof desc !== 'string') {
-      return { type: 'expense', category: 'Lain-lain', description: String(desc || '') };
+      return { type: 'expense', category: 'Lain-lain', subcategory: '', description: String(desc || '') };
     }
     try {
       const trimmed = desc.trim();
@@ -144,18 +199,27 @@ const Accounting = () => {
         return {
           type: parsed.type || 'expense',
           category: parsed.category || 'Lain-lain',
+          subcategory: parsed.subcategory || '',
           description: parsed.description || '',
           employeeId: parsed.employeeId || null,
-          customCategory: parsed.customCategory || ''
+          customCategory: parsed.customCategory || '',
+          companyBankAccountId: parsed.companyBankAccountId || null,
+          customSourceTarget: parsed.customSourceTarget || '',
+          items: parsed.items || [],
+          recipientBankName: parsed.recipientBankName || '',
+          recipientBankAccount: parsed.recipientBankAccount || '',
+          receiptPhotos: parsed.receiptPhotos || [],
+          status: parsed.status || 'pending',
+          notes: parsed.notes || ''
         };
       }
     } catch (e) {
       // Not JSON
     }
-    return { type: 'expense', category: 'Lain-lain', description: desc };
+    return { type: 'expense', category: 'Lain-lain', subcategory: '', description: desc, companyBankAccountId: null, customSourceTarget: '', items: [], status: 'pending' };
   };
 
-  const enrichedOtherTransactions = React.useMemo(() => {
+  const allParsedOtherExpenses = React.useMemo(() => {
     return (otherExpenses || []).map(e => {
       const parsed = parsePolymorphicDescription(e.description);
       return {
@@ -166,6 +230,14 @@ const Accounting = () => {
       };
     });
   }, [otherExpenses]);
+
+  const enrichedOtherTransactions = React.useMemo(() => {
+    return allParsedOtherExpenses.filter(e => e.type !== 'reimbursement');
+  }, [allParsedOtherExpenses]);
+
+  const reimbursementsList = React.useMemo(() => {
+    return allParsedOtherExpenses.filter(e => e.type === 'reimbursement');
+  }, [allParsedOtherExpenses]);
 
   const existingCategories = React.useMemo(() => {
     const defaultCats = ['Gaji', 'Operasional', 'Bonus', 'Sewa', 'Lain-lain'];
@@ -208,12 +280,24 @@ const Accounting = () => {
       }
     }
 
+    const category = parsed.category || 'Lain-lain';
+    const isDefaultCategory = ['Gaji', 'Operasional', 'Bonus', 'Sewa', 'Lain-lain'].includes(category);
+    const customCategory = !isDefaultCategory ? category : '';
+
+    const subcategory = parsed.subcategory || '';
+    const defaultSubs = isDefaultCategory ? (defaultSubcategories[category] || []).map(s => s.id) : [];
+    const isCustomSubcategory = subcategory && !defaultSubs.includes(subcategory);
+
     setOtherExpenseForm({
       ...transaction,
       type: parsed.type || 'expense',
-      category: parsed.category || 'Lain-lain',
+      category: isDefaultCategory ? category : 'CUSTOM',
+      customCategory: customCategory,
+      subcategory: isCustomSubcategory ? 'CUSTOM' : subcategory,
+      customSubcategory: isCustomSubcategory ? subcategory : '',
+      companyBankAccountId: parsed.companyBankAccountId || '',
+      customSourceTarget: parsed.customSourceTarget || '',
       descriptionText: parsed.description || '',
-      customCategory: (parsed.category !== 'Gaji' && parsed.category !== 'Operasional' && parsed.category !== 'Bonus' && parsed.category !== 'Sewa' && parsed.category !== 'Lain-lain') ? parsed.category : '',
       taxes: Array.isArray(transaction.taxes) ? transaction.taxes : [],
       employeeId: employeeId || ''
     });
@@ -228,6 +312,10 @@ const Accounting = () => {
       type,
       category: 'Lain-lain',
       customCategory: '',
+      subcategory: '',
+      customSubcategory: '',
+      companyBankAccountId: '',
+      customSourceTarget: '',
       employeeId: '',
       employeeName: '',
       position: '',
@@ -246,11 +334,15 @@ const Accounting = () => {
 
   const handleSaveOtherTransaction = async () => {
     const finalCategory = otherExpenseForm.category === 'CUSTOM' ? otherExpenseForm.customCategory : otherExpenseForm.category;
+    const finalSubcategory = otherExpenseForm.subcategory === 'CUSTOM' ? otherExpenseForm.customSubcategory : otherExpenseForm.subcategory;
     const serializedDescription = JSON.stringify({
       type: otherExpenseForm.type || 'expense',
       category: finalCategory || 'Lain-lain',
+      subcategory: finalSubcategory || '',
       description: otherExpenseForm.descriptionText || '',
-      employeeId: otherExpenseForm.employeeId || null
+      employeeId: otherExpenseForm.employeeId || null,
+      companyBankAccountId: otherExpenseForm.companyBankAccountId || null,
+      customSourceTarget: otherExpenseForm.companyBankAccountId === 'CUSTOM' ? otherExpenseForm.customSourceTarget : ''
     });
 
     const totalTaxes = (otherExpenseForm.taxes || []).reduce((acc, t) => acc + parseFloat(t.amount || 0), 0);
@@ -280,6 +372,117 @@ const Accounting = () => {
       setOtherExpenseModal(false);
     } catch (err) {
       alert('Gagal menyimpan transaksi: ' + err.message);
+    }
+  };
+
+  const handleNewReimbursement = () => {
+    setReimbursementForm({
+      id: null,
+      employeeId: '',
+      employeeName: '',
+      expenseDate: new Date().toISOString().substring(0, 10),
+      items: [{ details: '', amount: '', receiptPhoto: '' }],
+      recipientBankName: '',
+      recipientBankAccount: '',
+      companyBankAccountId: '',
+      customSourceTarget: '',
+      status: 'pending',
+      notes: '',
+      totalCost: 0,
+      proofPhoto: ''
+    });
+    setReimbursementModal(true);
+  };
+
+  const handleEditReimbursement = (r) => {
+    setReimbursementForm({
+      id: r.id,
+      employeeId: r.employeeId || '',
+      employeeName: r.employeeName || '',
+      expenseDate: r.expenseDate || r.date,
+      items: Array.isArray(r.items) ? r.items : [],
+      recipientBankName: r.recipientBankName || '',
+      recipientBankAccount: r.recipientBankAccount || '',
+      companyBankAccountId: r.companyBankAccountId || '',
+      customSourceTarget: r.customSourceTarget || '',
+      status: r.status || 'pending',
+      notes: r.notes || '',
+      totalCost: r.totalCost || r.amount || 0,
+      proofPhoto: r.proofPhoto || ''
+    });
+    setReimbursementModal(true);
+  };
+
+  const handleSaveReimbursement = async () => {
+    const totalAmount = reimbursementForm.items.reduce((sum, item) => sum + parseFloat(item.amount || 0), 0);
+    const serializedDescription = JSON.stringify({
+      type: 'reimbursement',
+      items: reimbursementForm.items,
+      recipientBankName: reimbursementForm.recipientBankName,
+      recipientBankAccount: reimbursementForm.recipientBankAccount,
+      companyBankAccountId: reimbursementForm.companyBankAccountId,
+      customSourceTarget: reimbursementForm.companyBankAccountId === 'CUSTOM' ? reimbursementForm.customSourceTarget : '',
+      status: reimbursementForm.status,
+      notes: reimbursementForm.notes
+    });
+
+    const payload = {
+      id: reimbursementForm.id,
+      employeeName: reimbursementForm.employeeName || 'Staff',
+      position: 'Staff',
+      bankAccount: reimbursementForm.recipientBankAccount || '-',
+      bankName: reimbursementForm.recipientBankName || '-',
+      amount: totalAmount,
+      description: serializedDescription,
+      taxes: [],
+      proofPhoto: reimbursementForm.proofPhoto || '',
+      expenseDate: reimbursementForm.expenseDate,
+      totalAfterTax: totalAmount,
+      date: reimbursementForm.expenseDate
+    };
+
+    try {
+      if (reimbursementForm.id) {
+        await updateOtherExpense(reimbursementForm.id, payload);
+      } else {
+        await addOtherExpense(payload);
+      }
+      setReimbursementModal(false);
+    } catch (err) {
+      alert('Gagal menyimpan reimbursement: ' + err.message);
+    }
+  };
+
+  const handleUpdateReimbursementStatus = async (r, newStatus) => {
+    const serializedDescription = JSON.stringify({
+      type: 'reimbursement',
+      items: Array.isArray(r.items) ? r.items : [],
+      recipientBankName: r.recipientBankName || '',
+      recipientBankAccount: r.recipientBankAccount || '',
+      companyBankAccountId: r.companyBankAccountId || '',
+      customSourceTarget: r.customSourceTarget || '',
+      status: newStatus,
+      notes: r.notes || ''
+    });
+    
+    // Create payload by overriding description
+    const payload = {
+      employeeName: r.employeeName,
+      position: r.position,
+      bankAccount: r.bankAccount,
+      bankName: r.bankName,
+      amount: r.amount,
+      taxes: r.taxes,
+      proofPhoto: r.proofPhoto,
+      expenseDate: r.expenseDate,
+      totalAfterTax: r.totalAfterTax,
+      date: r.date,
+      description: serializedDescription
+    };
+    try {
+      await updateOtherExpense(r.id, payload);
+    } catch (err) {
+      alert('Gagal mengubah status: ' + err.message);
     }
   };
 
@@ -1956,6 +2159,22 @@ const Accounting = () => {
           <Briefcase size={17} /> {isID ? 'Pemasukan & Pengeluaran' : 'Income & Expenses'}
         </button>
 
+        {(context?.user?.role === 'accounting' || context?.user?.role === 'owner') && (
+          <button
+            onClick={() => setActiveTab('reimbursements')}
+            style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '11px 22px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', transition: 'all 0.2s',
+              background: activeTab === 'reimbursements' ? 'linear-gradient(135deg, #14b8a6, #0f766e)' : 'rgba(255,255,255,0.05)',
+              color: activeTab === 'reimbursements' ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: activeTab === 'reimbursements' ? '0 4px 15px rgba(20,184,166,0.4)' : 'none',
+              border: activeTab === 'reimbursements' ? 'none' : '1px solid var(--glass-border)'
+            }}
+          >
+            <Receipt size={17} /> {isID ? 'Reimbursement' : 'Reimbursements'}
+          </button>
+        )}
+
         <button
           onClick={() => setActiveTab('hutang')}
           style={{
@@ -2740,6 +2959,116 @@ const Accounting = () => {
             </table></div></div>
           </div>
         </div>
+      ) : activeTab === 'reimbursements' ? (
+        <div style={{ animation: 'fadeIn 0.5s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Receipt size={24} style={{ color: '#14b8a6' }} /> {isID ? 'Reimbursement Staff' : 'Staff Reimbursements'}
+            </h2>
+            <button
+              onClick={handleNewReimbursement}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem',
+                background: 'linear-gradient(135deg, #14b8a6, #0f766e)', color: 'white', border: 'none', boxShadow: '0 4px 15px rgba(20,184,166,0.3)'
+              }}
+            >
+              <Plus size={18} /> {isID ? 'Pengajuan Baru' : 'New Application'}
+            </button>
+          </div>
+
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--glass-border)', borderRadius: '16px', overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '900px' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--glass-border)' }}>
+                    <th style={{ padding: '15px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isID ? 'Tanggal' : 'Date'}</th>
+                    <th style={{ padding: '15px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isID ? 'Nama Staff' : 'Staff Name'}</th>
+                    <th style={{ padding: '15px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isID ? 'Total Biaya' : 'Total Cost'}</th>
+                    <th style={{ padding: '15px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isID ? 'Penerima / Rekening' : 'Recipient / Bank'}</th>
+                    <th style={{ padding: '15px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>{isID ? 'Status' : 'Status'}</th>
+                    <th style={{ padding: '15px', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>{isID ? 'Aksi' : 'Actions'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reimbursementsList.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        {isID ? 'Belum ada data reimbursement.' : 'No reimbursements recorded yet.'}
+                      </td>
+                    </tr>
+                  ) : (
+                    reimbursementsList.map((r, i) => (
+                      <tr key={r.id || i} style={{ borderBottom: '1px solid var(--glass-border)', transition: 'background 0.2s' }}>
+                        <td style={{ padding: '15px' }}>{new Date(r.expenseDate || r.date).toLocaleDateString(isID ? 'id-ID' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td style={{ padding: '15px', fontWeight: '600' }}>{r.employeeName}</td>
+                        <td style={{ padding: '15px', fontWeight: '600', color: 'var(--text)' }}>Rp {parseFloat(r.totalCost || r.amount || 0).toLocaleString()}</td>
+                        <td style={{ padding: '15px' }}>
+                          <div>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                              {isID ? 'Penerima:' : 'Recipient:'}
+                            </span>
+                            <div style={{ fontSize: '0.85rem' }}>{r.recipientBankName || '-'}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: '600' }}>{r.recipientBankAccount || '-'}</div>
+                          </div>
+                          {(() => {
+                            if (r.companyBankAccountId === 'CUSTOM' && r.customSourceTarget) {
+                              return (
+                                <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px dashed var(--glass-border)' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                    {isID ? 'Sumber Dana:' : 'Paid Via:'}
+                                  </span>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--text)', fontWeight: '600' }}>{r.customSourceTarget}</div>
+                                </div>
+                              );
+                            }
+                            const companyBank = companyBankAccounts.find(b => b.id === r.companyBankAccountId);
+                            if (companyBank) {
+                              return (
+                                <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px dashed var(--glass-border)' }}>
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                    {isID ? 'Sumber Dana:' : 'Paid Via:'}
+                                  </span>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--text)' }}>{companyBank.bankName} - {companyBank.accountNumber}</div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </td>
+                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                          <select 
+                            value={r.status || 'pending'} 
+                            onChange={(e) => handleUpdateReimbursementStatus(r, e.target.value)}
+                            style={{ 
+                              padding: '6px 12px', borderRadius: '20px', border: 'none', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase', cursor: 'pointer',
+                              background: r.status === 'paid' ? 'rgba(16,185,129,0.1)' : r.status === 'approved' ? 'rgba(59,130,246,0.1)' : 'rgba(245,158,11,0.1)',
+                              color: r.status === 'paid' ? '#10b981' : r.status === 'approved' ? '#3b82f6' : '#f59e0b'
+                            }}
+                          >
+                            <option value="pending">{isID ? 'Menunggu' : 'Pending'}</option>
+                            <option value="approved">{isID ? 'Disetujui' : 'Approved'}</option>
+                            <option value="paid">{isID ? 'Dibayar' : 'Paid'}</option>
+                          </select>
+                        </td>
+                        <td style={{ padding: '15px', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                            <button onClick={() => handleEditReimbursement(r)} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Edit Data' : 'Edit Data'}>
+                              <Edit3 size={16} />
+                            </button>
+                            <button onClick={() => { if(window.confirm(isID ? 'Yakin hapus data ini?' : 'Delete this record?')) deleteOtherExpense(r.id); }} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Hapus Data' : 'Delete Data'}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       ) : activeTab === 'other_expenses' ? (
         <div className="other-expenses-section">
           <div className="glass-card" style={{ padding: '25px', marginBottom: '25px' }}>
@@ -2836,18 +3165,58 @@ const Accounting = () => {
                       <span style={{
                         fontSize: '0.75rem', padding: '4px 10px', borderRadius: '6px',
                         background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--glass-border)',
-                        fontWeight: '600'
+                        fontWeight: '600', display: 'inline-block'
                       }}>
                         {t.category || (isID ? 'Lain-lain' : 'Others')}
                       </span>
+                      {t.subcategory && (
+                        <div style={{ fontSize: '0.7rem', color: 'var(--secondary)', marginTop: '4px', paddingLeft: '4px', fontWeight: '500' }}>
+                          ↳ {t.subcategory}
+                        </div>
+                      )}
                     </td>
                     <td style={{ padding: '15px' }}>
+                      {/* Recipient Account (Employee/Vendor/Manual input) */}
                       {t.bankName && t.bankName !== '-' ? (
-                        <>
+                        <div style={{ marginBottom: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                            {isID ? 'Penerima:' : 'Recipient:'}
+                          </span>
                           <div style={{ fontSize: '0.85rem' }}>{t.bankName}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--secondary)', fontWeight: '600' }}>{t.bankAccount}</div>
-                        </>
-                      ) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                        </div>
+                      ) : null}
+
+                      {/* Company Account (Source/Target) */}
+                      {(() => {
+                        if (t.companyBankAccountId === 'CUSTOM' && t.customSourceTarget) {
+                          return (
+                            <div>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                {t.type === 'income' 
+                                  ? (isID ? 'Target:' : 'Target:') 
+                                  : (isID ? 'Sumber:' : 'Source:')}
+                              </span>
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}>{t.customSourceTarget}</div>
+                            </div>
+                          );
+                        }
+                        const companyBank = companyBankAccounts.find(b => b.id === t.companyBankAccountId);
+                        if (companyBank) {
+                          return (
+                            <div>
+                              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 'bold' }}>
+                                {t.type === 'income' 
+                                  ? (isID ? 'Target (Rek. Perusahaan):' : 'Target (Company Acc):') 
+                                  : (isID ? 'Sumber (Rek. Perusahaan):' : 'Source (Company Acc):')}
+                              </span>
+                              <div style={{ fontSize: '0.85rem', color: 'var(--text)' }}>{companyBank.bankName}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: '600' }}>{companyBank.accountNumber}</div>
+                            </div>
+                          );
+                        }
+                        return !t.bankName || t.bankName === '-' ? <span style={{ color: 'var(--text-muted)' }}>-</span> : null;
+                      })()}
                     </td>
                     <td style={{ padding: '15px' }}>{new Date(t.expenseDate || t.date).toLocaleDateString(isID ? 'id-ID' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                     <td style={{ padding: '15px', textAlign: 'right', fontWeight: '600' }}>Rp {parseFloat(t.amount || 0).toLocaleString()}</td>
@@ -3148,7 +3517,7 @@ const Accounting = () => {
                    const periodSalaries = salaries.filter(s => filterByDate(s.expenseDate || s.date));
                    const periodMiscEnriched = enrichedOtherTransactions.filter(e => filterByDate(e.expenseDate || e.date));
                    const periodCustomIncome = periodMiscEnriched.filter(e => e.type === 'income');
-                   const periodCustomExpense = periodMiscEnriched.filter(e => e.type === 'expense');
+                   const periodCustomExpense = [...periodMiscEnriched.filter(e => e.type === 'expense'), ...reimbursementsList.filter(r => r.status === 'paid' && filterByDate(r.expenseDate || r.date))];
                    const periodReceivables = receivables.filter(r => filterByDate(r.paidDate));
 
                    const totalCustomIncome = periodCustomIncome.reduce((s, ex) => s + parseFloat(ex.totalAfterTax || ex.amount || 0), 0);
@@ -3183,7 +3552,7 @@ const Accounting = () => {
             {(() => {
               const periodMiscEnriched = enrichedOtherTransactions.filter(e => filterByDate(e.expenseDate || e.date));
               const periodCustomIncome = periodMiscEnriched.filter(e => e.type === 'income');
-              const periodCustomExpense = periodMiscEnriched.filter(e => e.type === 'expense');
+              const periodCustomExpense = [...periodMiscEnriched.filter(e => e.type === 'expense'), ...reimbursementsList.filter(r => r.status === 'paid' && filterByDate(r.expenseDate || r.date))];
 
               const totalCustomIncome = periodCustomIncome.reduce((s, ex) => s + parseFloat(ex.totalAfterTax || ex.amount || 0), 0);
               const totalCustomExpense = periodCustomExpense.reduce((s, ex) => s + parseFloat(ex.totalAfterTax || 0), 0);
@@ -3252,14 +3621,38 @@ const Accounting = () => {
                           const isIncome = e.type === 'income';
                           return {
                             date: e.expenseDate || e.date,
-                            desc: isIncome 
-                              ? (isID ? `Pemasukan Lain: ${e.description} (${e.employeeName || 'Umum'})` : `Other Income: ${e.description} (${e.employeeName || 'General'})`)
-                              : (isID ? `Lain-lain: ${e.description} (${e.employeeName || 'Umum'})` : `Misc: ${e.description} (${e.employeeName || 'General'})`),
+                            desc: (() => {
+                              let cbText = '';
+                              if (e.companyBankAccountId === 'CUSTOM' && e.customSourceTarget) {
+                                cbText = ` [${e.customSourceTarget}]`;
+                              } else {
+                                const cb = companyBankAccounts.find(b => b.id === e.companyBankAccountId);
+                                if (cb) cbText = ` [${cb.bankName}]`;
+                              }
+                              return isIncome 
+                                ? (isID ? `Pemasukan Lain: ${e.description} (${e.employeeName || 'Umum'})${cbText}` : `Other Income: ${e.description} (${e.employeeName || 'General'})${cbText}`)
+                                : (isID ? `Lain-lain: ${e.description} (${e.employeeName || 'Umum'})${cbText}` : `Misc: ${e.description} (${e.employeeName || 'General'})${cbText}`);
+                            })(),
                             cat: isIncome 
                               ? (isID ? 'PENDAPATAN LAIN' : 'OTHER INCOME') 
-                              : (isID ? (e.category || 'PENGELUARAN').toUpperCase() : (e.category || 'EXPENSE').toUpperCase()),
+                              : ((isID ? (e.category || 'PENGELUARAN') : (e.category || 'EXPENSE')) + (e.subcategory ? ` - ${e.subcategory}` : '')).toUpperCase(),
                             amt: isIncome ? e.totalAfterTax || e.amount : -e.totalAfterTax,
                             color: isIncome ? '#10b981' : '#ec4899'
+                          };
+                        }),
+                        ...reimbursementsList.filter(r => r.status === 'paid' && filterByDate(r.expenseDate || r.date)).map(r => {
+                          let cbText = '';
+                          if (r.companyBankAccountId === 'CUSTOM' && r.customSourceTarget) cbText = ` [${r.customSourceTarget}]`;
+                          else {
+                            const cb = companyBankAccounts.find(b => b.id === r.companyBankAccountId);
+                            if (cb) cbText = ` [${cb.bankName}]`;
+                          }
+                          return {
+                            date: r.expenseDate || r.date,
+                            desc: `Reimbursement: ${r.employeeName}${cbText}`,
+                            cat: isID ? 'REIMBURSEMENT' : 'REIMBURSEMENT',
+                            amt: -parseFloat(r.totalAfterTax || r.amount || 0),
+                            color: '#14b8a6'
                           };
                         })
                       ].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -3625,6 +4018,143 @@ const Accounting = () => {
       )}
 
       {/* Other Expense Modal */}
+      {reimbursementModal && (
+        <div className="modal-overlay" style={{ zIndex: 1000, animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="modal-content glass-card" style={{ maxWidth: '800px', width: '90%', animation: 'slideUp 0.3s ease-out', padding: '30px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', borderBottom: '1px solid var(--border)', paddingBottom: '15px' }}>
+              <h3 style={{ color: '#14b8a6', margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Receipt size={24} /> {reimbursementForm.id ? (isID ? 'Edit Reimbursement' : 'Edit Reimbursement') : (isID ? 'Pengajuan Reimbursement' : 'New Reimbursement')}
+              </h3>
+              <button onClick={() => setReimbursementModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Nama Staff' : 'Staff Name'}</label>
+                <input
+                  type="text"
+                  value={reimbursementForm.employeeName}
+                  onChange={e => setReimbursementForm({ ...reimbursementForm, employeeName: e.target.value })}
+                  placeholder="John Doe"
+                  style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Tanggal Pengeluaran' : 'Expense Date'}</label>
+                <input
+                  type="date"
+                  value={reimbursementForm.expenseDate}
+                  onChange={e => setReimbursementForm({ ...reimbursementForm, expenseDate: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Daftar Item Reimbursement' : 'Reimbursement Items'}</label>
+              {reimbursementForm.items.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px', alignItems: 'flex-start' }}>
+                  <input
+                    type="text"
+                    value={item.details}
+                    onChange={e => { const items = [...reimbursementForm.items]; items[idx].details = e.target.value; setReimbursementForm({ ...reimbursementForm, items }); }}
+                    placeholder={isID ? 'Detail biaya (Misal: Ongkos Taxi)' : 'Item details (e.g., Taxi Fare)'}
+                    style={{ flex: 2, padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                  />
+                  <input
+                    type="number"
+                    value={item.amount}
+                    onChange={e => { const items = [...reimbursementForm.items]; items[idx].amount = e.target.value; setReimbursementForm({ ...reimbursementForm, items }); }}
+                    placeholder="Rp"
+                    style={{ flex: 1, padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                  />
+                  {reimbursementForm.items.length > 1 && (
+                    <button onClick={() => { const items = reimbursementForm.items.filter((_, i) => i !== idx); setReimbursementForm({ ...reimbursementForm, items }); }} style={{ padding: '10px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                      <Trash2 size={18} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              <button
+                onClick={() => setReimbursementForm({ ...reimbursementForm, items: [...reimbursementForm.items, { details: '', amount: '', receiptPhoto: '' }] })}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(20,184,166,0.1)', color: '#14b8a6', padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', marginTop: '5px' }}
+              >
+                <Plus size={16} /> {isID ? 'Tambah Item' : 'Add Item'}
+              </button>
+              <div style={{ textAlign: 'right', marginTop: '10px', fontSize: '1.1rem', fontWeight: 'bold' }}>
+                Total: Rp {reimbursementForm.items.reduce((s, i) => s + parseFloat(i.amount || 0), 0).toLocaleString()}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Rekening Tujuan (Nama Bank)' : 'Recipient Bank Name'}</label>
+                <input
+                  type="text"
+                  value={reimbursementForm.recipientBankName}
+                  onChange={e => setReimbursementForm({ ...reimbursementForm, recipientBankName: e.target.value })}
+                  placeholder="BCA, Mandiri, dll."
+                  style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Nomor Rekening Tujuan' : 'Recipient Account Number'}</label>
+                <input
+                  type="text"
+                  value={reimbursementForm.recipientBankAccount}
+                  onChange={e => setReimbursementForm({ ...reimbursementForm, recipientBankAccount: e.target.value })}
+                  placeholder="1234567890"
+                  style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Sumber Dana Perusahaan (Opsional)' : 'Source Company Bank (Optional)'}</label>
+              <select
+                value={reimbursementForm.companyBankAccountId || ''}
+                onChange={e => setReimbursementForm({ ...reimbursementForm, companyBankAccountId: e.target.value })}
+                style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+              >
+                <option value="" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{isID ? '-- Pilih Rekening Sumber Dana --' : '-- Select Source Bank Account --'}</option>
+                {companyBankAccounts.map(b => (
+                  <option key={b.id} value={b.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>{b.bankName} - {b.accountNumber} ({b.accountName})</option>
+                ))}
+                <option value="CUSTOM" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{isID ? '+ Tambah Sumber Dana Baru (Custom)...' : '+ Add New Source (Custom)...'}</option>
+              </select>
+              {reimbursementForm.companyBankAccountId === 'CUSTOM' && (
+                <div style={{ marginTop: '10px' }}>
+                  <input
+                    type="text"
+                    value={reimbursementForm.customSourceTarget || ''}
+                    onChange={e => setReimbursementForm({ ...reimbursementForm, customSourceTarget: e.target.value })}
+                    placeholder={isID ? 'Misal: Petty Cash, GoPay, OVO...' : 'e.g., Petty Cash, GoPay, OVO...'}
+                    style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', fontWeight: 'bold' }}>{isID ? 'Catatan Penting' : 'Important Notes'}</label>
+              <textarea
+                value={reimbursementForm.notes}
+                onChange={e => setReimbursementForm({ ...reimbursementForm, notes: e.target.value })}
+                rows="3"
+                placeholder={isID ? 'Keperluan meeting klien...' : 'Client meeting notes...'}
+                style={{ width: '100%', padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', resize: 'vertical' }}
+              ></textarea>
+            </div>
+
+            <ButtonWithLoading onClick={handleSaveReimbursement} style={{ width: '100%', padding: '15px', background: '#14b8a6', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>
+              {isID ? 'Simpan Reimbursement' : 'Save Reimbursement'}
+            </ButtonWithLoading>
+          </div>
+        </div>
+      )}
+
       {otherExpenseModal && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
           <div className="glass-card" style={{ width:'100%', maxWidth:'700px', padding:'35px', maxHeight:'90vh', overflowY:'auto', position:'relative' }}>
@@ -3667,7 +4197,7 @@ const Accounting = () => {
             </div>
 
             {/* Category selection */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'20px', marginBottom:'20px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Kategori Transaksi' : 'Transaction Category'}</label>
                 <select
@@ -3675,9 +4205,9 @@ const Accounting = () => {
                   onChange={e => {
                     const val = e.target.value;
                     if (val === 'CUSTOM') {
-                      setOtherExpenseForm({ ...otherExpenseForm, category: 'CUSTOM', customCategory: '' });
+                      setOtherExpenseForm({ ...otherExpenseForm, category: 'CUSTOM', customCategory: '', subcategory: '', customSubcategory: '' });
                     } else {
-                      setOtherExpenseForm({ ...otherExpenseForm, category: val, customCategory: '' });
+                      setOtherExpenseForm({ ...otherExpenseForm, category: val, customCategory: '', subcategory: '', customSubcategory: '' });
                     }
                   }}
                   style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
@@ -3699,6 +4229,89 @@ const Accounting = () => {
                   </div>
                 )}
               </div>
+
+              {/* Subcategory selection */}
+              <div>
+                <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Subkategori Transaksi' : 'Transaction Subcategory'}</label>
+                {(() => {
+                  const currentCategory = otherExpenseForm.category === 'CUSTOM' ? otherExpenseForm.customCategory : otherExpenseForm.category;
+                  const subsList = defaultSubcategories[currentCategory] || [];
+                  const isCustomSub = otherExpenseForm.subcategory === 'CUSTOM';
+                  
+                  return (
+                    <>
+                      <select
+                        value={otherExpenseForm.subcategory || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val === 'CUSTOM') {
+                            setOtherExpenseForm({ ...otherExpenseForm, subcategory: 'CUSTOM', customSubcategory: '' });
+                          } else {
+                            setOtherExpenseForm({ ...otherExpenseForm, subcategory: val, customSubcategory: '' });
+                          }
+                        }}
+                        style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
+                      >
+                        <option value="" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{isID ? '-- Pilih Subkategori --' : '-- Select Subcategory --'}</option>
+                        {subsList.map(sub => (
+                          <option key={sub.id} value={sub.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                            {isID ? sub.id : sub.en}
+                          </option>
+                        ))}
+                        <option value="CUSTOM" style={{ background: 'var(--bg)', color: 'var(--text)' }}>{isID ? '+ Tambah Subkategori Baru...' : '+ Add New Subcategory...'}</option>
+                      </select>
+                      {isCustomSub && (
+                        <div style={{ marginTop:'10px' }}>
+                          <input 
+                            type="text" 
+                            value={otherExpenseForm.customSubcategory || ''} 
+                            onChange={e => setOtherExpenseForm({ ...otherExpenseForm, customSubcategory: e.target.value })}
+                            placeholder={isID ? 'Masukkan nama subkategori baru...' : 'Enter new subcategory name...'}
+                            style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
+                          />
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Source/Target Bank Account */}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>
+                {otherExpenseForm.type === 'income' 
+                  ? (isID ? 'Rekening Bank Penerima (Target)' : 'Recipient Bank Account (Target)') 
+                  : (isID ? 'Rekening Bank Sumber (Source)' : 'Source Bank Account')}
+              </label>
+              <select
+                value={otherExpenseForm.companyBankAccountId || ''}
+                onChange={e => setOtherExpenseForm({ ...otherExpenseForm, companyBankAccountId: e.target.value })}
+                style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
+              >
+                <option value="" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                  {isID ? '-- Pilih Rekening Perusahaan (Opsional) --' : '-- Select Company Bank Account (Optional) --'}
+                </option>
+                {companyBankAccounts.map(bank => (
+                  <option key={bank.id} value={bank.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {bank.bankName} - {bank.accountNumber} ({bank.accountName})
+                  </option>
+                ))}
+                <option value="CUSTOM" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                  {isID ? '+ Tambah Sumber/Target Baru (Custom)...' : '+ Add New Source/Target (Custom)...'}
+                </option>
+              </select>
+              {otherExpenseForm.companyBankAccountId === 'CUSTOM' && (
+                <div style={{ marginTop:'10px' }}>
+                  <input 
+                    type="text" 
+                    value={otherExpenseForm.customSourceTarget || ''} 
+                    onChange={e => setOtherExpenseForm({ ...otherExpenseForm, customSourceTarget: e.target.value })}
+                    placeholder={isID ? 'Misal: Petty Cash, GoPay, OVO...' : 'e.g., Petty Cash, GoPay, OVO...'}
+                    style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Optional details (collapsible) */}
@@ -4226,9 +4839,32 @@ const Accounting = () => {
                         const isIncome = e.type === 'income';
                         return {
                           date: e.expenseDate || e.date,
-                          desc: `${isIncome ? (isID ? 'Pemasukan Lain' : 'Other Income') : (isID ? 'Lain-lain' : 'Misc')}: ${e.description} (${e.employeeName || (isID ? 'Umum' : 'General')})`,
-                          cat: isIncome ? (isID ? 'PEMASUKAN LAIN' : 'OTHER INCOME') : (isID ? (e.category || 'PENGELUARAN') : (e.category || 'EXPENSE')).toUpperCase(),
+                          desc: (() => {
+                            let cbText = '';
+                            if (e.companyBankAccountId === 'CUSTOM' && e.customSourceTarget) {
+                              cbText = ` [${e.customSourceTarget}]`;
+                            } else {
+                              const cb = companyBankAccounts.find(b => b.id === e.companyBankAccountId);
+                              if (cb) cbText = ` [${cb.bankName}]`;
+                            }
+                            return `${isIncome ? (isID ? 'Pemasukan Lain' : 'Other Income') : (isID ? 'Lain-lain' : 'Misc')}: ${e.description} (${e.employeeName || (isID ? 'Umum' : 'General')})${cbText}`;
+                          })(),
+                          cat: isIncome ? (isID ? 'PEMASUKAN LAIN' : 'OTHER INCOME') : ((isID ? (e.category || 'PENGELUARAN') : (e.category || 'EXPENSE')) + (e.subcategory ? ` - ${e.subcategory}` : '')).toUpperCase(),
                           amt: isIncome ? parseFloat(e.totalAfterTax || e.amount || 0) : -parseFloat(e.totalAfterTax || 0)
+                        };
+                      }),
+                      ...reimbursementsList.filter(r => r.status === 'paid' && filterByDate(r.expenseDate || r.date)).map(r => {
+                        let cbText = '';
+                        if (r.companyBankAccountId === 'CUSTOM' && r.customSourceTarget) cbText = ` [${r.customSourceTarget}]`;
+                        else {
+                          const cb = companyBankAccounts.find(b => b.id === r.companyBankAccountId);
+                          if (cb) cbText = ` [${cb.bankName}]`;
+                        }
+                        return {
+                          date: r.expenseDate || r.date,
+                          desc: `Reimbursement: ${r.employeeName}${cbText}`,
+                          cat: 'REIMBURSEMENT',
+                          amt: -parseFloat(r.totalAfterTax || r.amount || 0)
                         };
                       })
                     ].sort((a, b) => new Date(b.date) - new Date(a.date));
