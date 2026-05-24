@@ -37,7 +37,7 @@ const AdminHub = () => {
   const isID = language === 'id';
   
   if (loading) {
-    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--secondary)' }}>{isID ? 'Memuat Dasbor Admin...' : 'Loading Admin Hub...'}</div>;
+    return <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--secondary)' }}>{isID ? 'Memuat Dasbor Admin...' : 'Loading Admin Hub...'}</div>;
   }
 
   const filterByDate = (itemDate) => {
@@ -283,13 +283,13 @@ const AdminHub = () => {
       <AnimatePresence>
         {printPO && (
           <div style={{position:'fixed',inset:0,background:'white',zIndex:10000,padding:'40px',color:'black',overflowY:'auto'}}>
-            <div className="no-print" style={{position:'absolute',top:'20px',right:'20px',display:'flex',gap:'10px'}}>
+            <div className="no-print" style={{position:'absolute',top:'20px',right:'20px',display: 'flex', flexWrap: 'wrap',gap:'10px'}}>
               <button className="btn" style={{background:'#eee',color:'#333'}} onClick={()=>setPrintPO(null)}>{isID ? 'Tutup' : 'Close'}</button>
               <button className="btn btn-primary" onClick={()=>window.print()}>{isID ? 'Cetak PO' : 'Print PO'}</button>
             </div>
             
             <div id="po-print" className="quotation-modal-content" style={{maxWidth:'210mm',margin:'0 auto',border:'1px solid #ddd',padding:'40px',fontFamily:'Arial'}}>
-              <div style={{display:'flex',justifyContent:'space-between',borderBottom:'3px solid #333',paddingBottom:'20px',marginBottom:'30px'}}>
+              <div style={{display: 'flex', flexWrap: 'wrap',justifyContent:'space-between',borderBottom:'3px solid #333',paddingBottom:'20px',marginBottom:'30px'}}>
                 <div>
                   <h1 style={{margin:0,fontSize:'2rem',color:'#333'}}>PURCHASE ORDER</h1>
                   <div style={{color:'#666',marginTop:'5px'}}>Ref: {printPO.id}</div>
@@ -301,7 +301,7 @@ const AdminHub = () => {
                 </div>
               </div>
 
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'40px',marginBottom:'30px'}}>
+              <div className="grid-responsive-2" style={{ marginBottom: '30px' }}>
                 <div>
                   <div style={{textTransform:'uppercase',fontSize:'0.75rem',color:'#888',marginBottom:'5px'}}>{isID ? 'Vendor:' : 'Vendor:'}</div>
                   <div style={{fontWeight:'bold',fontSize:'1.1rem'}}>{printPO.vendorName}</div>
@@ -316,7 +316,8 @@ const AdminHub = () => {
                 </div>
               </div>
 
-              <div className="table-container"><table style={{width:'100%',borderCollapse:'collapse',marginBottom:'30px'}}>
+              <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+<table style={{width:'100%',borderCollapse:'collapse',marginBottom:'30px'}}>
                 <thead>
                   <tr style={{background:'#f5f5f5',borderBottom:'2px solid #333'}}>
                     <th style={{padding:'10px',textAlign:'left'}}>{isID ? 'Deskripsi Layanan' : 'Service Description'}</th>
@@ -341,7 +342,8 @@ const AdminHub = () => {
                     <td style={{padding:'15px',textAlign:'right',fontWeight:'bold',fontSize:'1.2rem',color:'#d97706'}}>Rp {(printPO.grandTotal||0).toLocaleString('id-ID')}</td>
                   </tr>
                 </tfoot>
-              </table></div>
+              </table>
+</div></div>
 
               {printPO.notes && (
                 <div style={{ marginBottom: '40px', padding: '15px', background: '#f8fafc', borderLeft: '4px solid #d97706', borderRadius: '4px' }}>
@@ -350,7 +352,7 @@ const AdminHub = () => {
                 </div>
               )}
 
-              <div style={{marginTop:'60px',display:'grid',gridTemplateColumns:'1fr 1fr',gap:'100px',textAlign:'center'}}>
+              <div className="grid-responsive-2" style={{ marginTop: '60px', textAlign: 'center' }}>
                 <div>
                   <div style={{borderBottom:'1px solid #333',height:'80px'}}/>
                   <div style={{marginTop:'10px',fontSize:'0.8rem'}}>{isID ? 'Tanda Tangan Vendor' : 'Vendor Signature'}</div>
@@ -368,12 +370,12 @@ const AdminHub = () => {
       <AnimatePresence>
         {deletePOConfirm && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
-            <motion.div initial={{scale:0.85}} animate={{scale:1}} exit={{scale:0.85}} className="glass-card" style={{padding:'35px',maxWidth:'420px',width:'100%',textAlign:'center'}}>
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+            <motion.div initial={{scale:0.85}} animate={{scale:1}} exit={{scale:0.85}} className="glass-card" style={{padding:'35px',maxWidth:'420px',width:'100%',textAlign:'center' , overflowX: 'auto' }}>
               <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>🗑️</div>
               <h3 style={{color:'#ef4444',marginBottom:'8px'}}>{isID ? 'Hapus Purchase Order?' : 'Delete Purchase Order?'}</h3>
               <p style={{color:'var(--text-muted)',marginBottom:'25px'}}>{isID ? 'PO ' : 'PO '}<strong style={{color:'var(--text)'}}>{deletePOConfirm.id}</strong>{isID ? ' akan dihapus permanen.' : ' will be permanently deleted.'}</p>
-              <div style={{display:'flex',gap:'12px'}}>
+              <div style={{display: 'flex', flexWrap: 'wrap',gap:'12px'}}>
                 <button className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}} onClick={()=>setDeletePOConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
                 <ButtonWithLoading className="btn" style={{flex:1,background:'#ef4444',color:'white',border:'none'}} onClick={async()=>{await deletePurchaseOrder(deletePOConfirm.id);setDeletePOConfirm(null);}}>{isID ? 'Hapus' : 'Delete'}</ButtonWithLoading>
               </div>
@@ -385,12 +387,12 @@ const AdminHub = () => {
       <AnimatePresence>
         {deleteJOConfirm && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
-            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
-            <motion.div initial={{scale:0.85}} animate={{scale:1}} exit={{scale:0.85}} className="glass-card" style={{padding:'35px',maxWidth:'420px',width:'100%',textAlign:'center'}}>
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+            <motion.div initial={{scale:0.85}} animate={{scale:1}} exit={{scale:0.85}} className="glass-card" style={{padding:'35px',maxWidth:'420px',width:'100%',textAlign:'center' , overflowX: 'auto' }}>
               <div style={{fontSize:'2.5rem',marginBottom:'12px'}}>🗑️</div>
               <h3 style={{color:'#ef4444',marginBottom:'8px'}}>{isID ? 'Batalkan / Hapus Job Order?' : 'Cancel / Delete Job Order?'}</h3>
               <p style={{color:'var(--text-muted)',marginBottom:'25px'}}>{isID ? 'Job Order draft ' : 'Draft Job Order '}<strong style={{color:'var(--text)'}}>{deleteJOConfirm.id}</strong> ({deleteJOConfirm.customerName}){isID ? ' akan dihapus permanen.' : ' will be permanently deleted.'}</p>
-              <div style={{display:'flex',gap:'12px'}}>
+              <div style={{display: 'flex', flexWrap: 'wrap',gap:'12px'}}>
                 <button className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}} onClick={()=>setDeleteJOConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
                 <ButtonWithLoading className="btn" style={{flex:1,background:'#ef4444',color:'white',border:'none'}} onClick={async()=>{await context.deleteJO(deleteJOConfirm.id);setDeleteJOConfirm(null);}}>{isID ? 'Hapus Draft' : 'Delete Draft'}</ButtonWithLoading>
               </div>
@@ -402,11 +404,11 @@ const AdminHub = () => {
       {/* Create PO Modal */}
       <AnimatePresence>
         {showPOModal && (
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px'}}>
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:1000,display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center',padding:'20px'}}>
             <motion.div initial={{scale:0.9,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.9,opacity:0}}
-              className="glass-card" style={{width:'100%',maxWidth:'720px',padding:'40px',maxHeight:'90vh',overflowY:'auto',position:'relative'}}>
+              className="glass-card" style={{width:'100%',maxWidth:'720px',padding:'40px',maxHeight:'90vh',overflowY:'auto',position:'relative' , overflowX: 'auto' }}>
               <button onClick={()=>setShowPOModal(false)} style={{position:'absolute',top:'15px',right:'15px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer'}}><X size={20}/></button>
-              <h3 style={{color:'var(--secondary)',marginBottom:'25px',display:'flex',alignItems:'center',gap:'10px'}}>
+              <h3 style={{color:'var(--secondary)',marginBottom:'25px',display: 'flex', flexWrap: 'wrap',alignItems:'center',gap:'10px'}}>
                 <ShoppingCart size={22}/> {isID ? (editingPOId ? `Ubah Purchase Order (${editingPOId})` : 'Buat Purchase Order') : (editingPOId ? `Edit Purchase Order (${editingPOId})` : 'Create Purchase Order')}
               </h3>
               <form onSubmit={e => e.preventDefault()}>
@@ -416,7 +418,7 @@ const AdminHub = () => {
                     {isID ? '1. Pilih Job Order ' : '1. Select Job Order '}
                     <span style={{color:'var(--text-muted)',fontWeight:'400'}}>{isID ? '(pilih JO yang akan dibuatkan PO-nya)' : '(select JO to create its PO)'}</span>
                   </label>
-                  <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '10px' }}>
                     <div style={{ position: 'relative', flex: 1 }}>
                       <input 
                         type="text" 
@@ -451,7 +453,7 @@ const AdminHub = () => {
                   const jo = jobOrders.find(j=>j.id===poJoId);
                   return jo ? (
                     <div style={{padding:'15px',background:'rgba(212,175,55,0.06)',border:'1px solid rgba(212,175,55,0.2)',borderRadius:'10px',marginBottom:'20px',fontSize:'0.875rem'}}>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
+                      <div className="grid-responsive-2">
                         <div><span style={{color:'var(--text-muted)'}}>{isID ? 'Pelanggan:' : 'Customer:'}</span><div style={{fontWeight:'700'}}>{jo.customerName}</div></div>
                         <div><span style={{color:'var(--text-muted)'}}>{isID ? 'Instruksi Kerja:' : 'Work Instruction:'}</span><div style={{fontWeight:'700'}}>{jo.jobDescription||jo.instruction||'-'}</div></div>
                       </div>
@@ -490,14 +492,14 @@ const AdminHub = () => {
                 {poVendor && (
                   <div style={{marginBottom:'20px'}}>
                     <label style={{color:'var(--secondary)',fontWeight:'600',display:'block',marginBottom:'10px'}}>{isID ? '3. Pilih Layanan Vendor' : '3. Select Vendor Services'}</label>
-                    <div style={{display:'grid',gridTemplateColumns:'10px 1fr 80px 140px 36px',gap:'8px',marginBottom:'8px',fontSize:'0.72rem',color:'var(--text-muted)',paddingLeft:'4px'}}>
+                    <div className="grid-vendor-services desktop-only" style={{ marginBottom: '8px', fontSize: '0.72rem', color: 'var(--text-muted)', paddingLeft: '4px' }}>
                       <div/><div>{isID ? 'Layanan' : 'Service'}</div><div style={{textAlign:'center'}}>{isID ? 'Jumlah' : 'Qty'}</div><div style={{textAlign:'right'}}>Subtotal</div><div/>
                     </div>
                     {poItems.map((item,i)=>{
                       const svc = poVendor.services[parseInt(item.serviceIdx)];
                       const sub = svc ? parseFloat(svc.price||0)*parseFloat(item.qty||1) : 0;
                       return (
-                        <div key={i} style={{display:'grid',gridTemplateColumns:'10px 1fr 80px 140px 36px',gap:'8px',marginBottom:'10px',alignItems:'center'}}>
+                        <div key={i} className="grid-vendor-services" style={{ marginBottom: '10px' }}>
                           <div style={{width:'6px',height:'6px',borderRadius:'50%',background:'var(--secondary)'}}/>
                           <select required value={item.serviceIdx} onChange={e=>updatePOItem(i,'serviceIdx',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--secondary)',fontWeight:'600',fontSize:'0.85rem'}}>
                             <option value="" style={{color:'var(--text-muted)', background: 'var(--bg)'}}>-- {isID ? 'Pilih Layanan' : 'Select Service'} --</option>
@@ -505,7 +507,7 @@ const AdminHub = () => {
                           </select>
                           <input type="number" min="1" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
                           <div style={{padding:'9px',background:'rgba(255,255,255,0.03)',border:'1px solid var(--glass-border)',borderRadius:'8px',fontSize:'0.85rem',fontWeight:'700',color:'var(--secondary)',textAlign:'right'}}>{svc?`Rp ${sub.toLocaleString('id-ID')}`:'Rp 0'}</div>
-                          <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.1)',color:'#ef4444',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
+                          <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.1)',color:'#ef4444',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
                         </div>
                       );
                     })}
@@ -527,7 +529,7 @@ const AdminHub = () => {
                   />
                 </div>
 
-                <div style={{display:'flex',gap:'12px',marginTop:'20px'}}>
+                <div style={{display: 'flex', flexWrap: 'wrap',gap:'12px',marginTop:'20px'}}>
                   <button type="button" onClick={()=>setShowPOModal(false)} className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}}>{isID ? 'Batal' : 'Cancel'}</button>
                   <ButtonWithLoading
                     type="button"
@@ -554,15 +556,15 @@ const AdminHub = () => {
         )}
       </AnimatePresence>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="flex-responsive-row" style={{ justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h3 className="shimmer-text" style={{ fontSize: '1.8rem', margin: 0 }}>{isID ? 'Hub Instruksi Operasional' : 'Operational Instruction Hub'}</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isID ? 'Kirim pekerjaan ke pelaksana berdasarkan kontrak marketing yang disetujui.' : 'Dispatch jobs to executors based on approved marketing contracts.'}</p>
         </div>
-        <div style={{display:'flex',gap:'10px'}}>
+        <div style={{display: 'flex', flexWrap: 'wrap',gap:'10px'}}>
           <button 
             className="btn btn-gold" 
-            style={{ padding: '10px 22px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 15px rgba(212,175,55,0.2)' }} 
+            style={{ padding: '10px 22px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 15px rgba(212,175,55,0.2)' }} 
             onClick={() => {
               setShowPOModal(true);
             }}
@@ -577,12 +579,12 @@ const AdminHub = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-card" style={{ padding: '20px 25px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.03)' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
+      <div className="glass-card" style={{ overflowX: "auto" }}  className="flex-responsive-row" style={{ padding: "20px 25px", alignItems: "flex-start", background: "rgba(255,255,255,0.03)", justifyContent: "space-between" }}>
+        <div style={{ position: 'relative', flex: 1, whiteSpace: "nowrap", flex: '1 1 100%' }}>
           <input type="text" placeholder={isID ? "Cari PO atau JO..." : "Search PO or JO..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
           <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>{isID ? 'Filter Tanggal:' : 'Date Filter:'}</span>
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.85rem' }} />
           <span style={{ color: 'var(--text-muted)' }}>{isID ? 's/d' : 'to'}</span>
@@ -591,8 +593,8 @@ const AdminHub = () => {
             <button onClick={() => { setStartDate(''); setEndDate(''); setSearchTerm(''); }} style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', cursor: 'pointer', fontWeight: '600' }}>Reset</button>
           )}
         </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <button className="btn btn-gold" onClick={handleExport} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+        <div>
+          <button className="btn btn-gold" onClick={handleExport} style={{ padding: '8px 16px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
             <FileSpreadsheet size={18} /> {isID ? 'Ekspor PO' : 'Export PO'}
           </button>
         </div>
@@ -603,19 +605,18 @@ const AdminHub = () => {
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.8)', zIndex: 1000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center',
             padding: '20px'
           }}>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card"
-              style={{ width: '100%', maxWidth: '600px', padding: '40px', position: 'relative' }}
+              className="glass-card" style={{ width: '100%', maxWidth: '600px', padding: '40px', position: 'relative'  , overflowX: 'auto' }}
             >
               <button onClick={() => setShowModal(false)} style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
 
-              <h3 style={{ marginBottom: '25px', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h3 style={{ marginBottom: '25px', color: 'var(--secondary)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
                 <FileText size={24} />
                 {isID ? 'Instruksi Operasional Baru' : 'New Operational Instruction'}
               </h3>
@@ -726,7 +727,7 @@ const AdminHub = () => {
                       )}
 
                       <div className="input-group" style={{ marginBottom: '25px' }}>
-                        <label style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
                           <span>{isID ? 'Jumlah yang Dikeluarkan' : 'Quantity to Issue'}</span>
                           <span style={{ color: 'var(--secondary)', fontSize: '0.75rem' }}>
                             {isID ? 'Maks Kontrak: ' : 'Contract Max: '}{hasMultipleItems ? q.items[selectedActivityIndex].quantity : (q.quantity || 1)}
@@ -777,7 +778,7 @@ const AdminHub = () => {
                   );
                 })()}
 
-                <div style={{ display: 'flex', gap: '15px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
                   <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>
                     {isID ? 'Batal' : 'Cancel'}
                   </button>
@@ -792,10 +793,10 @@ const AdminHub = () => {
       </AnimatePresence>
 
       {/* Purchase Orders Section */}
-      <div className="glass-card" style={{ padding: '25px', marginTop: '30px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isPOListMinimized ? '0' : '25px' }}>
-          <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}><ShoppingCart size={20} style={{color:'var(--secondary)'}}/> {isID ? 'Catatan Purchase Order' : 'Purchase Order Records'}</h4>
-          <div style={{display:'flex',alignItems:'center',gap:'20px'}}>
+      <div className="glass-card" style={{ padding: '25px', marginTop: '30px'  , overflowX: 'auto' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: isPOListMinimized ? '0' : '25px' }}>
+          <h4 style={{ margin: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}><ShoppingCart size={20} style={{color:'var(--secondary)'}}/> {isID ? 'Catatan Purchase Order' : 'Purchase Order Records'}</h4>
+          <div style={{display: 'flex', flexWrap: 'wrap',alignItems:'center',gap:'20px'}}>
             {!isPOListMinimized && (
               <div style={{ position: 'relative', width: '250px' }}>
                 <input 
@@ -811,7 +812,7 @@ const AdminHub = () => {
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{(purchaseOrders || []).length} {isID ? 'PO Dibuat' : 'PO Created'}</span>
             <button 
               onClick={() => setIsPOListMinimized(!isPOListMinimized)} 
-              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', transition: 'color 0.2s' }}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '5px', fontSize: '0.8rem', transition: 'color 0.2s' }}
               onMouseEnter={e => e.currentTarget.style.color = 'var(--secondary)'}
               onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
             >
@@ -829,7 +830,8 @@ const AdminHub = () => {
               exit={{ height: 0, opacity: 0 }}
               style={{ overflow: 'hidden' }}
             >
-          <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+          <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+<table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: "nowrap" }}>
             <thead>
               <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
                 <th style={{ padding: '12px' }}>{isID ? 'Ref PO' : 'PO Ref'}</th>
@@ -870,7 +872,7 @@ const AdminHub = () => {
                     </span>
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
                       <button className="btn-icon" onClick={() => handleEditPO(po)} title={isID ? "Ubah PO" : "Edit PO"} style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.1)' }}>
                         <Edit size={15} />
                       </button>
@@ -895,15 +897,16 @@ const AdminHub = () => {
                 </tr>
               )}
             </tbody>
-          </table></div>
+          </table>
+</div></div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      <div className="glass-card" style={{ padding: '25px', marginTop: '30px' }}>
+      <div className="glass-card" style={{ padding: '25px', marginTop: '30px'  , overflowX: 'auto' }}>
         <h4 style={{ marginBottom: '25px' }}>{isID ? 'Job Order untuk Dikirim' : 'Job Orders for Dispatch'}</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '25px' }}>
           {jobOrders
             .filter(jo => jo.status === 'pending')
             .filter(jo => filterByDate(jo.date))
@@ -915,8 +918,8 @@ const AdminHub = () => {
             })
             .map(jo => (
             <div key={jo.id} className="glass-card table-row-hover" style={{ padding: '25px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: '15px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
                   <span style={{ color: 'var(--secondary)', fontWeight: 'bold' }}>{jo.id}</span>
                   <span className="badge badge-pending" style={{ fontSize: '0.7rem' }}>Draft</span>
                 </div>

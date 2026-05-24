@@ -116,7 +116,7 @@ const SuratJalanDetail = () => {
             </div>
 
             {/* Body Info */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '40px', marginBottom: '35px' }}>
+            <div className="grid-responsive-2" style={{ marginBottom: '30px' }}>
               <div>
                 <h4 style={{ color: '#065f46', marginBottom: '12px', textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: '700', borderBottom: '1px solid #e2e8f0', paddingBottom: '5px' }}>Tujuan Pengiriman</h4>
                 <p style={{ fontWeight: '800', fontSize: '1.3rem', margin: '0 0 8px 0', color: '#1e293b' }}>{jo.customerName}</p>

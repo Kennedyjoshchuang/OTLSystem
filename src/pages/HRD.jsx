@@ -301,7 +301,7 @@ const HRD = () => {
               <button className="close-btn" onClick={() => setIsAddModalOpen(false)}><X size={24} /></button>
             </div>
             <form onSubmit={handleSubmit} style={{ padding: '30px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div className="grid-responsive-2">
                 <div className="input-group">
                   <label>Nama Lengkap</label>
                   <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Masukkan nama lengkap" />

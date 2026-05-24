@@ -32,27 +32,10 @@ const Portal = () => {
       fontFamily: "'Outfit', sans-serif"
     }}>
       {/* Background Animated Elements */}
-      <div style={{
-        position: 'absolute',
-        top: '-10%',
-        left: '-10%',
-        width: window.innerWidth <= 768 ? '80%' : '40%',
-        height: '40%',
-        background: 'radial-gradient(circle, rgba(29, 49, 130, 0.2) 0%, transparent 70%)',
-        zIndex: 0,
-        borderRadius: '50%'
-      }} />
+      <div className="portal-bg-element" />
 
       {/* Top Bar */}
-      <div style={{
-        display: 'flex',
-        flexDirection: window.innerWidth <= 768 ? 'column' : 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: window.innerWidth <= 768 ? '20px' : '30px 50px',
-        gap: '20px',
-        zIndex: 10
-      }}>
+      <div className="portal-topbar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <img src="/assets/logo.png" alt="Logo" style={{ height: '35px' }} />
           <div style={{ height: '30px', width: '1px', background: 'var(--border)' }} />
@@ -95,22 +78,10 @@ const Portal = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="shimmer-text" style={{ 
-            fontSize: window.innerWidth <= 768 ? '2.5rem' : '4.5rem', 
-            marginBottom: '15px', 
-            lineHeight: 1.1 
-          }}>
+          <h1 className="shimmer-text portal-h1">
             {language === 'en' ? 'ACCESS PORTAL' : 'AKSES PORTAL'}
           </h1>
-          <p style={{ 
-            fontSize: window.innerWidth <= 768 ? '0.9rem' : '1.2rem', 
-            color: 'var(--text-muted)', 
-            marginBottom: '40px', 
-            maxWidth: '500px',
-            margin: '0 auto 40px',
-            fontWeight: '300',
-            letterSpacing: window.innerWidth <= 768 ? '1px' : '2px'
-          }}>
+          <p className="portal-p">
             {language === 'en' 
               ? 'INTEGRATED LOGISTICS COMMAND CENTER' 
               : 'PUSAT KOMANDO LOGISTIK TERINTEGRASI'}
@@ -119,13 +90,7 @@ const Portal = () => {
           <div style={{ display: 'flex', gap: '20px', justifyContent: 'center' }}>
             <button 
               onClick={handleEnter}
-              className="btn btn-accent" 
-              style={{ 
-                padding: window.innerWidth <= 768 ? '15px 35px' : '18px 45px', 
-                fontSize: window.innerWidth <= 768 ? '0.9rem' : '1rem', 
-                borderRadius: '100px',
-                boxShadow: '0 0 30px rgba(227, 6, 19, 0.3)'
-              }}
+              className="btn btn-accent portal-btn" 
             >
               <span>{language === 'en' ? 'ENTER SYSTEM' : 'MASUK SISTEM'}</span>
               <ArrowRight size={20} />
@@ -134,17 +99,7 @@ const Portal = () => {
         </motion.div>
 
         {/* System Stats / Indicators */}
-        <div style={{ 
-          marginTop: window.innerWidth <= 768 ? '50px' : '80px', 
-          display: 'flex', 
-          flexDirection: window.innerWidth <= 768 ? 'column' : 'row',
-          gap: window.innerWidth <= 768 ? '15px' : '40px',
-          padding: '20px 30px',
-          borderRadius: '20px',
-          border: '1px solid var(--border)',
-          background: 'rgba(255,255,255,0.02)',
-          alignItems: 'center'
-        }}>
+        <div className="portal-stats">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 10px #10b981' }} />
             <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Status: Online</span>

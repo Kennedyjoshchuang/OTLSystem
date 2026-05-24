@@ -546,9 +546,9 @@ const Executor = () => {
                           exit={{ height: 0, opacity: 0 }} 
                           style={{ overflow: 'hidden', background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--secondary)' }}
                         >
-                          <div style={{ padding: '25px', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' }}>
+                          <div className="grid-responsive-2" style={{ padding: '25px' }}>
                             <div style={{ display: 'grid', gap: '20px' }}>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                              <div className="grid-responsive-3">
                                 {/* Multi Container */}
                                 <div className="input-group">
                                   <label>{isID ? 'Nomor Kontainer' : 'Container Number'} <span style={{ color: '#ef4444' }}>*</span></label>
@@ -614,7 +614,7 @@ const Executor = () => {
                               </div>
 
                               {/* Date Pickers Grid */}
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                              <div className="grid-responsive-2">
                                 <div className="input-group">
                                   <label>{isID ? 'Waktu Pengiriman (Dispatched)' : 'Dispatched Date & Time'}</label>
                                   <input 

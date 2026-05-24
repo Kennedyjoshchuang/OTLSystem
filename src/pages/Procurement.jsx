@@ -132,7 +132,7 @@ const Procurement = () => {
             <h4 style={{ color: 'var(--secondary)', marginBottom: '25px' }}>{editingId ? (isID ? 'Edit Vendor' : 'Edit Vendor') : (isID ? 'Tambah Vendor Baru' : 'Add New Vendor')}</h4>
             <form onSubmit={handleSubmit}>
               {/* Basic Info */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginBottom: '25px' }}>
+              <div className="grid-responsive-2" style={{ marginBottom: '25px' }}>
                 {[
                   ['name', isID ? 'Nama Vendor *' : 'Vendor Name *', true, 'text'],
                   ['phone', isID ? 'No. Telepon' : 'Phone Number', false, 'text'],
@@ -154,11 +154,11 @@ const Procurement = () => {
                   <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>{isID ? 'Daftar Layanan & Harga' : 'Services & Rates List'}</label>
                   <button type="button" className="btn" style={{ padding: '5px 12px', fontSize: '0.8rem', background: 'rgba(212,175,55,0.1)', color: 'var(--secondary)', border: '1px dashed var(--secondary)' }} onClick={addService}>{isID ? '+ Tambah Layanan' : '+ Add Service'}</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '10px 1fr 180px 40px', gap: '8px', marginBottom: '8px', fontSize: '0.75rem', color: 'var(--text-muted)', paddingLeft: '4px' }}>
+                <div className="grid-vendor-services desktop-only" style={{ marginBottom: '8px', fontSize: '0.75rem', color: 'var(--text-muted)', paddingLeft: '4px' }}>
                   <div/><div>{isID ? 'Deskripsi Pekerjaan' : 'Job Description'}</div><div>{isID ? 'Harga (IDR)' : 'Rate (IDR)'}</div><div/>
                 </div>
                 {form.services.map((s, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '10px 1fr 180px 40px', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
+                  <div key={i} className="grid-vendor-services" style={{ marginBottom: '10px' }}>
                     <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--secondary)' }} />
                     <input required type="text" value={s.description} onChange={e => updateService(i, 'description', e.target.value)} placeholder={isID ? "Contoh: Trucking 20ft Tanjung Priok" : "Example: Trucking 20ft Tanjung Priok"} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '9px 12px' }} />
                     <input required type="number" value={s.price} onChange={e => updateService(i, 'price', e.target.value)} placeholder={isID ? "Harga" : "Price"} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '9px 12px' }} />
@@ -191,7 +191,7 @@ const Procurement = () => {
       </AnimatePresence>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+      <div className="grid-responsive-3">
         {[
           { label: isID ? 'Total Vendor' : 'Total Vendors', value: vendors.length, color: '#d4af37', icon: '🏢' },
           { label: isID ? 'Total Layanan' : 'Total Services', value: vendors.reduce((s, v) => s + (v.services?.length || 0), 0), color: '#10b981', icon: '📋' },
@@ -294,7 +294,7 @@ const Procurement = () => {
                 <AnimatePresence>
                   {expandedId === v.id && (
                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} style={{ overflow: 'hidden' }}>
-                      <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px', paddingTop: '20px', borderTop: '1px solid var(--glass-border)' }}>
+                      <div className="grid-responsive-2" style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--glass-border)' }}>
                         {/* Services Table */}
                         <div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--secondary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>{isID ? '📋 Layanan & Harga' : '📋 Services & Rates'}</div>

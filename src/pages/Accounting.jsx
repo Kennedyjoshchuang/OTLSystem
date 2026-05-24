@@ -935,7 +935,7 @@ const Accounting = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '60px', marginBottom: '50px' }}>
+                <div className="grid-responsive-2" style={{ gap: '60px', marginBottom: '50px' }}>
                   <div>
                     <h4 style={{ color: '#065f46', marginBottom: '15px', textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: '800', letterSpacing: '1px' }}>BILL TO:</h4>
                     <p style={{ fontWeight: '900', fontSize: '1.6rem', margin: '0 0 8px 0', color: '#0f172a' }}>{selectedInvoice.customerName}</p>
@@ -1078,7 +1078,7 @@ const Accounting = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '50px', marginBottom: '40px' }}>
+            <div className="grid-responsive-2" style={{ gap: '50px', marginBottom: '40px' }}>
               <div style={{ borderLeft: '5px solid #d97706', paddingLeft: '20px' }}>
                 <div style={{ textTransform: 'uppercase', fontSize: '0.8rem', color: '#64748b', fontWeight: '800', marginBottom: '10px', letterSpacing: '1px' }}>Vendor Information:</div>
                 <div style={{ fontWeight: '900', fontSize: '1.4rem', color: '#0f172a' }}>{printPO.vendorName}</div>
@@ -1196,7 +1196,7 @@ const Accounting = () => {
                       const svc = vendor?.services?.[parseInt(item.serviceIdx)];
                       const sub = svc ? parseFloat(svc.price||0)*parseFloat(item.qty||1) : 0;
                       return (
-                        <div key={i} style={{display:'grid',gridTemplateColumns:'1fr 80px 140px 36px',gap:'8px',marginBottom:'10px',alignItems:'center'}}>
+                        <div key={i} className="grid-quote-items" style={{gap:'8px',marginBottom:'10px',alignItems:'center'}}>
                           <select required value={item.serviceIdx} onChange={e=>updatePOItem(i,'serviceIdx',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--secondary)',fontWeight:'600',fontSize:'0.85rem'}}>
                             <option value="" style={{color:'var(--text-muted)', background: 'var(--bg)'}}>-- {isID ? 'Pilih Layanan' : 'Select Service'} --</option>
                             {vendor?.services?.map((s,si)=><option key={si} value={si} style={{color:'var(--text)', background:'var(--bg)'}}>{s.description} — Rp {parseFloat(s.price||0).toLocaleString(isID ? 'id-ID' : 'en-US')}</option>)}
@@ -1279,7 +1279,7 @@ const Accounting = () => {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', marginBottom: '40px' }}>
+                  <div className="grid-responsive-2" style={{ gap: '40px', marginBottom: '40px' }}>
                     <div>
                       <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: '800', display: 'block', marginBottom: '8px' }}>Billed To:</span>
                       <div style={{ fontSize: '1.4rem', fontWeight: '900', color: '#0f172a' }}>{inv.customerName}</div>
@@ -1413,7 +1413,7 @@ const Accounting = () => {
                         <div style={{ marginTop: '6px', fontWeight: '800', fontSize: '0.95rem' }}>No: {inv.id}</div>
                       </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', marginBottom: '36px' }}>
+                    <div className="grid-responsive-2" style={{ gap: '40px', marginBottom: '36px' }}>
                       <div>
                         <p style={{ margin: '0 0 6px 0', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>DITAGIHKAN KEPADA:</p>
                         <p style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontWeight: '900', color: '#1e293b' }}>{inv.customerName}</p>
@@ -1596,7 +1596,7 @@ const Accounting = () => {
                         <div style={{ color: '#10b981', fontWeight: '900', fontSize: '0.8rem', marginTop: '5px' }}>SETTLED / PAID</div>
                       </div>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', marginBottom: '36px' }}>
+                    <div className="grid-responsive-2" style={{ gap: '40px', marginBottom: '36px' }}>
                       <div>
                         <p style={{ margin: '0 0 6px 0', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>DITAGIHKAN KEPADA:</p>
                         <p style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontWeight: '900', color: '#1e293b' }}>{inv.customerName}</p>
@@ -3228,7 +3228,7 @@ const Accounting = () => {
           </div>
 
 
-          <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'30px' }}>
+          <div className="grid-responsive-2" style={{ gap:'30px' }}>
             {/* Detailed Transaction Log */}
             <div className="glass-card" style={{ padding:'30px' }}>
               <h4 style={{ marginBottom:'25px', display:'flex', alignItems:'center', gap:'10px' }}><Calendar size={20} style={{color:'var(--secondary)'}}/> {isID ? 'Log Detail Transaksi' : 'Transaction Detail Log'}</h4>
@@ -3499,7 +3499,7 @@ const Accounting = () => {
             <button onClick={() => setSalaryModal(false)} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
             <h3 style={{ color:'#8b5cf6', marginBottom:'25px', display:'flex', alignItems:'center', gap:'10px' }}><User size={24}/> {salaryForm.id ? (isID ? 'Perbarui Data Gaji Karyawan' : 'Update Employee Salary Data') : (isID ? 'Tambah Data Gaji Karyawan' : 'Add Employee Salary Data')}</h3>
             
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Pilih Karyawan' : 'Select Employee'}</label>
                 <select 
@@ -3535,7 +3535,7 @@ const Accounting = () => {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Nomor Rekening' : 'Bank Account Number'}</label>
                 <input type="text" value={salaryForm.bankAccount} onChange={e => setSalaryForm({...salaryForm, bankAccount: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
@@ -3546,7 +3546,7 @@ const Accounting = () => {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Nominal Gaji Pokok' : 'Base Salary Amount'}</label>
                 <input type="number" value={salaryForm.baseSalary} onChange={e => setSalaryForm({...salaryForm, baseSalary: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontWeight:'700' }} />
@@ -3557,7 +3557,7 @@ const Accounting = () => {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'NIK' : 'National ID (NIK)'}</label>
                 <input type="text" value={salaryForm.nik} onChange={e => setSalaryForm({...salaryForm, nik: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
@@ -3582,7 +3582,7 @@ const Accounting = () => {
               ))}
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'30px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'30px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Bukti Transfer (Upload)' : 'Transfer Proof (Upload)'}</label>
                 <input type="file" onChange={e => {
@@ -3732,7 +3732,7 @@ const Accounting = () => {
 
               {showOptionalDetails && (
                 <div style={{ marginTop: '15px', padding: '20px', background: 'rgba(255,255,255,0.01)', borderRadius: '8px', border: '1px solid var(--glass-border)', display:'grid', gap:'20px' }}>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' }}>
+                  <div className="grid-responsive-2" style={{ gap:'20px' }}>
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                         <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700', margin: 0 }}>{isID ? 'Pilih Karyawan' : 'Select Employee'}</label>
@@ -3807,7 +3807,7 @@ const Accounting = () => {
                     </div>
                   </div>
 
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px' }}>
+                  <div className="grid-responsive-2" style={{ gap:'20px' }}>
                     <div>
                       <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Nomor Rekening' : 'Account Number'}</label>
                       <input type="text" value={otherExpenseForm.bankAccount || ''} onChange={e => setOtherExpenseForm({...otherExpenseForm, bankAccount: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
@@ -3828,7 +3828,7 @@ const Accounting = () => {
             </div>
 
             {/* Amount and Date */}
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'20px', marginBottom:'20px' }}>
+            <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Nominal (Rp)' : 'Amount (IDR)'}</label>
                 <input type="number" value={otherExpenseForm.amount || ''} onChange={e => setOtherExpenseForm({...otherExpenseForm, amount: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontWeight:'700' }} />
@@ -3917,7 +3917,7 @@ const Accounting = () => {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'40px', marginBottom:'40px', background:'#f9f9f9', padding:'20px', border:'1px solid #eee' }}>
+            <div className="grid-responsive-2" style={{ gap:'40px', marginBottom:'40px', background:'#f9f9f9', padding:'20px', border:'1px solid #eee' }}>
                <div>
                  <div style={{ fontSize:'0.75rem', color:'#888', textTransform:'uppercase', marginBottom:'5px' }}>{isID ? 'Informasi Karyawan:' : 'Employee Information:'}</div>
                  <div style={{ fontWeight:'800', fontSize:'1.2rem' }}>{salarySlip.name}</div>
@@ -3933,7 +3933,7 @@ const Accounting = () => {
                </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'30px' }}>
+            <div className="grid-responsive-2" style={{ gap:'30px' }}>
                {/* Earnings */}
                <div>
                  <h4 style={{ borderBottom:'2px solid #333', paddingBottom:'8px', marginBottom:'15px' }}>{isID ? 'PENGHASILAN' : 'EARNINGS'}</h4>
@@ -4067,7 +4067,7 @@ const Accounting = () => {
             <div style={{ marginBottom:'25px', padding:'20px', background:'rgba(212,175,55,0.03)', borderRadius:'12px', border:'1px solid rgba(212,175,55,0.1)' }}>
               <label style={{ display:'block', fontSize:'0.75rem', color:'var(--secondary)', marginBottom:'15px', textTransform:'uppercase', fontWeight:'800', letterSpacing:'0.5px' }}>2. {isID ? 'Pemotongan Pajak (Opsional)' : 'Tax Deduction (Optional)'}</label>
               
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px' }}>
+              <div className="grid-responsive-2" style={{ gap:'15px' }}>
                 <div>
                   <label style={{ display:'block', fontSize:'0.7rem', color:'var(--text-muted)', marginBottom:'5px' }}>{isID ? 'Nama Pajak (misal PPh 23)' : 'Tax Name (e.g. PPh 23)'}</label>
                   <input 
@@ -4469,7 +4469,7 @@ const Accounting = () => {
 
             <div style={{ background:'rgba(255,255,255,0.02)', borderRadius:'12px', padding:'20px', border:'1px solid var(--glass-border)', marginBottom:'30px' }}>
               <h4 style={{ fontSize:'0.9rem', marginBottom:'20px', color:'var(--text-muted)' }}>{isID ? 'Tambah / Edit Rekening' : 'Add / Edit Account'}</h4>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'15px', marginBottom:'15px' }}>
+              <div className="grid-responsive-3" style={{ gap:'15px', marginBottom:'15px' }}>
                 <input type="text" placeholder={isID ? 'Nama Bank (misal Mandiri IDR)' : 'Bank Name (e.g. Mandiri IDR)'} value={bankModal?.bankName || ''} onChange={e => setBankModal({...bankModal, bankName: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
                 <input type="text" placeholder={isID ? 'Nomor Rekening' : 'Account Number'} value={bankModal?.accountNumber || ''} onChange={e => setBankModal({...bankModal, accountNumber: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />
                 <input type="text" placeholder={isID ? 'Atas Nama' : 'Account Holder Name'} value={bankModal?.accountName || ''} onChange={e => setBankModal({...bankModal, accountName: e.target.value})} style={{ padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)' }} />

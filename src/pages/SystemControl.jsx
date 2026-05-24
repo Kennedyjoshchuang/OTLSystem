@@ -161,7 +161,7 @@ const SystemControl = () => {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '40px' }}>
+      <div className="grid-responsive-3" style={{ marginBottom: '40px' }}>
         {stats.map((stat, idx) => (
           <div key={idx} className="glass-card" style={{ padding: '30px', display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div style={{ padding: '15px', borderRadius: '12px', background: `${stat.color}15`, color: stat.color }}>
@@ -195,7 +195,7 @@ const SystemControl = () => {
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+        <div className="grid-responsive-2" style={{ gap: '30px' }}>
           {/* Customers Section */}
           <div>
             <h4 style={{ color: 'var(--secondary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>

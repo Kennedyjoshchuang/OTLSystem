@@ -312,7 +312,7 @@ const Marketing = () => {
   };
 
   return (
-    <div className="marketing-container" style={{ display: 'grid', gap: '25px' }}>
+    <div className="marketing-container" style={{ display: 'flex', flexDirection: 'column', gap: '25px', minWidth: 0, width: '100%' }}>
 
 
 
@@ -331,8 +331,7 @@ const Marketing = () => {
           >
             <motion.div
               initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.85, opacity: 0 }}
-              className="glass-card"
-              style={{ padding: '40px', maxWidth: '480px', width: '100%', textAlign: 'center' }}
+              className="glass-card" style={{ padding: '40px', maxWidth: '480px', width: '100%', textAlign: 'center' , overflowX: 'auto' }}
             >
               <div style={{ fontSize: '3rem', marginBottom: '20px' }}>🗑️</div>
               <h3 style={{ marginBottom: '10px', color: '#ef4444' }}>
@@ -380,8 +379,7 @@ const Marketing = () => {
           }}>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card"
-              style={{ width: '100%', maxWidth: '900px', padding: '40px', maxHeight: '90vh', overflowY: 'auto' }}
+              className="glass-card" style={{ width: '100%', maxWidth: '900px', padding: '40px', maxHeight: '90vh', overflowY: 'auto' , overflowX: 'auto' }}
             >
               <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>{t('createQuotation')} - {activeProspectForQuote.name}</h3>
               <form onSubmit={handleCreateProspectQuotation}>
@@ -420,7 +418,7 @@ const Marketing = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <div>{t('activity')}</div>
                   <div>{t('ratePerTrip')}</div>
                   <div>{t('quantity')}</div>
@@ -429,7 +427,7 @@ const Marketing = () => {
                 </div>
 
                 {quoteItems.map((item, index) => (
-                  <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', gap: '15px', marginBottom: '15px' }}>
+                  <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '15px' }}>
                     <input required type="text" value={item.description} onChange={e => updateQuoteItem(index, 'description', e.target.value)} placeholder="Service description..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                     <input required type="number" value={item.rate} onChange={e => updateQuoteItem(index, 'rate', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                     <input required type="number" value={item.quantity} onChange={e => updateQuoteItem(index, 'quantity', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
@@ -477,8 +475,7 @@ const Marketing = () => {
           }}>
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-card"
-              style={{ width: '100%', maxWidth: '900px', padding: '40px', maxHeight: '90vh', overflowY: 'auto' }}
+              className="glass-card" style={{ width: '100%', maxWidth: '900px', padding: '40px', maxHeight: '90vh', overflowY: 'auto' , overflowX: 'auto' }}
             >
               <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>Edit Calon Pelanggan - {activeProspectForEdit.name}</h3>
               <form onSubmit={handleProspectEditSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
@@ -605,7 +602,7 @@ const Marketing = () => {
 
                 {/* Header Section */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #0f172a', paddingBottom: '25px', marginBottom: '45px' }}>
-                  <div style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
+                  <div style={{ display: "flex", gap: "25px", alignItems: "center", flexWrap: "wrap" }}>
                     <img src="/assets/logo.png" alt="Logo" style={{ width: '75px', height: '75px', objectFit: 'contain' }} />
                     <div>
                       <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOGISTICS & FREIGHT FORWARDING</h4>
@@ -777,8 +774,8 @@ const Marketing = () => {
       </div>
 
       {/* Unified Search & Date Filter Bar */}
-      <div className="glass-card" style={{ padding: '15px 25px', marginBottom: '25px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div className="glass-card" style={{ padding: '15px 25px', marginBottom: '25px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.03)' , overflowX: 'auto' }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>Filter Tanggal:</span>
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.85rem' }} />
           <span style={{ color: 'var(--text-muted)' }}>s/d</span>
@@ -798,7 +795,7 @@ const Marketing = () => {
         {showProspectForm && activeTab === 'prospects' && (
           <motion.div
             initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-            className="glass-card" style={{ padding: '30px', overflow: 'hidden' }}
+            className="glass-card" style={{ padding: '30px', overflow: 'hidden' , overflowX: 'auto' }}
           >
             <form onSubmit={handleProspectSubmit} style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
               <div className="input-group">
@@ -877,7 +874,7 @@ const Marketing = () => {
       >
         {activeTab === 'jobOrders' ? (
           <div className="glass-card" style={{ padding: '25px', overflowX: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", flexWrap: "wrap", gap: "15px" }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
                 <CheckCircle size={20} style={{ color: '#10b981' }} />
                 {t('activeJobOrders')}
@@ -893,7 +890,8 @@ const Marketing = () => {
                 <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               </div>
             </div>
-            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1050px' }}>
+            <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+<table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
                   <th style={{ padding: '15px' }}>Quotation #</th>
@@ -961,7 +959,8 @@ const Marketing = () => {
                     );
                   })}
               </tbody>
-            </table></div>
+            </table>
+</div></div>
             {quotations.filter(q => q.status === 'approved').filter(q =>
               q.customerName.toLowerCase().includes(jobOrderSearchTerm.toLowerCase()) ||
               q.id.toLowerCase().includes(jobOrderSearchTerm.toLowerCase())
@@ -975,7 +974,7 @@ const Marketing = () => {
           </div>
         ) : activeTab === 'quotationList' ? (
           <div className="glass-card" style={{ padding: '25px', overflowX: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", flexWrap: "wrap", gap: "15px" }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
                 <FileText size={20} style={{ color: 'var(--gold-metallic)' }} />
                 {t('quotationList') || 'All Quotations'}
@@ -991,7 +990,8 @@ const Marketing = () => {
                 <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               </div>
             </div>
-            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1000px' }}>
+            <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+<table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--gold-metallic)' }}>
                   <th style={{ padding: '15px' }}>Quotation #</th>
@@ -1074,11 +1074,12 @@ const Marketing = () => {
                     </tr>
                   ))}
               </tbody>
-            </table></div>
+            </table>
+</div></div>
           </div>
         ) : (
           <div className="glass-card" style={{ padding: '25px', overflowX: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "25px", flexWrap: "wrap", gap: "15px" }}>
               <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
                 <UserPlus size={20} style={{ color: 'var(--secondary)' }} />
                 {t('prospectCustomers')}
@@ -1088,7 +1089,8 @@ const Marketing = () => {
                 <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               </div>
             </div>
-            <div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '1200px' }}>
+            <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
+<table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--glass-border)' }}>
                   <th style={{ padding: '15px' }}>{t('companyName')}</th>
@@ -1161,7 +1163,8 @@ const Marketing = () => {
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </table>
+</div></div>
           </div>
         )}
       </motion.div>
