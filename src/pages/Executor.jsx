@@ -631,24 +631,24 @@ const Executor = () => {
                                     }}
                                   />
                                 </div>
-                                <div className="input-group">
-                                  <label>{isID ? 'Waktu Selesai (Completed)' : 'Completed Date & Time'}</label>
-                                  <input 
-                                    type="datetime-local" 
-                                    value={localData[jo.id]?.completedAtLocal || ''} 
-                                    onChange={e => handleLocalUpdate(jo.id, 'completedAtLocal', e.target.value)}
-                                    disabled={activeTab === 'active'}
-                                    style={{
-                                      background: 'var(--input-bg)',
-                                      border: '1px solid var(--border)',
-                                      borderRadius: '10px',
-                                      color: 'var(--text)',
-                                      padding: '12px',
-                                      width: '100%',
-                                      opacity: activeTab === 'active' ? 0.5 : 1
-                                    }}
-                                  />
-                                </div>
+                                {activeTab === 'records' && (
+                                  <div className="input-group">
+                                    <label>{isID ? 'Waktu Selesai (Completed)' : 'Completed Date & Time'}</label>
+                                    <input 
+                                      type="datetime-local" 
+                                      value={localData[jo.id]?.completedAtLocal || ''} 
+                                      onChange={e => handleLocalUpdate(jo.id, 'completedAtLocal', e.target.value)}
+                                      style={{
+                                        background: 'var(--input-bg)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: '10px',
+                                        color: 'var(--text)',
+                                        padding: '12px',
+                                        width: '100%'
+                                      }}
+                                    />
+                                  </div>
+                                )}
                               </div>
 
                               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px' }}>

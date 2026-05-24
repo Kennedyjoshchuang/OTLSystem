@@ -150,7 +150,32 @@ export const AppProvider = ({ children }) => {
 
       setProspects(Array.isArray(prosData) ? prosData : []);
       setQuotations(safeParse(quoData, ['items']));
-      setJobOrders(safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName']));
+      const parsedJOs = safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName']).map(jo => {
+        let instructionText = jo.instruction || '';
+        let dispatchedAt = jo.dispatchedAt || null;
+        let completedAt = jo.completedAt || null;
+        
+        if (instructionText && instructionText.includes('|||')) {
+          const parts = instructionText.split('|||');
+          instructionText = parts[0].trim();
+          try {
+            const meta = JSON.parse(parts[1].trim());
+            if (meta.dispatchedAt) dispatchedAt = meta.dispatchedAt;
+            if (meta.completedAt) completedAt = meta.completedAt;
+          } catch (e) {
+            // failed to parse
+          }
+        }
+        
+        return {
+          ...jo,
+          instruction: instructionText,
+          jobDescription: instructionText,
+          dispatchedAt,
+          completedAt
+        };
+      });
+      setJobOrders(parsedJOs);
       setInvoices(safeParse(invData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']));
       setReceivables(safeParse(recData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']));
       setVendors(safeParse(venData, ['services', 'assets']));
@@ -290,14 +315,49 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateJOStatus = async (joId, updates) => {
+    // Intercept updates to serialize dispatchedAt/completedAt into instruction polymorphically
+    const currentJo = jobOrders.find(j => j.id === joId) || {};
+    
+    const dispatchedAt = 'dispatchedAt' in updates ? updates.dispatchedAt : currentJo.dispatchedAt;
+    const completedAt = 'completedAt' in updates ? updates.completedAt : currentJo.completedAt;
+    
+    const finalUpdates = { ...updates };
+    
+    // Clean up SQL columns to avoid PostgREST schema cache error
+    delete finalUpdates.dispatchedAt;
+    delete finalUpdates.completedAt;
+    
+    if (dispatchedAt || completedAt) {
+      // Get the raw instruction (without old metadata)
+      let rawInstruction = updates.instruction || currentJo.instruction || '';
+      // If the updates or current state has metadata, strip it first to get the pure instruction
+      if (rawInstruction.includes('|||')) {
+        rawInstruction = rawInstruction.split('|||')[0].trim();
+      }
+      
+      const meta = { dispatchedAt, completedAt };
+      finalUpdates.instruction = `${rawInstruction} ||| ${JSON.stringify(meta)}`;
+    }
+    
     // Optimistic update
-    setJobOrders(prev => prev.map(jo => 
-      jo.id === joId ? { ...jo, ...updates } : jo
-    ));
+    setJobOrders(prev => prev.map(jo => {
+      if (jo.id === joId) {
+        const merged = { ...jo, ...updates };
+        // Clean up serialized string inside state so the frontend gets pristine instruction
+        if (merged.instruction && merged.instruction.includes('|||')) {
+          merged.instruction = merged.instruction.split('|||')[0].trim();
+        }
+        merged.jobDescription = merged.instruction;
+        merged.dispatchedAt = dispatchedAt;
+        merged.completedAt = completedAt;
+        return merged;
+      }
+      return jo;
+    }));
 
     await apiRequest(`job-orders/${joId}`, {
       method: 'PUT',
-      body: JSON.stringify(updates)
+      body: JSON.stringify(finalUpdates)
     });
   };
 
