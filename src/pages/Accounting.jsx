@@ -525,16 +525,30 @@ const Accounting = () => {
       const poCost = (poMap[j.id] || []).reduce((a, p) => a + parseFloat(p.grandTotal || 0), 0);
       const cost = manualCost + poCost;
       const inv = invoiceMap[String(j.id)];
-      const rev = inv ? parseFloat(inv.subtotal || inv.amount || 0) : 0;
+      const rev = inv ? parseFloat(inv.amount || inv.subtotal || 0) : 0;
       return { cost: acc.cost + cost, revenue: acc.revenue + rev };
     }, { cost: 0, revenue: 0 });
   }, [activeJOs, poMap, invoiceMap]);
 
   const vendorList = vendors || [];
 
-  const addCostLine = () => setCostLines(prev => [...prev, { vendorId: '', serviceIdx: '', qty: 1 }]);
+  const addCostLine = () => setCostLines(prev => [...prev, { vendorId: '', serviceIdx: '', qty: 1, customVendorName: '', customServiceDescription: '', customPrice: '' }]);
   const removeCostLine = (i) => setCostLines(prev => prev.filter((_, idx) => idx !== i));
-  const updateCostLine = (i, field, val) => setCostLines(prev => { const n=[...prev]; n[i]={...n[i],[field]:val}; if(field==='vendorId') n[i].serviceIdx=''; return n; });
+  const updateCostLine = (i, field, val) => setCostLines(prev => {
+    const n = [...prev];
+    n[i] = { ...n[i], [field]: val };
+    if (field === 'vendorId') {
+      n[i].serviceIdx = '';
+      n[i].customVendorName = '';
+      n[i].customServiceDescription = '';
+      n[i].customPrice = '';
+    }
+    if (field === 'serviceIdx') {
+      n[i].customServiceDescription = '';
+      n[i].customPrice = '';
+    }
+    return n;
+  });
 
   // PO Helpers
   const addPOItem = () => setPoItems(p => [...p, { serviceIdx: '', qty: 1 }]);
@@ -694,7 +708,7 @@ const Accounting = () => {
         const poCost = (purchaseOrders || []).filter(po => po.joId === jo.id).reduce((s,p)=>s+(p.grandTotal||0),0);
         const totalCost = manualCost + poCost;
         const invoice = (invoices || []).find(inv => inv.joId === jo.id);
-        const revenue = invoice ? parseFloat(invoice.subtotal || 0) : 0;
+        const revenue = invoice ? parseFloat(invoice.amount || invoice.subtotal || 0) : 0;
         
         return {
           JO_ID: jo.id,
@@ -758,23 +772,79 @@ const Accounting = () => {
 
   const handleSaveCosts = async () => {
     if (!costModal) return;
+    
+    // Validate custom fields
+    for (const l of costLines) {
+      if (l.vendorId === 'custom') {
+        if (!l.customVendorName?.trim() || !l.customServiceDescription?.trim() || l.customPrice === '') {
+          alert(isID ? "Harap lengkapi semua field input manual untuk Vendor Custom!" : "Please fill in all manual input fields for the Custom Vendor!");
+          return;
+        }
+      } else if (l.vendorId) {
+        if (l.serviceIdx === 'custom') {
+          if (!l.customServiceDescription?.trim() || l.customPrice === '') {
+            alert(isID ? "Harap lengkapi semua field input manual untuk Layanan Custom!" : "Please fill in all manual input fields for the Custom Service!");
+            return;
+          }
+        } else if (l.serviceIdx === '') {
+          alert(isID ? "Harap pilih layanan atau pilih 'Custom Layanan'!" : "Please select a service or select 'Custom Service'!");
+          return;
+        }
+      } else {
+        alert(isID ? "Harap pilih vendor terlebih dahulu!" : "Please select a vendor first!");
+        return;
+      }
+    }
+
     const newEntries = costLines
-      .filter(l => l.vendorId && l.serviceIdx !== '')
       .map(l => {
-        const vendor = vendorList.find(v => v.id === l.vendorId);
-        const svc = vendor?.services?.[parseInt(l.serviceIdx)];
         const qty = parseFloat(l.qty) || 1;
-        return { vendorId: l.vendorId, vendorName: vendor?.name || '', serviceDescription: svc?.description || '', unitPrice: parseFloat(svc?.price || 0), qty, total: parseFloat(svc?.price || 0) * qty };
+        if (l.vendorId === 'custom') {
+          const unitPrice = parseFloat(l.customPrice) || 0;
+          return {
+            vendorId: 'custom',
+            vendorName: l.customVendorName || 'Custom Vendor',
+            serviceDescription: l.customServiceDescription || 'Custom Service',
+            unitPrice,
+            qty,
+            total: unitPrice * qty
+          };
+        } else {
+          const vendor = vendorList.find(v => v.id === l.vendorId);
+          if (l.serviceIdx === 'custom') {
+            const unitPrice = parseFloat(l.customPrice) || 0;
+            return {
+              vendorId: l.vendorId,
+              vendorName: vendor?.name || '',
+              serviceDescription: l.customServiceDescription || 'Custom Service',
+              unitPrice,
+              qty,
+              total: unitPrice * qty
+            };
+          } else {
+            const svc = vendor?.services?.[parseInt(l.serviceIdx)];
+            const unitPrice = parseFloat(svc?.price || 0);
+            return {
+              vendorId: l.vendorId,
+              vendorName: vendor?.name || '',
+              serviceDescription: svc?.description || '',
+              unitPrice,
+              qty,
+              total: unitPrice * qty
+            };
+          }
+        }
       });
     const existingCosts = Array.isArray(costModal.costs) ? costModal.costs : [];
     await updateJOStatus(costModal.id, { costs: [...existingCosts, ...newEntries] });
     setCostModal(null);
-    setCostLines([{ vendorId: '', serviceIdx: '', qty: 1 }]);
+    setCostLines([{ vendorId: '', serviceIdx: '', qty: 1, customVendorName: '', customServiceDescription: '', customPrice: '' }]);
   };
 
   const handleDeleteCost = async (jo, costIdx) => {
     const updatedCosts = jo.costs.filter((_, i) => i !== costIdx);
     await updateJOStatus(jo.id, { costs: updatedCosts });
+    setCostModal(prev => prev ? { ...prev, costs: updatedCosts } : null);
   };
 
 
@@ -2015,7 +2085,7 @@ const Accounting = () => {
       {costModal && (
         <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.85)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:'20px' }}>
           <div className="glass-card" style={{ width:'100%',maxWidth:'700px',padding:'35px',maxHeight:'90vh',overflowY:'auto',position:'relative' }}>
-            <button onClick={() => { setCostModal(null); setCostLines([{vendorId:'',serviceIdx:'',qty:1}]); }} style={{ position:'absolute',top:'15px',right:'15px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer' }}><X size={20}/></button>
+            <button onClick={() => { setCostModal(null); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }} style={{ position:'absolute',top:'15px',right:'15px',background:'none',border:'none',color:'var(--text-muted)',cursor:'pointer' }}><X size={20}/></button>
             <h3 style={{ color:'var(--secondary)',marginBottom:'8px',fontSize:'1.3rem' }}>{isID ? 'Input Biaya' : 'Input Cost'} — {costModal.id}</h3>
             <p style={{ color:'var(--text-muted)',fontSize:'0.85rem',marginBottom:'25px' }}>{isID ? 'Pelanggan:' : 'Customer:'} <strong style={{color:'var(--text)'}}>{costModal.customerName}</strong></p>
 
@@ -2047,37 +2117,90 @@ const Accounting = () => {
 
             {/* Add new cost lines */}
             <div style={{ fontSize:'0.75rem',color:'var(--secondary)',fontWeight:'700',textTransform:'uppercase',letterSpacing:'1px',marginBottom:'12px' }}>{isID ? 'Tambah Biaya Baru' : 'Add New Cost'}</div>
-            {vendorList.length === 0 ? (
-              <p style={{ color:'#f59e0b',fontSize:'0.85rem',padding:'15px',background:'rgba(245,158,11,0.1)',borderRadius:'8px' }}>{isID ? '⚠️ Belum ada vendor terdaftar. Tambahkan vendor di halaman Procurement terlebih dahulu.' : '⚠️ No registered vendors found. Please add vendors in the Procurement page first.'}</p>
-            ) : (
-              <>
-                {costLines.map((line, i) => {
-                  const selVendor = vendorList.find(v => v.id === line.vendorId);
-                  const selSvc = selVendor?.services?.[parseInt(line.serviceIdx)];
-                  const lineTotal = selSvc ? parseFloat(selSvc.price||0) * parseFloat(line.qty||1) : 0;
-                  return (
-                    <div key={i} style={{ display:'grid',gridTemplateColumns:'1fr 1fr 80px 1fr 36px',gap:'10px',marginBottom:'12px',alignItems:'center' }}>
+            <>
+              {costLines.map((line, i) => {
+                const selVendor = line.vendorId && line.vendorId !== 'custom' ? vendorList.find(v => v.id === line.vendorId) : null;
+                const selSvc = selVendor && line.serviceIdx && line.serviceIdx !== 'custom' ? selVendor.services?.[parseInt(line.serviceIdx)] : null;
+                const unitPrice = (line.vendorId === 'custom' || line.serviceIdx === 'custom') ? parseFloat(line.customPrice || 0) : parseFloat(selSvc?.price || 0);
+                const lineTotal = unitPrice * parseFloat(line.qty || 1);
+                return (
+                  <div key={i} style={{ padding:'12px', background:'rgba(255,255,255,0.02)', border:'1px solid var(--glass-border)', borderRadius:'10px', marginBottom:'12px' }}>
+                    <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr 80px 1fr 36px',gap:'10px',alignItems:'center' }}>
                        <select value={line.vendorId} onChange={e=>updateCostLine(i,'vendorId',e.target.value)} style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--secondary)',fontWeight:'600',fontSize:'0.85rem' }}>
                         <option value="" style={{color:'var(--text-muted)', background:'var(--bg)'}}>-- {isID ? 'Pilih Vendor' : 'Select Vendor'} --</option>
                         {vendorList.map(v=><option key={v.id} value={v.id} style={{color:'var(--text)', background:'var(--bg)'}}>{v.name}</option>)}
+                        <option value="custom" style={{color:'var(--secondary)', background:'var(--bg)', fontWeight:'bold'}}>-- {isID ? 'Custom Vendor (Manual)' : 'Custom Vendor (Manual)'} --</option>
                       </select>
-                      <select value={line.serviceIdx} onChange={e=>updateCostLine(i,'serviceIdx',e.target.value)} disabled={!selVendor} style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--secondary)',fontWeight:'600',fontSize:'0.85rem' }}>
+
+                      <select 
+                        value={line.serviceIdx} 
+                        onChange={e=>updateCostLine(i,'serviceIdx',e.target.value)} 
+                        disabled={!line.vendorId || line.vendorId === 'custom'} 
+                        style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--secondary)',fontWeight:'600',fontSize:'0.85rem' }}
+                      >
                         <option value="" style={{color:'var(--text-muted)', background:'var(--bg)'}}>-- {isID ? 'Pilih Layanan' : 'Select Service'} --</option>
-                        {(selVendor?.services||[]).map((s,si)=><option key={si} value={si} style={{color:'var(--text)', background:'var(--bg)'}}>{s.description}</option>)}
+                        {line.vendorId !== 'custom' && (selVendor?.services||[]).map((s,si)=><option key={si} value={si} style={{color:'var(--text)', background:'var(--bg)'}}>{s.description}</option>)}
+                        {line.vendorId && line.vendorId !== 'custom' && (
+                          <option value="custom" style={{color:'var(--secondary)', background:'var(--bg)', fontWeight:'bold'}}>-- {isID ? 'Custom Layanan (Manual)' : 'Custom Service (Manual)'} --</option>
+                        )}
                       </select>
+
                       <input type="number" min="1" value={line.qty} onChange={e=>updateCostLine(i,'qty',e.target.value)} placeholder="Qty" style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center' }}/>
-                      <div style={{ fontSize:'0.85rem',color:'var(--secondary)',fontWeight:'600',padding:'9px',background:'rgba(255,255,255,0.03)',borderRadius:'8px',border:'1px solid var(--glass-border)' }}>{selSvc ? `Rp ${lineTotal.toLocaleString(isID ? 'id-ID' : 'en-US')}` : 'Rp 0'}</div>
+                      
+                      <div style={{ fontSize:'0.85rem',color:'var(--secondary)',fontWeight:'600',padding:'9px',background:'rgba(255,255,255,0.03)',borderRadius:'8px',border:'1px solid var(--glass-border)' }}>
+                        Rp {lineTotal.toLocaleString(isID ? 'id-ID' : 'en-US')}
+                      </div>
+                      
                       <button onClick={()=>removeCostLine(i)} disabled={costLines.length===1} style={{ background:'rgba(239,68,68,0.1)',color:'#ef4444',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}><X size={14}/></button>
                     </div>
-                  );
-                })}
-                <button onClick={addCostLine} style={{ width:'100%',padding:'8px',background:'rgba(212,175,55,0.08)',color:'var(--secondary)',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'20px' }}>+ {isID ? 'Tambah Baris Biaya' : 'Add Cost Line'}</button>
-                <div style={{ display:'flex',gap:'12px' }}>
-                  <button onClick={()=>{ setCostModal(null); setCostLines([{vendorId:'',serviceIdx:'',qty:1}]); }} className="btn" style={{ flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)' }}>{isID ? 'Batal' : 'Cancel'}</button>
-                  <ButtonWithLoading onClick={handleSaveCosts} className="btn btn-gold" style={{ flex: 2 }}><CheckCircle size={16}/> {isID ? 'Simpan Biaya' : 'Save Cost'}</ButtonWithLoading>
-                </div>
-              </>
-            )}
+
+                    {/* Custom Fields Sub-row */}
+                    {(line.vendorId === 'custom' || line.serviceIdx === 'custom') && (
+                      <div style={{ display:'grid', gridTemplateColumns: line.vendorId === 'custom' ? '1fr 1fr 1fr' : '1fr 1fr', gap:'10px', marginTop:'10px', padding:'10px', background:'rgba(255,255,255,0.02)', border:'1px dashed var(--glass-border)', borderRadius:'8px' }}>
+                        {line.vendorId === 'custom' && (
+                          <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
+                            <span style={{ fontSize:'0.65rem', color:'var(--text-muted)', fontWeight:'600', textTransform:'uppercase' }}>{isID ? 'Nama Vendor Custom' : 'Custom Vendor Name'}</span>
+                            <input 
+                              type="text" 
+                              value={line.customVendorName || ''} 
+                              onChange={e=>updateCostLine(i,'customVendorName',e.target.value)} 
+                              placeholder={isID ? "Nama Vendor" : "Vendor Name"} 
+                              style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem' }}
+                            />
+                          </div>
+                        )}
+                        <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
+                          <span style={{ fontSize:'0.65rem', color:'var(--text-muted)', fontWeight:'600', textTransform:'uppercase' }}>{isID ? 'Deskripsi Layanan' : 'Service Description'}</span>
+                          <input 
+                            type="text" 
+                            value={line.customServiceDescription || ''} 
+                            onChange={e=>updateCostLine(i,'customServiceDescription',e.target.value)} 
+                            placeholder={isID ? "Deskripsi Layanan" : "Service Description"} 
+                            style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem' }}
+                          />
+                        </div>
+                        <div style={{ display:'flex', flexDirection:'column', gap:'4px' }}>
+                          <span style={{ fontSize:'0.65rem', color:'var(--text-muted)', fontWeight:'600', textTransform:'uppercase' }}>{isID ? 'Harga Satuan' : 'Unit Price'}</span>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            value={line.customPrice || ''} 
+                            onChange={e=>updateCostLine(i,'customPrice',e.target.value)} 
+                            placeholder={isID ? "Harga Satuan (Rp)" : "Unit Price (Rp)"} 
+                            style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              <button onClick={addCostLine} style={{ width:'100%',padding:'8px',background:'rgba(212,175,55,0.08)',color:'var(--secondary)',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'20px' }}>+ {isID ? 'Tambah Baris Biaya' : 'Add Cost Line'}</button>
+              <div style={{ display:'flex',gap:'12px' }}>
+                <button onClick={()=>{ setCostModal(null); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }} className="btn" style={{ flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)' }}>{isID ? 'Batal' : 'Cancel'}</button>
+                <ButtonWithLoading onClick={handleSaveCosts} className="btn btn-gold" style={{ flex: 2 }}><CheckCircle size={16}/> {isID ? 'Simpan Biaya' : 'Save Cost'}</ButtonWithLoading>
+              </div>
+            </>
           </div>
         </div>
       )}
@@ -2289,7 +2412,7 @@ const Accounting = () => {
                   const totalCost = manualCost + poCost;
                   
                   const invoice = invoiceMap[String(jo.id)];
-                  const revenue = invoice ? parseFloat(invoice.subtotal || invoice.amount || 0) : 0;
+                  const revenue = invoice ? parseFloat(invoice.amount || invoice.subtotal || 0) : 0;
                   const profitLoss = revenue - totalCost;
 
                   return (
@@ -2314,7 +2437,7 @@ const Accounting = () => {
                       </td>
                       <td style={{padding:'12px', textAlign:'center'}}>
                         <div style={{display:'flex', gap:'8px', justifyContent:'center'}}>
-                          <button className="btn" style={{padding:'7px 14px',fontSize:'0.8rem',gap:'6px', background:'rgba(212,175,55,0.1)', color:'var(--secondary)', border:'1px solid var(--secondary)'}} onClick={()=>{ setCostModal(jo); setCostLines([{vendorId:'',serviceIdx:'',qty:1}]); }}>
+                          <button className="btn" style={{padding:'7px 14px',fontSize:'0.8rem',gap:'6px', background:'rgba(212,175,55,0.1)', color:'var(--secondary)', border:'1px solid var(--secondary)'}} onClick={()=>{ setCostModal(jo); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }}>
                             <Plus size={14}/> {isID ? 'Biaya' : 'Costs'}
                           </button>
                           {!invoice && (
@@ -2502,7 +2625,7 @@ const Accounting = () => {
                         onClick={() => { setActiveTab('costing'); setSearchTerm(inv.joId); }}
                         title={isID ? 'Lihat Detail di Catatan JO' : 'View Detail in JO Records'}
                       >
-                        Rp {(inv.subtotal || inv.amount).toLocaleString('id-ID')}
+                        Rp {(inv.amount || inv.subtotal).toLocaleString('id-ID')}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'right', fontWeight: '700', color: '#ef4444' }}>
                         {(() => {
@@ -2521,7 +2644,7 @@ const Accounting = () => {
                           const manualCost = Array.isArray(jo.costs) ? jo.costs.reduce((s,c)=>s+(c.total||0),0) : 0;
                           const poCost = (purchaseOrders || []).filter(po => po.joId === jo.id).reduce((s,p)=>s+(p.grandTotal||0),0);
                           const totalCost = manualCost + poCost;
-                          const revenue = inv.subtotal || inv.amount;
+                          const revenue = inv.amount || inv.subtotal;
                           const profit = revenue - totalCost;
                           return (
                             <span style={{ color: profit > 0 ? '#10b981' : profit < 0 ? '#ef4444' : 'inherit' }}>
