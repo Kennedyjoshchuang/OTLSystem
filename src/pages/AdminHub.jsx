@@ -376,7 +376,7 @@ const AdminHub = () => {
               <h3 style={{color:'#ef4444',marginBottom:'8px'}}>{isID ? 'Hapus Purchase Order?' : 'Delete Purchase Order?'}</h3>
               <p style={{color:'var(--text-muted)',marginBottom:'25px'}}>{isID ? 'PO ' : 'PO '}<strong style={{color:'var(--text)'}}>{deletePOConfirm.id}</strong>{isID ? ' akan dihapus permanen.' : ' will be permanently deleted.'}</p>
               <div style={{display: 'flex', flexWrap: 'wrap',gap:'12px'}}>
-                <button className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}} onClick={()=>setDeletePOConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
+                <button className="btn" style={{flex:1,background:'rgba(255,255,255,0.75)',border:'1px solid var(--border)',color:'#030712'}} onClick={()=>setDeletePOConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
                 <ButtonWithLoading className="btn" style={{flex:1,background:'#ef4444',color:'white',border:'none'}} onClick={async()=>{await deletePurchaseOrder(deletePOConfirm.id);setDeletePOConfirm(null);}}>{isID ? 'Hapus' : 'Delete'}</ButtonWithLoading>
               </div>
             </motion.div>
@@ -393,7 +393,7 @@ const AdminHub = () => {
               <h3 style={{color:'#ef4444',marginBottom:'8px'}}>{isID ? 'Batalkan / Hapus Job Order?' : 'Cancel / Delete Job Order?'}</h3>
               <p style={{color:'var(--text-muted)',marginBottom:'25px'}}>{isID ? 'Job Order draft ' : 'Draft Job Order '}<strong style={{color:'var(--text)'}}>{deleteJOConfirm.id}</strong> ({deleteJOConfirm.customerName}){isID ? ' akan dihapus permanen.' : ' will be permanently deleted.'}</p>
               <div style={{display: 'flex', flexWrap: 'wrap',gap:'12px'}}>
-                <button className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}} onClick={()=>setDeleteJOConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
+                <button className="btn" style={{flex:1,background:'rgba(255,255,255,0.75)',border:'1px solid var(--border)',color:'#030712'}} onClick={()=>setDeleteJOConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
                 <ButtonWithLoading className="btn" style={{flex:1,background:'#ef4444',color:'white',border:'none'}} onClick={async()=>{await context.deleteJO(deleteJOConfirm.id);setDeleteJOConfirm(null);}}>{isID ? 'Hapus Draft' : 'Delete Draft'}</ButtonWithLoading>
               </div>
             </motion.div>
@@ -507,11 +507,11 @@ const AdminHub = () => {
                           </select>
                           <input type="number" min="1" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
                           <div style={{padding:'9px',background:'rgba(255,255,255,0.03)',border:'1px solid var(--glass-border)',borderRadius:'8px',fontSize:'0.85rem',fontWeight:'700',color:'var(--secondary)',textAlign:'right'}}>{svc?`Rp ${sub.toLocaleString('id-ID')}`:'Rp 0'}</div>
-                          <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.1)',color:'#ef4444',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
+                          <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.75)',color:'#ffffff',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
                         </div>
                       );
                     })}
-                    <button type="button" onClick={addPOItem} style={{width:'100%',padding:'8px',background:'rgba(212,175,55,0.08)',color:'var(--secondary)',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'15px'}}>+ {isID ? 'Tambah Baris Layanan' : 'Add Service Row'}</button>
+                    <button type="button" onClick={addPOItem} style={{width:'100%',padding:'8px',background:'rgba(212,175,55,0.75)',color:'#030712',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'15px'}}>+ {isID ? 'Tambah Baris Layanan' : 'Add Service Row'}</button>
                     <div style={{textAlign:'right',padding:'12px 15px',background:'rgba(255,255,255,0.03)',borderRadius:'10px',border:'1px solid var(--glass-border)'}}>
                       <span style={{color:'var(--text-muted)',fontSize:'0.85rem'}}>{isID ? 'Grand Total PO: ' : 'PO Grand Total: '}</span>
                       <span style={{color:'var(--secondary)',fontWeight:'800',fontSize:'1.1rem'}}>Rp {poItems.filter(it=>it.serviceIdx!=='').reduce((s,it)=>{const svc=poVendor.services[parseInt(it.serviceIdx)];return s+(svc?parseFloat(svc.price||0)*parseFloat(it.qty||1):0);},0).toLocaleString('id-ID')}</span>
@@ -530,12 +530,12 @@ const AdminHub = () => {
                 </div>
 
                 <div style={{display: 'flex', flexWrap: 'wrap',gap:'12px',marginTop:'20px'}}>
-                  <button type="button" onClick={()=>setShowPOModal(false)} className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}}>{isID ? 'Batal' : 'Cancel'}</button>
+                  <button type="button" onClick={()=>setShowPOModal(false)} className="btn" style={{flex:1,background:'rgba(255,255,255,0.75)',border:'1px solid var(--border)',color:'#030712'}}>{isID ? 'Batal' : 'Cancel'}</button>
                   <ButtonWithLoading
                     type="button"
                     onClick={handleSaveDraft}
                     className="btn"
-                    style={{flex:1.5,background:'rgba(212,175,55,0.1)',color:'var(--secondary)',border:'1px solid var(--secondary)'}}
+                    style={{flex:1.5,background:'rgba(212,175,55,0.75)',color:'#030712',border:'1px solid var(--secondary)'}}
                     disabled={!poJoId||!poVendorId}
                   >
                     💾 {isID ? (editingPOId ? 'Perbarui Draft' : 'Simpan Draft') : (editingPOId ? 'Update Draft' : 'Save Draft')}
@@ -779,7 +779,7 @@ const AdminHub = () => {
                 })()}
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px' }}>
-                  <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+                  <button type="button" onClick={() => setShowModal(false)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.75)', color: '#030712', border: '1px solid var(--border)' }}>
                     {isID ? 'Batal' : 'Cancel'}
                   </button>
                   <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1 }} disabled={!selectedQuoteId} onClick={handleModalSubmit}>
@@ -873,18 +873,18 @@ const AdminHub = () => {
                   </td>
                   <td style={{ padding: '12px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
-                      <button className="btn-icon" onClick={() => handleEditPO(po)} title={isID ? "Ubah PO" : "Edit PO"} style={{ color: '#3b82f6', background: 'rgba(59,130,246,0.1)' }}>
+                      <button className="btn-icon" onClick={() => handleEditPO(po)} title={isID ? "Ubah PO" : "Edit PO"} style={{ color: '#ffffff', background: 'rgba(59,130,246,0.75)' }}>
                         <Edit size={15} />
                       </button>
-                      <button className="btn-icon" onClick={() => setPrintPO(po)} title={isID ? "Cetak PO" : "Print PO"} style={{ color: 'var(--secondary)', background: 'rgba(212,175,55,0.1)' }}>
+                      <button className="btn-icon" onClick={() => setPrintPO(po)} title={isID ? "Cetak PO" : "Print PO"} style={{ color: '#030712', background: 'rgba(212,175,55,0.75)' }}>
                         <FileText size={15} />
                       </button>
                       {po.status !== 'issued' && (
-                        <ButtonWithLoading className="btn-icon" onClick={() => issuePurchaseOrder(po.id)} title={isID ? "Terbitkan PO" : "Issue PO"} style={{ color: '#10b981', background: 'rgba(16,185,129,0.1)' }}>
+                        <ButtonWithLoading className="btn-icon" onClick={() => issuePurchaseOrder(po.id)} title={isID ? "Terbitkan PO" : "Issue PO"} style={{ color: '#ffffff', background: 'rgba(16,185,129,0.75)' }}>
                           <CheckCircle size={15} />
                         </ButtonWithLoading>
                       )}
-                      <button className="btn-icon" onClick={() => setDeletePOConfirm(po)} title={isID ? "Hapus PO" : "Delete PO"} style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)' }}>
+                      <button className="btn-icon" onClick={() => setDeletePOConfirm(po)} title={isID ? "Hapus PO" : "Delete PO"} style={{ color: '#ffffff', background: 'rgba(239,68,68,0.75)' }}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -925,7 +925,7 @@ const AdminHub = () => {
                 </div>
                 <button 
                   className="btn-icon" 
-                  style={{ color: '#ef4444', background: 'rgba(239,68,68,0.1)', width: '32px', height: '32px' }} 
+                  style={{ color: '#ffffff', background: 'rgba(239,68,68,0.75)', width: '32px', height: '32px' }} 
                   onClick={() => setDeleteJOConfirm(jo)}
                   title={isID ? "Batalkan / Hapus JO Draft" : "Cancel / Delete JO Draft"}
                 >

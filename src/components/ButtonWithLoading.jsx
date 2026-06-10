@@ -21,7 +21,12 @@ export const ButtonWithLoading = ({ onClick, children, className = '', disabled 
       className={className}
       onClick={handleClick}
       disabled={disabled || loading}
-      style={{ opacity: disabled || loading ? 0.6 : 1, cursor: disabled || loading ? 'not-allowed' : 'pointer' }}
+      style={{
+        opacity: disabled || loading ? 0.75 : 1,
+        cursor: disabled || loading ? 'not-allowed' : 'pointer',
+        ...props.style,
+        ...(disabled || loading ? { opacity: Math.max(0.75, parseFloat(props.style?.opacity || 0)) } : {})
+      }}
       {...props}
     >
       {loading ? 'Processing…' : children}

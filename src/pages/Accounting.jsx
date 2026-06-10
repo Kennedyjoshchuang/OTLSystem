@@ -1476,11 +1476,11 @@ const Accounting = () => {
                           </select>
                           <input type="number" min="1" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
                           <div style={{padding:'9px',background:'rgba(255,255,255,0.03)',border:'1px solid var(--glass-border)',borderRadius:'8px',fontSize:'0.85rem',fontWeight:'700',color:'var(--secondary)',textAlign:'right'}}>{svc?`Rp ${sub.toLocaleString(isID ? 'id-ID' : 'en-US')}`:'Rp 0'}</div>
-                          <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.1)',color:'#ef4444',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
+                          <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.75)',color:'#ffffff',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
                         </div>
                       );
                     })}
-                    <button type="button" onClick={addPOItem} style={{width:'100%',padding:'8px',background:'rgba(212,175,55,0.08)',color:'var(--secondary)',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'15px'}}>+ {isID ? 'Tambah Baris Layanan' : 'Add Service Line'}</button>
+                    <button type="button" onClick={addPOItem} style={{width:'100%',padding:'8px',background:'rgba(212,175,55,0.75)',color:'#030712',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'15px'}}>+ {isID ? 'Tambah Baris Layanan' : 'Add Service Line'}</button>
                     <div style={{textAlign:'right',padding:'12px 15px',background:'rgba(255,255,255,0.03)',borderRadius:'10px',border:'1px solid var(--glass-border)'}}>
                       <span style={{color:'var(--text-muted)',fontSize:'0.85rem'}}>Grand Total PO: </span>
                       <span style={{color:'var(--secondary)',fontWeight:'800',fontSize:'1.1rem'}}>Rp {poItems.filter(it=>it.serviceIdx!=='').reduce((s,it)=>{const svc=vendor?.services?.[parseInt(it.serviceIdx)];return s+(svc?parseFloat(svc.price||0)*parseFloat(it.qty||1):0);},0).toLocaleString(isID ? 'id-ID' : 'en-US')}</span>
@@ -1500,8 +1500,8 @@ const Accounting = () => {
               </div>
 
               <div style={{display:'flex',gap:'12px',marginTop:'20px' }}>
-                <button type="button" onClick={resetPOForm} className="btn" style={{flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)'}}>{isID ? 'Batal' : 'Cancel'}</button>
-                <ButtonWithLoading type="button" onClick={handleSavePODraft} className="btn" style={{flex:1,background:'rgba(212,175,55,0.1)',color:'var(--secondary)',border:'1px solid var(--secondary)'}} disabled={!poVendorId}>💾 {isID ? 'Simpan Draft' : 'Save Draft'}</ButtonWithLoading>
+                <button type="button" onClick={resetPOForm} className="btn" style={{flex:1,background:'rgba(255,255,255,0.75)',border:'1px solid var(--border)',color:'#030712'}}>{isID ? 'Batal' : 'Cancel'}</button>
+                <ButtonWithLoading type="button" onClick={handleSavePODraft} className="btn" style={{flex:1,background:'rgba(212,175,55,0.75)',color:'#030712',border:'1px solid var(--secondary)'}} disabled={!poVendorId}>💾 {isID ? 'Simpan Draft' : 'Save Draft'}</ButtonWithLoading>
                 <ButtonWithLoading type="button" onClick={handleIssuePO} className="btn btn-gold" style={{flex:2}} disabled={!poVendorId}>🚀 {isID ? 'Terbitkan PO' : 'Issue PO'}</ButtonWithLoading>
               </div>
             </form>
@@ -2151,7 +2151,7 @@ const Accounting = () => {
                         Rp {lineTotal.toLocaleString(isID ? 'id-ID' : 'en-US')}
                       </div>
                       
-                      <button onClick={()=>removeCostLine(i)} disabled={costLines.length===1} style={{ background:'rgba(239,68,68,0.1)',color:'#ef4444',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}><X size={14}/></button>
+                      <button onClick={()=>removeCostLine(i)} disabled={costLines.length===1} style={{ background:'rgba(239,68,68,0.75)',color:'#ffffff',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}><X size={14}/></button>
                     </div>
 
                     {/* Custom Fields Sub-row */}
@@ -2195,9 +2195,9 @@ const Accounting = () => {
                   </div>
                 );
               })}
-              <button onClick={addCostLine} style={{ width:'100%',padding:'8px',background:'rgba(212,175,55,0.08)',color:'var(--secondary)',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'20px' }}>+ {isID ? 'Tambah Baris Biaya' : 'Add Cost Line'}</button>
+              <button onClick={addCostLine} style={{ width:'100%',padding:'8px',background:'rgba(212,175,55,0.75)',color:'#030712',border:'1px dashed var(--secondary)',borderRadius:'8px',cursor:'pointer',fontSize:'0.85rem',marginBottom:'20px' }}>+ {isID ? 'Tambah Baris Biaya' : 'Add Cost Line'}</button>
               <div style={{ display:'flex',gap:'12px' }}>
-                <button onClick={()=>{ setCostModal(null); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }} className="btn" style={{ flex:1,background:'rgba(255,255,255,0.05)',border:'1px solid var(--border)',color:'var(--text)' }}>{isID ? 'Batal' : 'Cancel'}</button>
+                <button onClick={()=>{ setCostModal(null); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }} className="btn" style={{ flex:1,background:'rgba(255,255,255,0.75)',border:'1px solid var(--border)',color:'#030712' }}>{isID ? 'Batal' : 'Cancel'}</button>
                 <ButtonWithLoading onClick={handleSaveCosts} className="btn btn-gold" style={{ flex: 2 }}><CheckCircle size={16}/> {isID ? 'Simpan Biaya' : 'Save Cost'}</ButtonWithLoading>
               </div>
             </>
@@ -2437,7 +2437,7 @@ const Accounting = () => {
                       </td>
                       <td style={{padding:'12px', textAlign:'center'}}>
                         <div style={{display:'flex', gap:'8px', justifyContent:'center'}}>
-                          <button className="btn" style={{padding:'7px 14px',fontSize:'0.8rem',gap:'6px', background:'rgba(212,175,55,0.1)', color:'var(--secondary)', border:'1px solid var(--secondary)'}} onClick={()=>{ setCostModal(jo); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }}>
+                          <button className="btn" style={{padding:'7px 14px',fontSize:'0.8rem',gap:'6px', background:'rgba(212,175,55,0.75)', color:'#030712', border:'1px solid var(--secondary)'}} onClick={()=>{ setCostModal(jo); setCostLines([{vendorId:'',serviceIdx:'',qty:1,customVendorName:'',customServiceDescription:'',customPrice:''}]); }}>
                             <Plus size={14}/> {isID ? 'Biaya' : 'Costs'}
                           </button>
                           {!invoice && (
@@ -2489,7 +2489,7 @@ const Accounting = () => {
                         {jo.photos && jo.photos.length > 0 ? (
                           <button 
                             onClick={() => setPhotoViewer({ joId: jo.id, photos: jo.photos })}
-                            style={{ background: 'rgba(212, 175, 55, 0.1)', border: '1px solid var(--secondary)', borderRadius: '6px', padding: '5px 10px', color: 'var(--secondary)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem' }}
+                            style={{ background: 'rgba(212, 175, 55, 0.75)', border: '1px solid var(--secondary)', borderRadius: '6px', padding: '5px 10px', color: '#030712', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem' }}
                           >
                             <Image size={14} /> {jo.photos.length} {isID ? 'Foto' : 'Photos'}
                           </button>
@@ -2516,7 +2516,7 @@ const Accounting = () => {
                                   </button>
                                   <button
                                     onClick={() => setUndoConfirmJoId(null)}
-                                    style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', borderRadius: '5px', padding: '3px 8px', fontSize: '0.72rem', cursor: 'pointer' }}
+                                    style={{ background: 'rgba(255, 255, 255, 0.75)', color: '#030712', border: '1px solid var(--glass-border)', borderRadius: '5px', padding: '3px 8px', fontSize: '0.72rem', cursor: 'pointer' }}
                                   >
                                     {isID ? 'Batal' : 'Cancel'}
                                   </button>
@@ -2529,8 +2529,8 @@ const Accounting = () => {
                                   <button
                                     onClick={() => setUndoConfirmJoId(jo.id)}
                                     style={{
-                                      background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444',
-                                      border: '1px solid rgba(239, 68, 68, 0.2)', padding: '4px 10px',
+                                      background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff',
+                                      border: '1px solid rgba(239, 68, 68, 0.8)', padding: '4px 10px',
                                       borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer',
                                       display: 'flex', alignItems: 'center', gap: '5px'
                                     }}
@@ -2544,7 +2544,7 @@ const Accounting = () => {
                           )}
                           <button 
                             className="btn" 
-                            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }} 
+                            style={{ padding: '8px 16px', fontSize: '0.85rem', background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)' }} 
                             onClick={() => handleCreatePOFromAccounting(jo.id)}
                           >
                             + Purchase Order
@@ -2693,14 +2693,14 @@ const Accounting = () => {
                           </button>
                           <button 
                             className="btn" 
-                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }} 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(16, 185, 129, 0.75)', color: '#ffffff', border: '1px solid rgba(16, 185, 129, 0.8)' }} 
                             onClick={() => setEditingInvoice(inv)}
                           >
                             <Edit3 size={14} /> Edit
                           </button>
                           <button 
                             className="btn" 
-                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }} 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(59, 130, 246, 0.75)', color: '#ffffff', border: '1px solid rgba(59, 130, 246, 0.8)' }} 
                             onClick={() => {
                               const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
                               const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
@@ -2712,7 +2712,7 @@ const Accounting = () => {
                           </button>
                           <button 
                             className="btn" 
-                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)' }} 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)' }} 
                             onClick={() => {
                               const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
                               const allAtts = [
@@ -2734,7 +2734,7 @@ const Accounting = () => {
                           </button>
                           <button 
                             className="btn" 
-                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} 
+                            style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: '1px solid rgba(239, 68, 68, 0.8)' }} 
                             onClick={() => {
                               setDeleteConfirmModal(inv);
                               setVerifyStep(1);
@@ -2903,14 +2903,14 @@ const Accounting = () => {
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button 
                             className="btn" 
-                            style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(59, 130, 246, 0.75)', color: '#ffffff', border: '1px solid rgba(59, 130, 246, 0.8)' }}
                             onClick={() => handleDownloadInvoice(item)}
                           >
                             <ShieldCheck size={14} /> {isID ? 'Dokumen' : 'Doc'}
                           </button>
                           <button 
                             className="btn" 
-                            style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.2)' }}
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.75)', color: '#ffffff', border: '1px solid rgba(16, 185, 129, 0.8)' }}
                             onClick={() => {
                               const originalInv = invoices.find(i => i.id === item.id || i.id === item.invoiceId);
                               setEditingInvoice(originalInv || item);
@@ -2926,7 +2926,7 @@ const Accounting = () => {
                               </ButtonWithLoading>
                               <button 
                                 className="btn" 
-                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: '1px solid rgba(239, 68, 68, 0.8)' }} 
                                 onClick={() => {
                                   setDeleteConfirmModal(item);
                                   setVerifyStep(1);
@@ -2953,7 +2953,7 @@ const Accounting = () => {
                               </button>
                               <button 
                                 className="btn" 
-                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.2)', gap: '5px' }} 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(245, 158, 11, 0.75)', color: '#030712', border: '1px solid rgba(245, 158, 11, 0.8)', gap: '5px' }} 
                                 onClick={() => handleUndoPaidInvoice(item)}
                                 title={isID ? "Batal Pembayaran" : "Undo Payment"}
                               >
@@ -2968,7 +2968,7 @@ const Accounting = () => {
                               </button>
                               <button 
                                 className="btn" 
-                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }} 
+                                style={{ padding: '8px 12px', fontSize: '0.8rem', background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: '1px solid rgba(239, 68, 68, 0.8)' }} 
                                 onClick={() => {
                                   setDeleteConfirmModal(item);
                                   setVerifyStep(1);
@@ -3065,7 +3065,7 @@ const Accounting = () => {
                         <button className="btn btn-gold" style={{ padding: '5px 10px', fontSize: '0.75rem', gap: '5px' }} onClick={() => setSalarySlip(s)}>
                           <Download size={14} /> {isID ? 'Slip' : 'Slip'}
                         </button>
-                        <button className="btn btn-sm" style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => { setSalaryForm(s); setSalaryModal(true); }}>
+                        <button className="btn btn-sm" style={{ background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => { setSalaryForm(s); setSalaryModal(true); }}>
                           <Edit3 size={14} />
                         </button>
                         <button className="btn btn-sm btn-danger" onClick={() => deleteSalary(s.id)} style={{ width:'32px', height:'32px' }}>
@@ -3176,10 +3176,10 @@ const Accounting = () => {
                         </td>
                         <td style={{ padding: '15px', textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button onClick={() => handleEditReimbursement(r)} style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Edit Data' : 'Edit Data'}>
+                            <button onClick={() => handleEditReimbursement(r)} style={{ background: 'rgba(59, 130, 246, 0.75)', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Edit Data' : 'Edit Data'}>
                               <Edit3 size={16} />
                             </button>
-                            <button onClick={() => { if(window.confirm(isID ? 'Yakin hapus data ini?' : 'Delete this record?')) deleteOtherExpense(r.id); }} style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Hapus Data' : 'Delete Data'}>
+                            <button onClick={() => { if(window.confirm(isID ? 'Yakin hapus data ini?' : 'Delete this record?')) deleteOtherExpense(r.id); }} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Hapus Data' : 'Delete Data'}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -3359,7 +3359,7 @@ const Accounting = () => {
                     </td>
                     <td style={{ padding: '15px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                        <button className="btn btn-sm" style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--secondary)', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => handleEditOtherTransaction(t)}>
+                        <button className="btn btn-sm" style={{ background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => handleEditOtherTransaction(t)}>
                           <Edit3 size={14} />
                         </button>
                         <button className="btn btn-sm btn-danger" onClick={() => deleteOtherExpense(t.id)} style={{ width:'32px', height:'32px' }}>
@@ -3497,7 +3497,7 @@ const Accounting = () => {
                             <button onClick={() => { if(window.confirm(isID ? 'Hapus semua lampiran invoice vendor?' : 'Delete all vendor invoice attachments?')) handleUploadVendorInvoice(po.id, []); }} style={{ background:'none', border:'none', color:'#ef4444', cursor:'pointer' }}><Trash2 size={14}/></button>
                           </div>
                         ) : (
-                          <button onClick={() => { setModalPhotos([]); setVendorInvoiceModal(po); }} style={{ background:'rgba(59,130,246,0.1)', color:'#3b82f6', border:'1px dashed #3b82f6', padding:'4px 8px', borderRadius:'6px', fontSize:'0.7rem', cursor:'pointer' }}>{isID ? '+ Unggah' : '+ Upload'}</button>
+                          <button onClick={() => { setModalPhotos([]); setVendorInvoiceModal(po); }} style={{ background:'rgba(59, 130, 246, 0.75)', color:'#ffffff', border:'1px solid #3b82f6', padding:'4px 8px', borderRadius:'6px', fontSize:'0.7rem', cursor:'pointer' }}>{isID ? '+ Unggah' : '+ Upload'}</button>
                         )}
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
@@ -3549,7 +3549,7 @@ const Accounting = () => {
                                  taxAmount: po.tax_amount || 0,
                                  taxProof: po.tax_proof_photo || []
                               });
-                           }} style={{ background:'rgba(255,193,7,0.1)', color:'var(--secondary)', border:'1px dashed var(--secondary)', padding:'4px 8px', borderRadius:'6px', fontSize:'0.7rem', cursor:'pointer' }}>{isID ? '+ Bukti Pajak' : '+ Tax Proof'}</button>
+                           }} style={{ background:'rgba(255, 193, 7, 0.75)', color:'#030712', border:'1px solid var(--secondary)', padding:'4px 8px', borderRadius:'6px', fontSize:'0.7rem', cursor:'pointer' }}>{isID ? '+ Bukti Pajak' : '+ Tax Proof'}</button>
                         ) : (
                            <span style={{ color:'var(--text-muted)', fontSize:'0.75rem' }}>—</span>
                         )}
@@ -3887,7 +3887,7 @@ const Accounting = () => {
                   <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>Biaya Tambahan (Extra Charges)</label>
                   <button 
                     onClick={() => setEditingInvoice({...editingInvoice, extra_charges: [...(editingInvoice.extra_charges || []), { description: '', amount: 0 }]})}
-                    style={{ background:'rgba(212,175,55,0.1)', color:'var(--secondary)', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
+                    style={{ background:'rgba(212, 175, 55, 0.75)', color:'#030712', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
                   >
                     + Tambah Biaya
                   </button>
@@ -3923,7 +3923,7 @@ const Accounting = () => {
                           const n = (editingInvoice.extra_charges || []).filter((_, i) => i !== idx);
                           setEditingInvoice({...editingInvoice, extra_charges: n});
                         }}
-                        style={{ background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'none', borderRadius:'6px', height:'32px', cursor:'pointer' }}
+                        style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', height:'32px', cursor:'pointer' }}
                       >
                         <X size={14} />
                       </button>
@@ -4087,13 +4087,13 @@ const Accounting = () => {
             <div style={{ marginBottom:'25px' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
                 <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Potongan Pajak / Lainnya' : 'Tax Deductions / Others'}</label>
-                <button onClick={() => setSalaryForm({...salaryForm, taxes: [...salaryForm.taxes, { name: '', amount: 0 }]})} style={{ background:'rgba(139,92,246,0.1)', color:'#8b5cf6', border:'1px solid #8b5cf6', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}>+ {isID ? 'Tambah Potongan' : 'Add Deduction'}</button>
+                <button onClick={() => setSalaryForm({...salaryForm, taxes: [...salaryForm.taxes, { name: '', amount: 0 }]})} style={{ background:'rgba(139, 92, 246, 0.75)', color:'#ffffff', border:'1px solid #8b5cf6', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}>+ {isID ? 'Tambah Potongan' : 'Add Deduction'}</button>
               </div>
               {salaryForm.taxes.map((tax, idx) => (
                 <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 120px 32px', gap:'10px', marginBottom:'8px' }}>
                   <input type="text" placeholder={isID ? "Deskripsi (misal PPh21)" : "Description (e.g. Tax PPh21)"} value={tax.name} onChange={e => { const n=[...salaryForm.taxes]; n[idx].name=e.target.value; setSalaryForm({...salaryForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
                   <input type="number" placeholder={isID ? "Nominal" : "Amount"} value={tax.amount} onChange={e => { const n=[...salaryForm.taxes]; n[idx].amount=e.target.value; setSalaryForm({...salaryForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
-                  <button onClick={() => setSalaryForm({...salaryForm, taxes: salaryForm.taxes.filter((_,i)=>i!==idx)})} style={{ background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'none', borderRadius:'6px', cursor:'pointer' }}><X size={14}/></button>
+                  <button onClick={() => setSalaryForm({...salaryForm, taxes: salaryForm.taxes.filter((_,i)=>i!==idx)})} style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', cursor:'pointer' }}><X size={14}/></button>
                 </div>
               ))}
             </div>
@@ -4194,7 +4194,7 @@ const Accounting = () => {
                     style={{ flex: 1, padding: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)' }}
                   />
                   {reimbursementForm.items.length > 1 && (
-                    <button onClick={() => { const items = reimbursementForm.items.filter((_, i) => i !== idx); setReimbursementForm({ ...reimbursementForm, items }); }} style={{ padding: '10px', background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+                    <button onClick={() => { const items = reimbursementForm.items.filter((_, i) => i !== idx); setReimbursementForm({ ...reimbursementForm, items }); }} style={{ padding: '10px', background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
                       <Trash2 size={18} />
                     </button>
                   )}
@@ -4202,7 +4202,7 @@ const Accounting = () => {
               ))}
               <button
                 onClick={() => setReimbursementForm({ ...reimbursementForm, items: [...reimbursementForm.items, { details: '', amount: '', receiptPhoto: '' }] })}
-                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(20,184,166,0.1)', color: '#14b8a6', padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', marginTop: '5px' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(20, 184, 166, 0.75)', color: '#ffffff', padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '600', marginTop: '5px' }}
               >
                 <Plus size={16} /> {isID ? 'Tambah Item' : 'Add Item'}
               </button>
@@ -4579,13 +4579,13 @@ const Accounting = () => {
             <div style={{ marginBottom:'25px' }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
                 <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Potongan Pajak / Lainnya' : 'Tax / Other Deductions'}</label>
-                <button onClick={() => setOtherExpenseForm({...otherExpenseForm, taxes: [...(otherExpenseForm.taxes || []), { name: '', amount: 0 }]})} style={{ background:'rgba(236,72,153,0.1)', color:'#ec4899', border:'1px solid #ec4899', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}>{isID ? '+ Tambah Potongan' : '+ Add Deduction'}</button>
+                <button onClick={() => setOtherExpenseForm({...otherExpenseForm, taxes: [...(otherExpenseForm.taxes || []), { name: '', amount: 0 }]})} style={{ background:'rgba(236, 72, 153, 0.75)', color:'#ffffff', border:'1px solid #ec4899', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}>{isID ? '+ Tambah Potongan' : '+ Add Deduction'}</button>
               </div>
               {(otherExpenseForm.taxes || []).map((tax, idx) => (
                 <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 120px 32px', gap:'10px', marginBottom:'8px' }}>
                   <input type="text" placeholder={isID ? 'Deskripsi Potongan' : 'Deduction Description'} value={tax.name} onChange={e => { const n=[...otherExpenseForm.taxes]; n[idx].name=e.target.value; setOtherExpenseForm({...otherExpenseForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
                   <input type="number" placeholder={isID ? 'Nominal' : 'Amount'} value={tax.amount} onChange={e => { const n=[...otherExpenseForm.taxes]; n[idx].amount=e.target.value; setOtherExpenseForm({...otherExpenseForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
-                  <button onClick={() => setOtherExpenseForm({...otherExpenseForm, taxes: otherExpenseForm.taxes.filter((_,i)=>i!==idx)})} style={{ background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'none', borderRadius:'6px', cursor:'pointer' }}><X size={14}/></button>
+                  <button onClick={() => setOtherExpenseForm({...otherExpenseForm, taxes: otherExpenseForm.taxes.filter((_,i)=>i!==idx)})} style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', cursor:'pointer' }}><X size={14}/></button>
                 </div>
               ))}
             </div>
@@ -5129,7 +5129,7 @@ const Accounting = () => {
                 <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Pemotongan Pajak (PPh 23 / Lainnya)' : 'Tax Deduction (PPh 23 / Others)'}</label>
                 <button 
                   onClick={() => setSettleForm({...settleForm, taxes: [...settleForm.taxes, { name: '', amount: 0 }]})}
-                  style={{ background:'rgba(255,193,7,0.1)', color:'var(--secondary)', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
+                  style={{ background:'rgba(255, 193, 7, 0.75)', color:'#030712', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
                 >
                   + {isID ? 'Tambah Pajak' : 'Add Tax'}
                 </button>
@@ -5161,7 +5161,7 @@ const Accounting = () => {
                   />
                   <button 
                     onClick={() => setSettleForm({...settleForm, taxes: settleForm.taxes.filter((_, i) => i !== idx)})}
-                    style={{ background:'rgba(239,68,68,0.1)', color:'#ef4444', border:'none', borderRadius:'8px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
+                    style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'8px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}
                   >
                     <X size={14}/>
                   </button>
@@ -5254,7 +5254,7 @@ const Accounting = () => {
                   <Save size={18}/> {isID ? 'Simpan Rekening' : 'Save Account'}
                 </ButtonWithLoading>
                 {bankModal && (
-                  <button className="btn" style={{ background:'rgba(255,255,255,0.1)', color:'var(--text)' }} onClick={() => setBankModal(null)}>
+                  <button className="btn" style={{ background:'rgba(255, 255, 255, 0.75)', color:'#030712' }} onClick={() => setBankModal(null)}>
                     {isID ? 'Batal / Tambah Baru' : 'Reset / Add New'}
                   </button>
                 )}
@@ -5286,14 +5286,14 @@ const Accounting = () => {
                         >{isID ? 'Ya' : 'Yes'}</button>
                         <button 
                           className="btn btn-sm" 
-                          style={{ background:'rgba(255,255,255,0.1)', color:'var(--text)', border:'none', padding:'2px 8px', fontSize:'0.7rem' }}
+                          style={{ background:'rgba(255, 255, 255, 0.75)', color:'#030712', border:'none', padding:'2px 8px', fontSize:'0.7rem' }}
                           onClick={() => setBankToDelete(null)}
                         >{isID ? 'Batal' : 'Cancel'}</button>
                       </div>
                     ) : (
                       <>
-                        <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(59, 130, 246, 0.1)', color:'#3b82f6' }} onClick={() => setBankModal(bank)}><Edit3 size={14}/> {isID ? 'Ubah' : 'Edit'}</button>
-                        <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(239, 68, 68, 0.1)', color:'#ef4444' }} onClick={() => setBankToDelete(bank.id)}><Trash2 size={14}/> {isID ? 'Hapus' : 'Delete'}</button>
+                        <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(59, 130, 246, 0.75)', color:'#ffffff' }} onClick={() => setBankModal(bank)}><Edit3 size={14}/> {isID ? 'Ubah' : 'Edit'}</button>
+                        <button className="btn" style={{ padding:'6px 12px', fontSize:'0.75rem', background:'rgba(239, 68, 68, 0.75)', color:'#ffffff' }} onClick={() => setBankToDelete(bank.id)}><Trash2 size={14}/> {isID ? 'Hapus' : 'Delete'}</button>
                       </>
                     )}
                   </div>
@@ -5362,7 +5362,7 @@ const Accounting = () => {
                   gap:'10px', 
                   background:'rgba(255,255,255,0.02)', 
                   cursor: isUploading ? 'not-allowed' : 'pointer',
-                  opacity: isUploading ? 0.6 : 1
+                  opacity: isUploading ? 0.75 : 1
                 }}
                 onClick={() => !isUploading && fileInputRef.current?.click()}
               >

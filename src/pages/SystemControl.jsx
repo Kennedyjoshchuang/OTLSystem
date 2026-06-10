@@ -187,7 +187,7 @@ const SystemControl = () => {
           </div>
           <button
             className="btn"
-            style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+            style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: '1px solid rgba(239, 68, 68, 0.85)' }}
             onClick={() => openConfirm('all', null, 'ALL SYSTEM DATA')}
           >
             <AlertTriangle size={18} />
@@ -341,7 +341,7 @@ const SystemControl = () => {
                 )}
 
                 <div style={{ display: 'flex', gap: '15px' }}>
-                  <button onClick={closeConfirm} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>
+                  <button onClick={closeConfirm} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.75)', color: '#030712', border: '1px solid var(--border)' }}>
                     {isID ? 'Batal' : 'Cancel'}
                   </button>
                   <button
@@ -353,7 +353,7 @@ const SystemControl = () => {
                       background: (verifyStep === 1 || (verifyStep === 2 && verifyText.toUpperCase() === 'DELETE') || (verifyStep === 3 && otpInput.length === 4)) ? '#ef4444' : '#374151',
                       color: 'white',
                       cursor: ((verifyStep === 2 && verifyText.toUpperCase() !== 'DELETE') || (verifyStep === 3 && otpInput.length !== 4)) ? 'not-allowed' : 'pointer',
-                      opacity: ((verifyStep === 2 && verifyText.toUpperCase() !== 'DELETE') || (verifyStep === 3 && otpInput.length !== 4)) ? 0.6 : 1
+                      opacity: ((verifyStep === 2 && verifyText.toUpperCase() !== 'DELETE') || (verifyStep === 3 && otpInput.length !== 4)) ? 0.75 : 1
                     }}
                   >
                     {verifyStep === 1 ? (isID ? 'Konfirmasi Hapus' : 'Confirm Deletion') : (verifyStep === 2 ? (isID ? 'Otorisasi Teks' : 'Authorize Text') : (isID ? 'Verifikasi Kunci Keamanan' : 'Verify Security Key'))}

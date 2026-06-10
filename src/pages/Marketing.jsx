@@ -509,11 +509,11 @@ const Marketing = () => {
                     <input required type="number" value={item.rate} onChange={e => updateQuoteItem(index, 'rate', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                     <input required type="number" value={item.quantity} onChange={e => updateQuoteItem(index, 'quantity', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                     <input type="text" value={item.unit} onChange={e => updateQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <button type="button" onClick={() => removeQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                    <button type="button" onClick={() => removeQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                   </div>
                 ))}
 
-                <button type="button" onClick={addQuoteItem} className="btn" style={{ marginBottom: '20px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px dashed var(--secondary)', width: '100%' }}>
+                <button type="button" onClick={addQuoteItem} className="btn" style={{ marginBottom: '20px', background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px dashed var(--secondary)', width: '100%' }}>
                   + Add Item
                 </button>
 
@@ -530,7 +530,7 @@ const Marketing = () => {
 
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
-                  <button type="button" onClick={() => setActiveProspectForQuote(null)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>Close Form</button>
+                  <button type="button" onClick={() => setActiveProspectForQuote(null)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.75)', color: '#030712', border: '1px solid var(--border)' }}>Close Form</button>
                   <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1, background: 'var(--secondary)', color: 'white' }} onClick={handleCreateProspectQuotation}>
                     {t('createQuotation')}
                   </ButtonWithLoading>
@@ -606,11 +606,11 @@ const Marketing = () => {
                     <input required type="number" value={item.rate} onChange={e => updateEditQuoteItem(index, 'rate', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                     <input required type="number" value={item.quantity} onChange={e => updateEditQuoteItem(index, 'quantity', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                     <input type="text" value={item.unit} onChange={e => updateEditQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <button type="button" onClick={() => removeEditQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                    <button type="button" onClick={() => removeEditQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
                   </div>
                 ))}
 
-                <button type="button" onClick={addEditQuoteItem} className="btn" style={{ marginBottom: '20px', background: 'rgba(212, 175, 55, 0.1)', color: 'var(--secondary)', border: '1px dashed var(--secondary)', width: '100%' }}>
+                <button type="button" onClick={addEditQuoteItem} className="btn" style={{ marginBottom: '20px', background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)', width: '100%' }}>
                   + Add Item
                 </button>
 
@@ -638,7 +638,7 @@ const Marketing = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
-                  <button type="button" onClick={() => setActiveQuotationForEdit(null)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>Close Form</button>
+                  <button type="button" onClick={() => setActiveQuotationForEdit(null)} className="btn" style={{ flex: 1, background: 'rgba(255, 255, 255, 0.75)', color: '#030712', border: '1px solid var(--border)' }}>Close Form</button>
                   <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1, background: 'var(--secondary)', color: 'white' }} onClick={handleSaveQuotationEdit}>
                     Simpan Perubahan
                   </ButtonWithLoading>
@@ -727,7 +727,7 @@ const Marketing = () => {
                   <textarea required rows="2" value={editProspectData.description} onChange={e => setEditProspectData({ ...editProspectData, description: e.target.value })} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '15px', width: '100%', fontFamily: 'inherit' }} />
                 </div>
                 <div style={{ display: 'flex', gap: '15px', gridColumn: 'span 3', marginTop: '20px' }}>
-                  <button type="button" onClick={() => setActiveProspectForEdit(null)} className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', color: 'var(--text)', border: '1px solid var(--border)' }}>Batal</button>
+                  <button type="button" onClick={() => setActiveProspectForEdit(null)} className="btn" style={{ flex: 1, background: 'rgba(255, 255, 255, 0.75)', color: '#030712', border: '1px solid var(--border)' }}>Batal</button>
                   <ButtonWithLoading type="submit" className="btn btn-gold" style={{ flex: 1, background: 'var(--secondary)', color: 'white' }} onClick={handleProspectEditSubmit}>
                     Simpan Perubahan
                   </ButtonWithLoading>
@@ -1122,7 +1122,7 @@ const Marketing = () => {
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <ButtonWithLoading
                               className="btn-icon"
-                              style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}
+                              style={{ color: '#030712', background: 'rgba(245, 158, 11, 0.75)' }}
                               onClick={() => unapproveQuotation(quote.id)}
                               title="Batalkan Approval (kembalikan ke Pending)"
                             >
@@ -1131,7 +1131,7 @@ const Marketing = () => {
                             {user?.role === 'owner' && (
                               <button
                                 className="btn-icon"
-                                style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)' }}
+                                style={{ color: '#ffffff', background: 'rgba(239, 68, 68, 0.75)' }}
                                 onClick={() => setDeleteConfirm({ id: quote.id, name: quote.customerName, type: 'quotation' })}
                                 title="Hapus"
                               >
@@ -1216,7 +1216,7 @@ const Marketing = () => {
                           {quote.status === 'pending' && (
                             <ButtonWithLoading
                               className="btn-icon"
-                              style={{ color: '#10b981', background: 'rgba(16, 185, 129, 0.1)' }}
+                              style={{ color: '#ffffff', background: 'rgba(16, 185, 129, 0.75)' }}
                               onClick={async () => {
                                 await approveQuotation(quote.id);
                                 setActiveTab('jobOrders');
@@ -1229,7 +1229,7 @@ const Marketing = () => {
                           {quote.status === 'approved' && (
                             <ButtonWithLoading
                               className="btn-icon"
-                              style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)' }}
+                              style={{ color: '#030712', background: 'rgba(245, 158, 11, 0.75)' }}
                               onClick={() => unapproveQuotation(quote.id)}
                               title="Batalkan Approval"
                             >
@@ -1238,7 +1238,7 @@ const Marketing = () => {
                           )}
                           <button
                             className="btn-icon"
-                            style={{ color: 'var(--secondary)', background: 'rgba(212, 175, 55, 0.1)' }}
+                            style={{ color: '#030712', background: 'rgba(212, 175, 55, 0.75)' }}
                             onClick={() => handleDownload(quote)}
                             title="Print Draft Quotation"
                           >
@@ -1246,7 +1246,7 @@ const Marketing = () => {
                           </button>
                           <button
                             className="btn-icon"
-                            style={{ color: 'var(--secondary)', background: 'rgba(212, 175, 55, 0.1)' }}
+                            style={{ color: '#030712', background: 'rgba(212, 175, 55, 0.75)' }}
                             onClick={() => handleOpenEditQuotationModal(quote)}
                             title="Edit Quotation"
                           >
@@ -1255,7 +1255,7 @@ const Marketing = () => {
                           {user?.role === 'owner' && (
                             <button
                               className="btn-icon"
-                              style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)' }}
+                              style={{ color: '#ffffff', background: 'rgba(239, 68, 68, 0.75)' }}
                               onClick={() => setDeleteConfirm({ id: quote.id, name: quote.customerName, type: 'quotation' })}
                               title="Hapus Penawaran"
                             >
@@ -1326,7 +1326,7 @@ const Marketing = () => {
                         </button>
                         <button
                           className="btn-icon"
-                          style={{ color: 'var(--secondary)', background: 'rgba(212, 175, 55, 0.1)', height: '28px', width: '28px' }}
+                          style={{ color: '#030712', background: 'rgba(212, 175, 55, 0.75)', height: '28px', width: '28px' }}
                           onClick={() => handleOpenEditModal(prospect)}
                           title="Edit Calon Pelanggan"
                         >
@@ -1335,7 +1335,7 @@ const Marketing = () => {
                         {prospect.status === 'deal' && (
                           <button
                             className="btn-icon"
-                            style={{ color: '#f59e0b', background: 'rgba(245,158,11,0.1)', height: '28px', width: '28px' }}
+                            style={{ color: '#030712', background: 'rgba(245, 158, 11, 0.75)', height: '28px', width: '28px' }}
                             onClick={() => updateProspectStatus(prospect.id, 'negotiation')}
                             title="Batalkan Deal (kembalikan ke Negosiasi)"
                           >
@@ -1345,7 +1345,7 @@ const Marketing = () => {
                         {user?.role === 'owner' && (
                           <button
                             className="btn-icon"
-                            style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', height: '28px', width: '28px' }}
+                            style={{ color: '#ffffff', background: 'rgba(239, 68, 68, 0.75)', height: '28px', width: '28px' }}
                             onClick={() => setDeleteConfirm({ id: prospect.id, name: prospect.name, type: 'prospect' })}
                           >
                             <Trash2 size={14} />

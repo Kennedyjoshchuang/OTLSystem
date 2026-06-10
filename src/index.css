@@ -13,7 +13,7 @@
   --border: rgba(255, 255, 255, 0.05);
   --glass: rgba(3, 7, 18, 0.8);
   --glass-border: rgba(212, 175, 55, 0.2);
-  --input-bg: rgba(255, 255, 255, 0.03);
+  --input-bg: rgba(17, 24, 39, 0.85);
 }
 
 .light-theme {
@@ -100,10 +100,10 @@ body {
 }
 
 .btn-danger {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.75);
+  color: #ffffff;
+  border: 1px solid rgba(239, 68, 68, 0.85);
+  box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.4);
 }
 
 .btn-danger:hover {
@@ -563,6 +563,18 @@ table thead th {
 
 .login-accounts-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 600px) { .login-accounts-grid { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); } }
+
+/* Global legibility and contrast enhancements for disabled items and placeholders */
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.75 !important;
+}
+
+::placeholder {
+  opacity: 0.75 !important;
+}
 
 
 

@@ -497,7 +497,7 @@ const Executor = () => {
                       )}
                       <button 
                         className="btn-icon" 
-                        style={{ width: '38px', height: '38px', color: 'var(--secondary)', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)' }}
+                        style={{ width: '38px', height: '38px', color: '#030712', background: 'rgba(212, 175, 55, 0.75)', border: '1px solid rgba(212, 175, 55, 0.85)' }}
                         onClick={(e) => { e.stopPropagation(); navigate(`/executor/surat-jalan/${jo.id}`); }}
                         title={isID ? "Lihat Surat Jalan" : "View Delivery Order"}
                       >
@@ -505,7 +505,7 @@ const Executor = () => {
                       </button>
                       <button 
                         className="btn-icon" 
-                        style={{ width: '38px', height: '38px', color: '#10b981', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)' }}
+                        style={{ width: '38px', height: '38px', color: '#ffffff', background: 'rgba(16, 185, 129, 0.75)', border: '1px solid rgba(16, 185, 129, 0.85)' }}
                         onClick={(e) => { e.stopPropagation(); navigate(`/executor/surat-jalan/${jo.id}?print=true`); }}
                         title={isID ? "Cetak Surat Jalan" : "Print Delivery Order"}
                       >
@@ -514,7 +514,7 @@ const Executor = () => {
                       {activeTab === 'records' && (
                         <button 
                           className="btn-icon" 
-                          style={{ width: '38px', height: '38px', color: 'var(--gold-metallic)', background: 'rgba(212, 175, 55, 0.1)', border: '1px solid rgba(212, 175, 55, 0.3)' }}
+                          style={{ width: '38px', height: '38px', color: '#030712', background: 'rgba(212, 175, 55, 0.75)', border: '1px solid rgba(212, 175, 55, 0.85)' }}
                           onClick={(e) => { e.stopPropagation(); toggleRow(jo); }}
                           title={isID ? "Ubah Catatan Data" : "Edit Records Data"}
                         >
@@ -524,7 +524,7 @@ const Executor = () => {
                       {activeTab === 'records' && (
                         <button
                           className="btn-icon"
-                          style={{ width: '38px', height: '38px', color: '#ef4444', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}
+                          style={{ width: '38px', height: '38px', color: '#ffffff', background: 'rgba(239,68,68,0.75)', border: '1px solid rgba(239,68,68,0.85)' }}
                           onClick={(e) => { e.stopPropagation(); setJoToDelete(jo); setVerifyCode(''); setVerifyError(''); }}
                           title={isID ? "Hapus Catatan JO" : "Delete JO Record"}
                         >
@@ -556,7 +556,7 @@ const Executor = () => {
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input type="text" value={c} onChange={e => handleLocalListItemUpdate(jo.id, 'containerNo', i, e.target.value)} placeholder="CONT-123456" />
                                       {arr.length > 1 && (
-                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title={isID ? "Hapus" : "Delete"}>
+                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'containerNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.75 }} title={isID ? "Hapus" : "Delete"}>
                                           <X size={12} />
                                         </button>
                                       )}
@@ -574,7 +574,7 @@ const Executor = () => {
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input type="text" value={v} onChange={e => handleLocalListItemUpdate(jo.id, 'vehicleNo', i, e.target.value)} placeholder="B 1234 ABC" />
                                       {arr.length > 1 && (
-                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title={isID ? "Hapus" : "Delete"}>
+                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'vehicleNo', i)} style={{ padding: '5px', height: 'auto', opacity: 0.75 }} title={isID ? "Hapus" : "Delete"}>
                                           <X size={12} />
                                         </button>
                                       )}
@@ -592,7 +592,7 @@ const Executor = () => {
                                     <div key={i} style={{ display: 'flex', gap: '5px', marginBottom: '5px' }}>
                                       <input type="text" value={d} onChange={e => handleLocalListItemUpdate(jo.id, 'driverName', i, e.target.value)} placeholder={isID ? "Nama Sopir" : "Driver Name"} />
                                       {arr.length > 1 && (
-                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto', opacity: 0.5 }} title={isID ? "Hapus" : "Delete"}>
+                                        <button className="btn-icon" onClick={() => removeLocalListItem(jo.id, 'driverName', i)} style={{ padding: '5px', height: 'auto', opacity: 0.75 }} title={isID ? "Hapus" : "Delete"}>
                                           <X size={12} />
                                         </button>
                                       )}
