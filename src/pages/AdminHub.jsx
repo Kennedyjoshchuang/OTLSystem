@@ -239,11 +239,52 @@ const AdminHub = () => {
 
   const approvedQuotes = quotations.filter(q => q.status === 'approved');
 
+  const getAvailableItems = (quote, jobOrdersList = []) => {
+    const relatedJOs = jobOrdersList.filter(jo => String(jo.quotationId) === String(quote.id));
+    const items = quote.items && quote.items.length > 0 ? quote.items : [];
+    
+    if (items.length > 0) {
+      // 1. Match JOs with non-empty instructions to items
+      const unmatchedItems = [...items];
+      const unmatchedJOs = [];
+      
+      relatedJOs.forEach(jo => {
+        const joDesc = (jo.instruction || '').trim().toLowerCase();
+        if (joDesc) {
+          const matchIndex = unmatchedItems.findIndex(item => 
+            (item.description || '').trim().toLowerCase() === joDesc
+          );
+          if (matchIndex !== -1) {
+            unmatchedItems.splice(matchIndex, 1);
+          } else {
+            unmatchedJOs.push(jo);
+          }
+        } else {
+          unmatchedJOs.push(jo);
+        }
+      });
+      
+      // 2. Match remaining JOs (which have empty instruction) 1-to-1 with remaining items
+      const finalUnmatchedItems = [...unmatchedItems];
+      unmatchedJOs.forEach(() => {
+        if (finalUnmatchedItems.length > 0) {
+          finalUnmatchedItems.shift();
+        }
+      });
+      
+      return finalUnmatchedItems;
+    } else {
+      const hasJO = relatedJOs.length > 0;
+      return hasJO ? [] : [{ description: quote.jobDescription || 'No description', rate: quote.rate, quantity: quote.quantity || 1 }];
+    }
+  };
+
   const handleCreateJO = (quote) => {
-    // If the quote has items array, use the selected one
+    const availableItems = getAvailableItems(quote, jobOrders);
     const hasItems = quote.items && quote.items.length > 0;
-    const activityDetail = hasItems ? quote.items[selectedActivityIndex].description : quote.jobDescription;
-    const rateDetail = hasItems ? parseFloat(quote.items[selectedActivityIndex].rate) : quote.rate;
+    const selectedItem = hasItems ? availableItems[selectedActivityIndex] : null;
+    const activityDetail = selectedItem ? selectedItem.description : quote.jobDescription;
+    const rateDetail = selectedItem ? parseFloat(selectedItem.rate) : quote.rate;
 
     createJO({
       quotationId: quote.id,
@@ -653,7 +694,8 @@ const AdminHub = () => {
                       // Pre-fill quantity from quote if available
                       const quote = approvedQuotes.find(q => q.id === qId);
                       if (quote) {
-                        const defaultQty = quote.items && quote.items.length > 0 ? quote.items[0].quantity : (quote.quantity || 1);
+                        const availableItems = getAvailableItems(quote, jobOrders);
+                        const defaultQty = availableItems.length > 0 ? (availableItems[0].quantity || 1) : (quote.quantity || 1);
                         setIssueQuantity(parseInt(defaultQty));
                       }
                     }}
@@ -670,14 +712,21 @@ const AdminHub = () => {
                     <option value="" style={{ background: 'var(--bg)', color: 'var(--text-muted)' }}>-- {isID ? 'Pilih Penawaran yang Disetujui' : 'Choose Approved Quotation'} --</option>
                     {quotations
                       .filter(q => q.status === 'approved')
-                      .filter(q => 
-                        q.id.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
-                        q.customerName.toLowerCase().includes(quoteSearchTerm.toLowerCase()) ||
-                        (q.items?.[0]?.description || q.jobDescription || '').toLowerCase().includes(quoteSearchTerm.toLowerCase())
-                      )
+                      .filter(q => getAvailableItems(q, jobOrders).length > 0)
+                      .filter(q => {
+                        const availableItems = getAvailableItems(q, jobOrders);
+                        const matchTerm = quoteSearchTerm.toLowerCase();
+                        const idMatch = q.id.toLowerCase().includes(matchTerm);
+                        const customerMatch = q.customerName.toLowerCase().includes(matchTerm);
+                        const descriptionMatch = availableItems.some(item => 
+                          (item.description || '').toLowerCase().includes(matchTerm)
+                        ) || (q.jobDescription || '').toLowerCase().includes(matchTerm);
+                        return idMatch || customerMatch || descriptionMatch;
+                      })
                       .map(quote => {
-                        const label = Array.isArray(quote.items) && quote.items.length > 0
-                          ? quote.items[0].description
+                        const availableItems = getAvailableItems(quote, jobOrders);
+                        const label = availableItems.length > 0
+                          ? availableItems[0].description
                           : (quote.jobDescription || 'No description');
                         return (
                           <option key={quote.id} value={quote.id} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
@@ -690,7 +739,9 @@ const AdminHub = () => {
 
                 {selectedQuoteId && (() => {
                   const q = approvedQuotes.find(quote => quote.id === selectedQuoteId);
-                  const hasMultipleItems = q.items && q.items.length > 1;
+                  if (!q) return null;
+                  const availableItems = getAvailableItems(q, jobOrders);
+                  const hasMultipleItems = availableItems.length > 1;
 
                   return (
                     <motion.div
@@ -705,7 +756,7 @@ const AdminHub = () => {
                             onChange={e => {
                               const idx = parseInt(e.target.value);
                               setSelectedActivityIndex(idx);
-                              setIssueQuantity(parseInt(q.items[idx].quantity));
+                              setIssueQuantity(parseInt(availableItems[idx].quantity || 1));
                             }}
                             style={{
                               width: '100%',
@@ -717,7 +768,7 @@ const AdminHub = () => {
                               fontSize: '1rem'
                             }}
                           >
-                            {q.items.map((item, idx) => (
+                            {availableItems.map((item, idx) => (
                               <option key={idx} value={idx} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
                                 {item.description} (Qty: {item.quantity})
                               </option>
@@ -730,7 +781,7 @@ const AdminHub = () => {
                         <label style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
                           <span>{isID ? 'Jumlah yang Dikeluarkan' : 'Quantity to Issue'}</span>
                           <span style={{ color: 'var(--secondary)', fontSize: '0.75rem' }}>
-                            {isID ? 'Maks Kontrak: ' : 'Contract Max: '}{hasMultipleItems ? q.items[selectedActivityIndex].quantity : (q.quantity || 1)}
+                            {isID ? 'Maks Kontrak: ' : 'Contract Max: '}{availableItems.length > 0 ? (availableItems[selectedActivityIndex]?.quantity || 1) : (q.quantity || 1)}
                           </span>
                         </label>
                         <input
@@ -761,16 +812,16 @@ const AdminHub = () => {
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Detail Aktivitas Terpilih:' : 'Selected Activity Detail:'}</span>
                           <div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
                             {hasMultipleItems
-                              ? q.items[selectedActivityIndex].description
-                              : (q.items?.[0]?.description || q.jobDescription || '-')}
+                              ? availableItems[selectedActivityIndex]?.description
+                              : (availableItems[0]?.description || q.jobDescription || '-')}
                           </div>
                         </div>
                         <div>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Harga Kontrak:' : 'Contract Rate:'}</span>
                           <div style={{ fontWeight: '700', color: 'var(--secondary)' }}>
                             Rp {hasMultipleItems
-                              ? parseFloat(q.items[selectedActivityIndex].rate || 0).toLocaleString()
-                              : parseFloat(q.items?.[0]?.rate || q.rate || 0).toLocaleString()}
+                              ? parseFloat(availableItems[selectedActivityIndex]?.rate || 0).toLocaleString()
+                              : parseFloat(availableItems[0]?.rate || q.rate || 0).toLocaleString()}
                           </div>
                         </div>
                       </div>

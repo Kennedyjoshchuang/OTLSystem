@@ -261,8 +261,37 @@ const Executor = () => {
     // Sync to server before completing
     await updateJOStatus(jo.id, data);
     await completeJO(jo.id);
-    alert(isID ? `Job ${jo.id} selesai dan dipindahkan ke Records!` : `Job ${jo.id} completed and moved to Records!`);
+    alert(isID ? `Job ${jo.id} selesai dan dipindahkan to Records!` : `Job ${jo.id} completed and moved to Records!`);
     setUploadingForId(null);
+  };
+
+  const handleCancel = async (jo) => {
+    const confirmMsg = isID 
+      ? `Apakah Anda yakin ingin membatalkan pengiriman untuk Job Order ${jo.id}? Status akan dikembalikan ke pending dan semua data input akan direset.`
+      : `Are you sure you want to cancel dispatch for Job Order ${jo.id}? The status will be set back to pending and all input data will be reset.`;
+      
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const originalInstruction = (jo.instruction || jo.jobDescription || '').split(' ||| ')[0].trim();
+      
+      await updateJOStatus(jo.id, {
+        status: 'pending',
+        instruction: originalInstruction,
+        containerNo: [],
+        vehicleNo: [],
+        driverName: [],
+        activityStatus: '',
+        dispatchedAt: null,
+        completedAt: null
+      });
+      
+      alert(isID ? 'Pengiriman berhasil dibatalkan!' : 'Dispatch cancelled successfully!');
+      setUploadingForId(null);
+    } catch (err) {
+      console.error(err);
+      alert(isID ? 'Gagal membatalkan pengiriman.' : 'Failed to cancel dispatch.');
+    }
   };
 
   const handleSaveChanges = async (jo) => {
@@ -485,13 +514,22 @@ const Executor = () => {
                   <td style={{ padding: '15px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '8px' }}>
                       {activeTab === 'active' ? (
-                        <ButtonWithLoading 
-                          className="btn btn-gold" 
-                          style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                          onClick={(e) => { e.stopPropagation(); return handleDone(jo); }}
-                        >
-                          {isID ? 'Selesai' : 'Done'}
-                        </ButtonWithLoading>
+                        <>
+                          <ButtonWithLoading 
+                            className="btn btn-gold" 
+                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                            onClick={(e) => { e.stopPropagation(); return handleDone(jo); }}
+                          >
+                            {isID ? 'Selesai' : 'Done'}
+                          </ButtonWithLoading>
+                          <ButtonWithLoading 
+                            className="btn" 
+                            style={{ padding: '6px 12px', fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                            onClick={(e) => { e.stopPropagation(); return handleCancel(jo); }}
+                          >
+                            {isID ? 'Batal Kirim' : 'Cancel'}
+                          </ButtonWithLoading>
+                        </>
                       ) : (
                         <span className="badge badge-done" style={{ fontSize: '0.7rem' }}>{isID ? 'Diarsipkan' : 'Archived'}</span>
                       )}
