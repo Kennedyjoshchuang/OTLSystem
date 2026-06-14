@@ -478,7 +478,14 @@ const Executor = () => {
             {filteredJOs.map(jo => (
               <React.Fragment key={jo.id}>
                 <tr style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }} className="table-row-hover" onClick={() => toggleRow(jo)}>
-                  <td style={{ padding: '15px', fontWeight: '800', color: 'var(--secondary)' }}>{jo.id}</td>
+                  <td style={{ padding: '15px' }}>
+                    <div style={{ fontWeight: '800', color: 'var(--secondary)' }}>{jo.id}</div>
+                    {jo.quotationId && (
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }} title={isID ? "No. Penawaran" : "Quotation No."}>
+                        {isID ? 'Penawaran:' : 'Quote:'} {jo.quotationId}
+                      </div>
+                    )}
+                  </td>
                   <td style={{ padding: '15px' }}>
                     <div style={{ fontWeight: '600' }}>{jo.customerName}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{isID ? 'Jumlah:' : 'Qty:'} {jo.quantity}</div>
@@ -688,6 +695,12 @@ const Executor = () => {
                                   </div>
                                 )}
                               </div>
+
+                              {jo.quotationId && (
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px', marginBottom: '10px' }}>
+                                  <strong style={{ color: 'var(--text)' }}>{isID ? 'Referensi Penawaran:' : 'Quotation Reference:'}</strong> {jo.quotationId}
+                                </div>
+                              )}
 
                               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', border: '1px solid var(--glass-border)', padding: '12px', borderRadius: '8px' }}>
                                 <strong style={{ color: 'var(--text)' }}>{isID ? 'Instruksi Lengkap:' : 'Full Instruction:'}</strong> {jo.jobDescription}

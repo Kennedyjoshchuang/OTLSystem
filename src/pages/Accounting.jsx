@@ -2147,7 +2147,7 @@ const Accounting = () => {
 
                       <input type="number" min="1" value={line.qty} onChange={e=>updateCostLine(i,'qty',e.target.value)} placeholder="Qty" style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center' }}/>
                       
-                      <div style={{ fontSize:'0.85rem',color:'var(--secondary)',fontWeight:'600',padding:'9px',background:'rgba(255,255,255,0.03)',borderRadius:'8px',border:'1px solid var(--glass-border)' }}>
+                      <div style={{ fontSize:'0.85rem',color:'var(--secondary)',fontWeight:'600',padding:'9px',background:'rgba(3, 7, 18, 0.85)',borderRadius:'8px',border:'1px solid rgba(212, 175, 55, 0.3)' }}>
                         Rp {lineTotal.toLocaleString(isID ? 'id-ID' : 'en-US')}
                       </div>
                       
