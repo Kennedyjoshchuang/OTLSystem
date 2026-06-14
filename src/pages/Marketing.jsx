@@ -5,6 +5,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 
+const DEFAULT_TERMS = [
+  "Harga belum termasuk PPh23",
+  "Harga belum termasuk biaya asuransi 0.2% dari total nilai barang.",
+  "Harga belum termasuk buruh apabila diperlukan.",
+  "Harga berlaku hingga 15 Mei 2026 dikarenakan harga BBM sedang fluktuatif.",
+  "Syarat pembayaran: cash."
+];
+
 const Marketing = () => {
   const context = useApp();
   
@@ -24,7 +32,7 @@ const Marketing = () => {
   const [editProspectData, setEditProspectData] = useState({
     name: '', address: '', phone: '', email: '', pic: '', notes: '', description: '', marketingName: '', marketingPhone: '', marketingEmail: '', companyAddress: ''
   });
-  const [quoteGeneralNotes, setQuoteGeneralNotes] = useState('');
+  const [quoteTerms, setQuoteTerms] = useState(DEFAULT_TERMS);
   const [quotePic, setQuotePic] = useState('');
   const [quoteItems, setQuoteItems] = useState([
     { description: '', rate: '', quantity: '1', unit: '' }
@@ -40,14 +48,34 @@ const Marketing = () => {
   const [editQuoteValidFrom, setEditQuoteValidFrom] = useState('');
   const [editQuoteValidTo, setEditQuoteValidTo] = useState('');
   const [editQuoteItems, setEditQuoteItems] = useState([{ description: '', rate: '', quantity: '1', unit: '' }]);
-  const [editQuoteGeneralNotes, setEditQuoteGeneralNotes] = useState('');
+  const [editQuoteTerms, setEditQuoteTerms] = useState(DEFAULT_TERMS);
   const [editQuoteCompanyAddress, setEditQuoteCompanyAddress] = useState('');
+
+  const addQuoteTerm = () => {
+    setQuoteTerms([...quoteTerms, '']);
+  };
+
+  const removeQuoteTerm = (index) => {
+    setQuoteTerms(quoteTerms.filter((_, i) => i !== index));
+  };
+
+  const addEditQuoteTerm = () => {
+    setEditQuoteTerms([...editQuoteTerms, '']);
+  };
+
+  const removeEditQuoteTerm = (index) => {
+    setEditQuoteTerms(editQuoteTerms.filter((_, i) => i !== index));
+  };
 
   // Pre-fill PIC and Description when modal opens
   React.useEffect(() => {
     if (activeProspectForQuote) {
       setQuotePic(activeProspectForQuote.pic || '');
-      setQuoteGeneralNotes(activeProspectForQuote.notes || '');
+      if (activeProspectForQuote.notes && activeProspectForQuote.notes.trim()) {
+        setQuoteTerms(activeProspectForQuote.notes.split(/\r?\n/).map(t => t.trim()).filter(Boolean));
+      } else {
+        setQuoteTerms(DEFAULT_TERMS);
+      }
       // Use prospect's job description as default first item if empty
       if (activeProspectForQuote.description && quoteItems.length === 1 && !quoteItems[0].description) {
         setQuoteItems([{ description: activeProspectForQuote.description, rate: '', quantity: '1', unit: '' }]);
@@ -171,7 +199,7 @@ const Marketing = () => {
         address: activeProspectForQuote.address,
         jobDescription: combinedDescription,
         items: quoteItems,
-        generalNotes: quoteGeneralNotes,
+        generalNotes: quoteTerms.filter(t => t.trim()).join('\n'),
         total: totalAmount,
         rate: totalAmount,
         quantity: 1,
@@ -190,7 +218,7 @@ const Marketing = () => {
         address: activeProspectForQuote.address,
         companyAddress: activeProspectForQuote.companyAddress,
         items: quoteItems,
-        generalNotes: quoteGeneralNotes,
+        generalNotes: quoteTerms.filter(t => t.trim()).join('\n'),
         validTo: quoteValidTo,
         date: new Date(),
         rate: totalAmount,
@@ -201,7 +229,7 @@ const Marketing = () => {
       window.open('/print/quotation', '_blank');
 
       setActiveProspectForQuote(null);
-      setQuoteGeneralNotes('');
+      setQuoteTerms(DEFAULT_TERMS);
       setQuotePic('');
       setQuoteValidFrom('');
       setQuoteValidTo('');
@@ -223,7 +251,13 @@ const Marketing = () => {
       quantity: item.quantity || '1',
       unit: item.unit || ''
     })) : [{ description: '', rate: '', quantity: '1', unit: '' }]);
-    setEditQuoteGeneralNotes(quote.generalNotes || '');
+    
+    if (quote.generalNotes && quote.generalNotes.trim()) {
+      setEditQuoteTerms(quote.generalNotes.split(/\r?\n/).map(t => t.trim()).filter(Boolean));
+    } else {
+      setEditQuoteTerms(DEFAULT_TERMS);
+    }
+    
     setEditQuoteCompanyAddress(quote.companyAddress || '');
   };
 
@@ -251,7 +285,7 @@ const Marketing = () => {
         pic: editQuotePic,
         jobDescription: combinedDescription,
         items: editQuoteItems,
-        generalNotes: editQuoteGeneralNotes,
+        generalNotes: editQuoteTerms.filter(t => t.trim()).join('\n'),
         total: totalAmount,
         rate: totalAmount,
         validFrom: editQuoteValidFrom,
@@ -517,15 +551,76 @@ const Marketing = () => {
                   + Add Item
                 </button>
 
-                <div className="input-group" style={{ marginBottom: '20px' }}>
-                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Catatan Penawaran (Tampil di bagian bawah)</label>
-                  <textarea
-                    rows="3"
-                    value={quoteGeneralNotes}
-                    onChange={e => setQuoteGeneralNotes(e.target.value)}
-                    placeholder="Masukkan syarat & ketentuan atau catatan tambahan di sini..."
-                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '15px', width: '100%', fontFamily: 'inherit' }}
-                  />
+                <div style={{ marginBottom: '25px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
+                    Catatan & Ketentuan Penawaran (T&C)
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {quoteTerms.map((term, index) => (
+                      <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)', minWidth: '24px', fontWeight: '600', fontSize: '0.9rem', textAlign: 'right' }}>
+                          {index + 1}.
+                        </span>
+                        <input
+                          type="text"
+                          value={term}
+                          onChange={e => {
+                            const newTerms = [...quoteTerms];
+                            newTerms[index] = e.target.value;
+                            setQuoteTerms(newTerms);
+                          }}
+                          placeholder={`Syarat & ketentuan point ${index + 1}...`}
+                          style={{
+                            flex: 1,
+                            background: 'var(--input-bg)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            color: 'var(--text)',
+                            padding: '10px'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeQuoteTerm(index)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.75)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            width: '38px',
+                            height: '38px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '1.2rem',
+                            flexShrink: 0
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addQuoteTerm}
+                    className="btn"
+                    style={{
+                      background: 'rgba(212, 175, 55, 0.75)',
+                      color: '#030712',
+                      border: '1px dashed var(--secondary)',
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      marginTop: '12px'
+                    }}
+                  >
+                    + Tambah Point Catatan
+                  </button>
                 </div>
 
 
@@ -626,15 +721,76 @@ const Marketing = () => {
                   />
                 </div>
 
-                <div className="input-group" style={{ marginBottom: '20px' }}>
-                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Catatan Penawaran (Tampil di bagian bawah)</label>
-                  <textarea
-                    rows="3"
-                    value={editQuoteGeneralNotes}
-                    onChange={e => setEditQuoteGeneralNotes(e.target.value)}
-                    placeholder="Syarat & ketentuan..."
-                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '15px', width: '100%', fontFamily: 'inherit' }}
-                  />
+                <div style={{ marginBottom: '25px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600', display: 'block', marginBottom: '12px' }}>
+                    Catatan & Ketentuan Penawaran (T&C)
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {editQuoteTerms.map((term, index) => (
+                      <div key={index} style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <span style={{ color: 'var(--text-muted)', minWidth: '24px', fontWeight: '600', fontSize: '0.9rem', textAlign: 'right' }}>
+                          {index + 1}.
+                        </span>
+                        <input
+                          type="text"
+                          value={term}
+                          onChange={e => {
+                            const newTerms = [...editQuoteTerms];
+                            newTerms[index] = e.target.value;
+                            setEditQuoteTerms(newTerms);
+                          }}
+                          placeholder={`Syarat & ketentuan point ${index + 1}...`}
+                          style={{
+                            flex: 1,
+                            background: 'var(--input-bg)',
+                            border: '1px solid var(--border)',
+                            borderRadius: '8px',
+                            color: 'var(--text)',
+                            padding: '10px'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeEditQuoteTerm(index)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.75)',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '8px',
+                            width: '38px',
+                            height: '38px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            fontSize: '1.2rem',
+                            flexShrink: 0
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addEditQuoteTerm}
+                    className="btn"
+                    style={{
+                      background: 'rgba(212, 175, 55, 0.75)',
+                      color: '#030712',
+                      border: '1px dashed var(--secondary)',
+                      width: '100%',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      marginTop: '12px'
+                    }}
+                  >
+                    + Tambah Point Catatan
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '15px', marginTop: '20px' }}>
