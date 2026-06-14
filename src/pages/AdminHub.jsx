@@ -64,7 +64,7 @@ const AdminHub = () => {
   };
 
   const vendorList = vendors || [];
-  const issuedJOs = jobOrders.filter(jo => jo.status === 'dispatched' || jo.status === 'done');
+  const issuedJOs = jobOrders.filter(jo => jo.status === 'dispatched' || jo.status === 'done' || jo.status === 'invoiced');
   const poVendor = vendorList.find(v => v.id === poVendorId);
 
   const addPOItem = () => setPoItems(p => [...p, { serviceIdx: '', qty: 1 }]);

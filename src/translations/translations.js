@@ -44,6 +44,8 @@ export const translations = {
     pending: "Pending",
     approved: "Approved",
     approve: "Approve",
+    done: "Done",
+    invoiced: "Invoiced",
     
     // Admin
     jobOrderDispatch: "Job Order Dispatch",
@@ -143,6 +145,8 @@ export const translations = {
     pending: "Tertunda",
     approved: "Disetujui",
     approve: "Setujui",
+    done: "Selesai",
+    invoiced: "Sudah Di-invoice",
     quantity: "Jumlah",
     activity: "Deskripsi Kegiatan",
     prospectCustomers: "Daftar Calon Pelanggan",

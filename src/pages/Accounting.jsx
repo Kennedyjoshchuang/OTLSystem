@@ -855,7 +855,7 @@ const Accounting = () => {
 
 
   const completedJOs = jobOrders
-    .filter(jo => jo.status === 'done')
+    .filter(jo => jo.status === 'done' || jo.status === 'invoiced')
     .filter(jo => filterByDate(jo.date))
     .filter(jo => {
       const id = jo.id || '';
