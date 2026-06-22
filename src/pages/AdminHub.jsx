@@ -14,6 +14,44 @@ const AdminHub = () => {
   const [selectedActivityIndex, setSelectedActivityIndex] = useState(0);
   const [issueQuantity, setIssueQuantity] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('created_desc');
+
+  const getJoTimestamp = (jo) => {
+    if (!jo || !jo.id) return 0;
+    const match = jo.id.match(/JO-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (!isNaN(num)) return num;
+    }
+    if (jo.date) {
+      const time = new Date(jo.date).getTime();
+      if (!isNaN(time)) return time;
+    }
+    return 0;
+  };
+
+  const sortPendingJOs = (a, b) => {
+    switch (sortBy) {
+      case 'created_desc': {
+        const diff = getJoTimestamp(b) - getJoTimestamp(a);
+        return diff !== 0 ? diff : b.id.localeCompare(a.id);
+      }
+      case 'created_asc': {
+        const diff = getJoTimestamp(a) - getJoTimestamp(b);
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }
+      case 'company_asc':
+        return (a.customerName || '').localeCompare(b.customerName || '');
+      case 'company_desc':
+        return (b.customerName || '').localeCompare(a.customerName || '');
+      case 'id_asc':
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'id_desc':
+        return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      default:
+        return 0;
+    }
+  };
   const [poSearchTerm, setPoSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -620,10 +658,45 @@ const AdminHub = () => {
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-card" style={{ overflowX: "auto" }}  className="flex-responsive-row" style={{ padding: "20px 25px", alignItems: "flex-start", background: "rgba(255,255,255,0.03)", justifyContent: "space-between" }}>
-        <div style={{ position: 'relative', flex: 1, whiteSpace: "nowrap", flex: '1 1 100%' }}>
-          <input type="text" placeholder={isID ? "Cari PO atau JO..." : "Search PO or JO..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+      <div className="glass-card flex-responsive-row" style={{ padding: "20px 25px", alignItems: "center", background: "rgba(255,255,255,0.03)", justifyContent: "space-between", gap: "20px", overflowX: "auto" }}>
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: '1 1 100%', minWidth: '250px' }}>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{
+              padding: '10px 15px',
+              borderRadius: '10px',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              outline: 'none',
+              fontWeight: '500'
+            }}
+          >
+            <option value="created_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Terbaru' : 'Newest'}
+            </option>
+            <option value="created_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Terlama' : 'Oldest'}
+            </option>
+            <option value="company_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Pelanggan: A-Z' : 'Customer: A-Z'}
+            </option>
+            <option value="company_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Pelanggan: Z-A' : 'Customer: Z-A'}
+            </option>
+            <option value="id_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'JO ID: Kecil-Besar' : 'JO ID: Ascending'}
+            </option>
+            <option value="id_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'JO ID: Besar-Kecil' : 'JO ID: Descending'}
+            </option>
+          </select>
+
+          <div style={{ position: 'relative', flex: 1, whiteSpace: "nowrap" }}>
+            <input type="text" placeholder={isID ? "Cari PO atau JO..." : "Search PO or JO..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>{isID ? 'Filter Tanggal:' : 'Date Filter:'}</span>
@@ -967,6 +1040,7 @@ const AdminHub = () => {
               const term = searchTerm.toLowerCase();
               return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
             })
+            .sort(sortPendingJOs)
             .map(jo => (
             <div key={jo.id} className="glass-card table-row-hover" style={{ padding: '25px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: '15px' }}>

@@ -18,19 +18,59 @@ const QuotationList = () => {
     approveQuotation, 
     deleteQuotation, 
     user, 
-    t 
+    t,
+    language
   } = useApp();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDraft, setSelectedDraft] = useState(null);
+  const [sortBy, setSortBy] = useState('created_desc');
+
+  const getQuotationTime = (q) => {
+    if (!q.date) return 0;
+    const time = new Date(q.date).getTime();
+    return isNaN(time) ? 0 : time;
+  };
 
   const filteredQuotations = quotations
     .filter(q => 
       q.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       q.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (q.pic && q.pic.toLowerCase().includes(searchTerm.toLowerCase()))
-    )
-    .sort((a, b) => b.id.localeCompare(a.id));
+    );
+
+  const sortedQuotations = [...filteredQuotations].sort((a, b) => {
+    switch (sortBy) {
+      case 'created_desc': {
+        const diff = getQuotationTime(b) - getQuotationTime(a);
+        return diff !== 0 ? diff : b.id.localeCompare(a.id);
+      }
+      case 'created_asc': {
+        const diff = getQuotationTime(a) - getQuotationTime(b);
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }
+      case 'company_asc':
+        return (a.customerName || '').localeCompare(b.customerName || '');
+      case 'company_desc':
+        return (b.customerName || '').localeCompare(a.customerName || '');
+      case 'id_asc':
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'id_desc':
+        return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'amount_desc': {
+        const amtA = a.total || a.rate || 0;
+        const amtB = b.total || b.rate || 0;
+        return amtB - amtA;
+      }
+      case 'amount_asc': {
+        const amtA = a.total || a.rate || 0;
+        const amtB = b.total || b.rate || 0;
+        return amtA - amtB;
+      }
+      default:
+        return 0;
+    }
+  });
 
   const handleDownload = (quote) => {
     const printData = {
@@ -220,20 +260,61 @@ const QuotationList = () => {
         className="no-print glass-card" 
         style={{ padding: '25px', overflowX: 'auto' }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
           <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: 0 }}>
             <FileText size={20} style={{ color: 'var(--gold-metallic)' }} />
             Quotation List
           </h4>
-          <div style={{ position: 'relative', width: '300px' }}>
-            <input 
-              type="text" 
-              placeholder="Search quotations..." 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-              style={{ padding: '10px 15px 10px 45px', borderRadius: '100px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '100%' }} 
-            />
-            <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{
+                padding: '10px 15px',
+                borderRadius: '100px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+                outline: 'none',
+                fontWeight: '500'
+              }}
+            >
+              <option value="created_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'Tanggal: Terbaru' : 'Date: Newest'}
+              </option>
+              <option value="created_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'Tanggal: Terlama' : 'Date: Oldest'}
+              </option>
+              <option value="company_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'Perusahaan: A-Z' : 'Company: A-Z'}
+              </option>
+              <option value="company_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'Perusahaan: Z-A' : 'Company: Z-A'}
+              </option>
+              <option value="id_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'No. Penawaran: A-Z' : 'Quotation No: A-Z'}
+              </option>
+              <option value="id_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'No. Penawaran: Z-A' : 'Quotation No: Z-A'}
+              </option>
+              <option value="amount_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'Total: Terbesar' : 'Amount: Highest'}
+              </option>
+              <option value="amount_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {language === 'id' ? 'Total: Terkecil' : 'Amount: Lowest'}
+              </option>
+            </select>
+
+            <div style={{ position: 'relative', width: '300px' }}>
+              <input 
+                type="text" 
+                placeholder="Search quotations..." 
+                value={searchTerm} 
+                onChange={(e) => setSearchTerm(e.target.value)} 
+                style={{ padding: '10px 15px 10px 45px', borderRadius: '100px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '100%' }} 
+              />
+              <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            </div>
           </div>
         </div>
 
@@ -250,7 +331,7 @@ const QuotationList = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredQuotations.map(quote => (
+            {sortedQuotations.map(quote => (
               <tr key={quote.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
                 <td style={{ padding: '15px', fontWeight: '700', color: 'var(--secondary)' }}>{quote.id}</td>
                 <td style={{ padding: '15px', fontSize: '0.85rem' }}>{quote.date}</td>

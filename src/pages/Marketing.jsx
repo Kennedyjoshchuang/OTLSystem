@@ -23,6 +23,81 @@ const Marketing = () => {
   const [quoteSearchTerm, setQuoteSearchTerm] = useState('');
   const [jobOrderSearchTerm, setJobOrderSearchTerm] = useState('');
   const [fullQuoteSearchTerm, setFullQuoteSearchTerm] = useState('');
+  const [jobOrderSortBy, setJobOrderSortBy] = useState('created_desc');
+  const [quotationSortBy, setQuotationSortBy] = useState('created_desc');
+
+  const getQuotationTime = (q) => {
+    if (!q.date) return 0;
+    const time = new Date(q.date).getTime();
+    return isNaN(time) ? 0 : time;
+  };
+
+  const sortJobOrders = (a, b) => {
+    switch (jobOrderSortBy) {
+      case 'created_desc': {
+        const diff = getQuotationTime(b) - getQuotationTime(a);
+        return diff !== 0 ? diff : b.id.localeCompare(a.id);
+      }
+      case 'created_asc': {
+        const diff = getQuotationTime(a) - getQuotationTime(b);
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }
+      case 'company_asc':
+        return (a.customerName || '').localeCompare(b.customerName || '');
+      case 'company_desc':
+        return (b.customerName || '').localeCompare(a.customerName || '');
+      case 'id_asc':
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'id_desc':
+        return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'amount_desc': {
+        const amtA = a.total || a.rate || 0;
+        const amtB = b.total || b.rate || 0;
+        return amtB - amtA;
+      }
+      case 'amount_asc': {
+        const amtA = a.total || a.rate || 0;
+        const amtB = b.total || b.rate || 0;
+        return amtA - amtB;
+      }
+      default:
+        return 0;
+    }
+  };
+
+  const sortQuotations = (a, b) => {
+    switch (quotationSortBy) {
+      case 'created_desc': {
+        const diff = getQuotationTime(b) - getQuotationTime(a);
+        return diff !== 0 ? diff : b.id.localeCompare(a.id);
+      }
+      case 'created_asc': {
+        const diff = getQuotationTime(a) - getQuotationTime(b);
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }
+      case 'company_asc':
+        return (a.customerName || '').localeCompare(b.customerName || '');
+      case 'company_desc':
+        return (b.customerName || '').localeCompare(a.customerName || '');
+      case 'id_asc':
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'id_desc':
+        return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'amount_desc': {
+        const amtA = a.total || a.rate || 0;
+        const amtB = b.total || b.rate || 0;
+        return amtB - amtA;
+      }
+      case 'amount_asc': {
+        const amtA = a.total || a.rate || 0;
+        const amtB = b.total || b.rate || 0;
+        return amtA - amtB;
+      }
+      default:
+        return 0;
+    }
+  };
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -94,7 +169,8 @@ const Marketing = () => {
     employees = [],
     user,
     t,
-    loading
+    loading,
+    language
   } = context;
 
   if (loading) {
@@ -1220,15 +1296,56 @@ const Marketing = () => {
                 <CheckCircle size={20} style={{ color: '#10b981' }} />
                 {t('activeJobOrders')}
               </h4>
-              <div style={{ position: 'relative', width: '300px' }}>
-                <input
-                  type="text"
-                  placeholder={t('searchJobOrders') || "Search by customer or ID..."}
-                  value={jobOrderSearchTerm}
-                  onChange={(e) => setJobOrderSearchTerm(e.target.value)}
-                  style={{ padding: '10px 15px 10px 45px', borderRadius: '100px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '100%' }}
-                />
-                <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <select
+                  value={jobOrderSortBy}
+                  onChange={(e) => setJobOrderSortBy(e.target.value)}
+                  style={{
+                    padding: '10px 15px',
+                    borderRadius: '100px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    outline: 'none',
+                    fontWeight: '500'
+                  }}
+                >
+                  <option value="created_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Tanggal: Terbaru' : 'Date: Newest'}
+                  </option>
+                  <option value="created_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Tanggal: Terlama' : 'Date: Oldest'}
+                  </option>
+                  <option value="company_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Perusahaan: A-Z' : 'Company: A-Z'}
+                  </option>
+                  <option value="company_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Perusahaan: Z-A' : 'Company: Z-A'}
+                  </option>
+                  <option value="id_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'No. Penawaran: A-Z' : 'Quotation No: A-Z'}
+                  </option>
+                  <option value="id_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'No. Penawaran: Z-A' : 'Quotation No: Z-A'}
+                  </option>
+                  <option value="amount_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Total: Terbesar' : 'Amount: Highest'}
+                  </option>
+                  <option value="amount_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Total: Terkecil' : 'Amount: Lowest'}
+                  </option>
+                </select>
+
+                <div style={{ position: 'relative', width: '300px' }}>
+                  <input
+                    type="text"
+                    placeholder={t('searchJobOrders') || "Search by customer or ID..."}
+                    value={jobOrderSearchTerm}
+                    onChange={(e) => setJobOrderSearchTerm(e.target.value)}
+                    style={{ padding: '10px 15px 10px 45px', borderRadius: '100px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '100%' }}
+                  />
+                  <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                </div>
               </div>
             </div>
             <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
@@ -1257,7 +1374,7 @@ const Marketing = () => {
                            id.toLowerCase().includes(term) ||
                            pic.toLowerCase().includes(term);
                   })
-                  .sort((a, b) => b.id.localeCompare(a.id))
+                  .sort(sortJobOrders)
                   .map(quote => {
                     const firstItem = Array.isArray(quote.items) && quote.items.length > 0 ? quote.items[0] : null;
                     const activityLabel = firstItem ? firstItem.description : '-';
@@ -1320,15 +1437,56 @@ const Marketing = () => {
                 <FileText size={20} style={{ color: 'var(--gold-metallic)' }} />
                 {t('quotationList') || 'All Quotations'}
               </h4>
-              <div style={{ position: 'relative', width: '300px' }}>
-                <input
-                  type="text"
-                  placeholder={t('searchQuotations') || "Search all quotations..."}
-                  value={fullQuoteSearchTerm}
-                  onChange={(e) => setFullQuoteSearchTerm(e.target.value)}
-                  style={{ padding: '10px 15px 10px 45px', borderRadius: '100px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '100%' }}
-                />
-                <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <select
+                  value={quotationSortBy}
+                  onChange={(e) => setQuotationSortBy(e.target.value)}
+                  style={{
+                    padding: '10px 15px',
+                    borderRadius: '100px',
+                    background: 'var(--input-bg)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text)',
+                    outline: 'none',
+                    fontWeight: '500'
+                  }}
+                >
+                  <option value="created_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Tanggal: Terbaru' : 'Date: Newest'}
+                  </option>
+                  <option value="created_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Tanggal: Terlama' : 'Date: Oldest'}
+                  </option>
+                  <option value="company_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Perusahaan: A-Z' : 'Company: A-Z'}
+                  </option>
+                  <option value="company_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Perusahaan: Z-A' : 'Company: Z-A'}
+                  </option>
+                  <option value="id_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'No. Penawaran: A-Z' : 'Quotation No: A-Z'}
+                  </option>
+                  <option value="id_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'No. Penawaran: Z-A' : 'Quotation No: Z-A'}
+                  </option>
+                  <option value="amount_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Total: Terbesar' : 'Amount: Highest'}
+                  </option>
+                  <option value="amount_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                    {language === 'id' ? 'Total: Terkecil' : 'Amount: Lowest'}
+                  </option>
+                </select>
+
+                <div style={{ position: 'relative', width: '300px' }}>
+                  <input
+                    type="text"
+                    placeholder={t('searchQuotations') || "Search all quotations..."}
+                    value={fullQuoteSearchTerm}
+                    onChange={(e) => setFullQuoteSearchTerm(e.target.value)}
+                    style={{ padding: '10px 15px 10px 45px', borderRadius: '100px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', width: '100%' }}
+                  />
+                  <Search size={18} style={{ position: 'absolute', left: '15px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                </div>
               </div>
             </div>
             <div className="table-container"><div className="table-responsive-wrapper" style={{ overflowX: 'auto', width: '100%' }}>
@@ -1356,7 +1514,7 @@ const Marketing = () => {
                            id.toLowerCase().includes(term) ||
                            pic.toLowerCase().includes(term);
                   })
-                  .sort((a, b) => b.id.localeCompare(a.id))
+                  .sort(sortQuotations)
                   .map(quote => (
                     <tr key={quote.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
                       <td style={{ padding: '15px', fontWeight: '700', color: 'var(--secondary)' }}>{quote.id}</td>

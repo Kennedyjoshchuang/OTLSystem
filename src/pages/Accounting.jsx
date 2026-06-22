@@ -46,6 +46,22 @@ const Accounting = () => {
   };
 
   const [activeTab, setActiveTab] = useState('billing'); // 'billing', 'piutang', or 'costing'
+  const [joSortBy, setJoSortBy] = useState('created_desc');
+
+  const getJoTimestamp = (jo) => {
+    if (!jo || !jo.id) return 0;
+    const match = jo.id.match(/JO-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (!isNaN(num)) return num;
+    }
+    if (jo.date) {
+      const time = new Date(jo.date).getTime();
+      if (!isNaN(time)) return time;
+    }
+    return 0;
+  };
+
   const [receivableSubTab, setReceivableSubTab] = useState('outstanding');
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [costModal, setCostModal] = useState(null); // holds the JO being costed
@@ -516,8 +532,29 @@ const Accounting = () => {
   }, [jobOrders, startDate, endDate, searchTerm]);
 
   const sortedActiveJOs = React.useMemo(() => {
-    return [...activeJOs].sort((a, b) => (b.id || '').localeCompare(a.id || ''));
-  }, [activeJOs]);
+    return [...activeJOs].sort((a, b) => {
+      switch (joSortBy) {
+        case 'created_desc': {
+          const diff = getJoTimestamp(b) - getJoTimestamp(a);
+          return diff !== 0 ? diff : b.id.localeCompare(a.id);
+        }
+        case 'created_asc': {
+          const diff = getJoTimestamp(a) - getJoTimestamp(b);
+          return diff !== 0 ? diff : a.id.localeCompare(b.id);
+        }
+        case 'company_asc':
+          return (a.customerName || '').localeCompare(b.customerName || '');
+        case 'company_desc':
+          return (b.customerName || '').localeCompare(a.customerName || '');
+        case 'id_asc':
+          return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+        case 'id_desc':
+          return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+        default:
+          return 0;
+      }
+    });
+  }, [activeJOs, joSortBy]);
 
   const plFinancials = React.useMemo(() => {
     return activeJOs.reduce((acc, j) => {
@@ -862,6 +899,28 @@ const Accounting = () => {
       const name = jo.customerName || '';
       const term = searchTerm.toLowerCase();
       return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
+    })
+    .sort((a, b) => {
+      switch (joSortBy) {
+        case 'created_desc': {
+          const diff = getJoTimestamp(b) - getJoTimestamp(a);
+          return diff !== 0 ? diff : b.id.localeCompare(a.id);
+        }
+        case 'created_asc': {
+          const diff = getJoTimestamp(a) - getJoTimestamp(b);
+          return diff !== 0 ? diff : a.id.localeCompare(b.id);
+        }
+        case 'company_asc':
+          return (a.customerName || '').localeCompare(b.customerName || '');
+        case 'company_desc':
+          return (b.customerName || '').localeCompare(a.customerName || '');
+        case 'id_asc':
+          return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+        case 'id_desc':
+          return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+        default:
+          return 0;
+      }
     });
 
   const paidInvoices = invoices
@@ -2341,11 +2400,46 @@ const Accounting = () => {
         </button>
       </div>
 
-      {/* Filter Bar */}
       <div className="glass-card" style={{ padding: '20px 25px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.03)', marginBottom: '30px' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
-          <input type="text" placeholder={isID ? "Cari Invoice, Pelanggan, JO..." : "Search Invoices, Customers, JOs..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: 1, minWidth: '250px' }}>
+          {(activeTab === 'billing' || activeTab === 'costing') && (
+            <select
+              value={joSortBy}
+              onChange={(e) => setJoSortBy(e.target.value)}
+              style={{
+                padding: '10px 15px',
+                borderRadius: '10px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)',
+                outline: 'none',
+                fontWeight: '500'
+              }}
+            >
+              <option value="created_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {isID ? 'Terbaru' : 'Newest'}
+              </option>
+              <option value="created_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {isID ? 'Terlama' : 'Oldest'}
+              </option>
+              <option value="company_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {isID ? 'Pelanggan: A-Z' : 'Customer: A-Z'}
+              </option>
+              <option value="company_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {isID ? 'Pelanggan: Z-A' : 'Customer: Z-A'}
+              </option>
+              <option value="id_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {isID ? 'JO ID: Kecil-Besar' : 'JO ID: Ascending'}
+              </option>
+              <option value="id_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+                {isID ? 'JO ID: Besar-Kecil' : 'JO ID: Descending'}
+              </option>
+            </select>
+          )}
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input type="text" placeholder={isID ? "Cari Invoice, Pelanggan, JO..." : "Search Invoices, Customers, JOs..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>{isID ? 'Filter Tanggal:' : 'Date Filter:'}</span>

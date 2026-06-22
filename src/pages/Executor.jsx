@@ -60,6 +60,22 @@ const Executor = () => {
   const fileInputRef = useRef(null);
   const [uploadingForId, setUploadingForId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('created_desc');
+
+  const getJoTimestamp = (jo) => {
+    if (!jo || !jo.id) return 0;
+    const match = jo.id.match(/JO-(\d+)/);
+    if (match) {
+      const num = parseInt(match[1]);
+      if (!isNaN(num)) return num;
+    }
+    if (jo.date) {
+      const time = new Date(jo.date).getTime();
+      if (!isNaN(time)) return time;
+    }
+    return 0;
+  };
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [joToDelete, setJoToDelete] = useState(null);
@@ -101,8 +117,31 @@ const Executor = () => {
     return tabMatch && searchMatch && filterByDate(jo.date);
   });
 
+  const sortedJOs = [...filteredJOs].sort((a, b) => {
+    switch (sortBy) {
+      case 'created_desc': {
+        const diff = getJoTimestamp(b) - getJoTimestamp(a);
+        return diff !== 0 ? diff : b.id.localeCompare(a.id);
+      }
+      case 'created_asc': {
+        const diff = getJoTimestamp(a) - getJoTimestamp(b);
+        return diff !== 0 ? diff : a.id.localeCompare(b.id);
+      }
+      case 'company_asc':
+        return (a.customerName || '').localeCompare(b.customerName || '');
+      case 'company_desc':
+        return (b.customerName || '').localeCompare(a.customerName || '');
+      case 'id_asc':
+        return (a.id || '').localeCompare(b.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      case 'id_desc':
+        return (b.id || '').localeCompare(a.id || '', undefined, { numeric: true, sensitivity: 'base' });
+      default:
+        return 0;
+    }
+  });
+
   const handleExport = () => {
-    const dataToExport = filteredJOs.map(jo => ({
+    const dataToExport = sortedJOs.map(jo => ({
       JO_ID: jo.id,
       Date: jo.date,
       Customer: jo.customerName,
@@ -440,9 +479,44 @@ const Executor = () => {
 
       {/* Filter Bar */}
       <div className="glass-card" style={{ padding: '20px 25px', display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(255,255,255,0.03)' }}>
-        <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
-          <input type="text" placeholder={isID ? "Cari Pekerjaan atau Pelanggan..." : "Search Jobs or Customers..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flex: 1, minWidth: '250px' }}>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            style={{
+              padding: '10px 15px',
+              borderRadius: '10px',
+              background: 'var(--input-bg)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              outline: 'none',
+              fontWeight: '500'
+            }}
+          >
+            <option value="created_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Terbaru' : 'Newest'}
+            </option>
+            <option value="created_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Terlama' : 'Oldest'}
+            </option>
+            <option value="company_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Pelanggan: A-Z' : 'Customer: A-Z'}
+            </option>
+            <option value="company_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'Pelanggan: Z-A' : 'Customer: Z-A'}
+            </option>
+            <option value="id_asc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'JO ID: Kecil-Besar' : 'JO ID: Ascending'}
+            </option>
+            <option value="id_desc" style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              {isID ? 'JO ID: Besar-Kecil' : 'JO ID: Descending'}
+            </option>
+          </select>
+
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input type="text" placeholder={isID ? "Cari Pekerjaan atau Pelanggan..." : "Search Jobs or Customers..."} value={searchTerm} onChange={e => setSearchTerm(e.target.value)} style={{ width: '100%', padding: '10px 15px 10px 40px', borderRadius: '10px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)' }} />
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '600' }}>{isID ? 'Filter Tanggal:' : 'Date Filter:'}</span>
@@ -475,7 +549,7 @@ const Executor = () => {
             </tr>
           </thead>
           <tbody>
-            {filteredJOs.map(jo => (
+            {sortedJOs.map(jo => (
               <React.Fragment key={jo.id}>
                 <tr style={{ borderBottom: '1px solid var(--glass-border)', cursor: 'pointer' }} className="table-row-hover" onClick={() => toggleRow(jo)}>
                   <td style={{ padding: '15px' }}>
@@ -760,7 +834,7 @@ const Executor = () => {
         </table></div>
 
         {/* Surat Jalan Modal */}
-        {filteredJOs.length === 0 && (
+        {sortedJOs.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 20px' }}>
             <Package size={64} color="rgba(255,255,255,0.05)" style={{ marginBottom: '20px' }} />
             <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>
