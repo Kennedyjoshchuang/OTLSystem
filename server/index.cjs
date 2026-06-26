@@ -93,11 +93,11 @@ app.get('/api/quotations', async (req, res) => {
 
 app.post('/api/quotations', async (req, res) => {
   try {
-    const { id, customerId, customerName, pic, generalNotes, date, status, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress } = req.body;
+    const { id, customerId, customerName, pic, generalNotes, date, status, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress, subject } = req.body;
     const { error } = await supabase.from('quotations').insert({
       id, customerId, customerName, pic, generalNotes, date, status,
       items: items || [], total, marketingName, marketingPhone, marketingEmail,
-      validFrom, validTo, companyAddress
+      validFrom, validTo, companyAddress, subject
     });
     if (error) return handleError(res, error, 'POST quotations');
     res.status(201).json({ id });
@@ -110,10 +110,10 @@ app.post('/api/quotations', async (req, res) => {
 app.put('/api/quotations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { pic, generalNotes, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress } = req.body;
+    const { pic, generalNotes, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress, subject } = req.body;
     const { error } = await supabase.from('quotations').update({
       pic, generalNotes, items: items || [], total, marketingName, marketingPhone, marketingEmail,
-      validFrom, validTo, companyAddress
+      validFrom, validTo, companyAddress, subject
     }).eq('id', id);
     if (error) return handleError(res, error, 'PUT quotations');
     res.sendStatus(200);

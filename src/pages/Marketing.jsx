@@ -109,6 +109,7 @@ const Marketing = () => {
   });
   const [quoteTerms, setQuoteTerms] = useState(DEFAULT_TERMS);
   const [quotePic, setQuotePic] = useState('');
+  const [quoteSubject, setQuoteSubject] = useState('');
   const [quoteItems, setQuoteItems] = useState([
     { description: '', rate: '', quantity: '1', unit: '' }
   ]);
@@ -120,6 +121,7 @@ const Marketing = () => {
 
   const [activeQuotationForEdit, setActiveQuotationForEdit] = useState(null);
   const [editQuotePic, setEditQuotePic] = useState('');
+  const [editQuoteSubject, setEditQuoteSubject] = useState('');
   const [editQuoteValidFrom, setEditQuoteValidFrom] = useState('');
   const [editQuoteValidTo, setEditQuoteValidTo] = useState('');
   const [editQuoteItems, setEditQuoteItems] = useState([{ description: '', rate: '', quantity: '1', unit: '' }]);
@@ -146,6 +148,7 @@ const Marketing = () => {
   React.useEffect(() => {
     if (activeProspectForQuote) {
       setQuotePic(activeProspectForQuote.pic || '');
+      setQuoteSubject(`Quotation untuk Inquiry Pengiriman ${activeProspectForQuote.description ? activeProspectForQuote.description.split('\n')[0] : 'Cargo'}`);
       if (activeProspectForQuote.notes && activeProspectForQuote.notes.trim()) {
         setQuoteTerms(activeProspectForQuote.notes.split(/\r?\n/).map(t => t.trim()).filter(Boolean));
       } else {
@@ -284,7 +287,8 @@ const Marketing = () => {
         marketingEmail: activeProspectForQuote.marketingEmail,
         validFrom: quoteValidFrom,
         validTo: quoteValidTo,
-        companyAddress: activeProspectForQuote.companyAddress
+        companyAddress: activeProspectForQuote.companyAddress,
+        subject: quoteSubject
       });
 
       const printData = {
@@ -300,6 +304,7 @@ const Marketing = () => {
         rate: totalAmount,
         marketingName: activeProspectForQuote.marketingName,
         marketingEmail: activeProspectForQuote.marketingEmail,
+        subject: quoteSubject
       };
       localStorage.setItem('print_quotation_data', JSON.stringify(printData));
       window.open('/print/quotation', '_blank');
@@ -307,6 +312,7 @@ const Marketing = () => {
       setActiveProspectForQuote(null);
       setQuoteTerms(DEFAULT_TERMS);
       setQuotePic('');
+      setQuoteSubject('');
       setQuoteValidFrom('');
       setQuoteValidTo('');
       setQuoteItems([{ description: '', rate: '', quantity: '1', unit: '' }]);
@@ -319,6 +325,7 @@ const Marketing = () => {
   const handleOpenEditQuotationModal = (quote) => {
     setActiveQuotationForEdit(quote);
     setEditQuotePic(quote.pic || '');
+    setEditQuoteSubject(quote.subject || `Quotation untuk Inquiry Pengiriman ${quote.items?.[0]?.description ? quote.items[0].description.split('\n')[0] : 'Cargo'}`);
     setEditQuoteValidFrom(quote.validFrom || '');
     setEditQuoteValidTo(quote.validTo || '');
     setEditQuoteItems(Array.isArray(quote.items) ? quote.items.map(item => ({
@@ -366,7 +373,8 @@ const Marketing = () => {
         rate: totalAmount,
         validFrom: editQuoteValidFrom,
         validTo: editQuoteValidTo,
-        companyAddress: editQuoteCompanyAddress
+        companyAddress: editQuoteCompanyAddress,
+        subject: editQuoteSubject
       });
       setActiveQuotationForEdit(null);
     } catch (error) {
@@ -446,6 +454,7 @@ const Marketing = () => {
       validTo: quote.validTo || '',
       marketingName: quote.marketingName,
       marketingEmail: quote.marketingEmail,
+      subject: quote.subject
     };
     localStorage.setItem('print_quotation_data', JSON.stringify(printData));
     window.open('/print/quotation', '_blank');
@@ -570,6 +579,18 @@ const Marketing = () => {
             >
               <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>{t('createQuotation')} - {activeProspectForQuote.name}</h3>
               <form onSubmit={handleCreateProspectQuotation}>
+
+                <div className="input-group" style={{ marginBottom: '25px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
+                  <input
+                    required
+                    type="text"
+                    value={quoteSubject}
+                    onChange={e => setQuoteSubject(e.target.value)}
+                    placeholder="Subjek penawaran..."
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%' }}
+                  />
+                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                   <div className="input-group">
@@ -728,6 +749,18 @@ const Marketing = () => {
               <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>Edit Penawaran (Quotation) - {activeQuotationForEdit.id}</h3>
               <h5 style={{ marginTop: '-15px', marginBottom: '25px', color: 'var(--text-muted)' }}>Pelanggan: {activeQuotationForEdit.customerName}</h5>
               <form onSubmit={handleSaveQuotationEdit}>
+
+                <div className="input-group" style={{ marginBottom: '25px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
+                  <input
+                    required
+                    type="text"
+                    value={editQuoteSubject}
+                    onChange={e => setEditQuoteSubject(e.target.value)}
+                    placeholder="Subjek penawaran..."
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%' }}
+                  />
+                </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                   <div className="input-group">
@@ -1497,7 +1530,7 @@ const Marketing = () => {
                   <th style={{ padding: '15px' }}>Date</th>
                   <th style={{ padding: '15px' }}>Company</th>
                   <th style={{ padding: '15px' }}>PIC</th>
-                  <th style={{ padding: '15px' }}>Amount</th>
+                  <th style={{ padding: '15px' }}>{t('subject') || 'Subject'}</th>
                   <th style={{ padding: '15px' }}>Status</th>
                   <th style={{ padding: '15px' }}>Actions</th>
                 </tr>
@@ -1521,7 +1554,9 @@ const Marketing = () => {
                       <td style={{ padding: '15px', fontSize: '0.85rem' }}>{quote.date}</td>
                       <td style={{ padding: '15px', fontWeight: '600' }}>{quote.customerName}</td>
                       <td style={{ padding: '15px' }}>{quote.pic || '-'}</td>
-                      <td style={{ padding: '15px', fontWeight: '700' }}>Rp {quote.total?.toLocaleString() || quote.rate?.toLocaleString()}</td>
+                      <td style={{ padding: '15px', fontSize: '0.85rem', whiteSpace: 'normal', maxWidth: '300px' }}>
+                        {quote.subject || `Quotation untuk Inquiry Pengiriman ${quote.items?.[0]?.description ? quote.items[0].description.split('\n')[0] : 'Cargo'}`}
+                      </td>
                       <td style={{ padding: '15px' }}>
                         <span className={`badge badge-${quote.status}`} style={{ fontSize: '0.7rem' }}>{t(quote.status)}</span>
                       </td>

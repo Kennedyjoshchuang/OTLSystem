@@ -54,7 +54,8 @@ db.exec(`
     marketingPhone TEXT,
     marketingEmail TEXT,
     validFrom TEXT,
-    validTo TEXT
+    validTo TEXT,
+    subject TEXT
   );
 
   CREATE TABLE IF NOT EXISTS job_orders (

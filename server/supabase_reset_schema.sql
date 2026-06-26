@@ -69,7 +69,8 @@ CREATE TABLE quotations (
     "marketingEmail" TEXT,
     "validFrom" TEXT,
     "validTo" TEXT,
-    "companyAddress" TEXT
+    "companyAddress" TEXT,
+    subject TEXT
 );
 
 CREATE TABLE job_orders (

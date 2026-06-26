@@ -57,7 +57,8 @@ CREATE TABLE IF NOT EXISTS quotations (
     marketingEmail TEXT,
     validFrom TEXT,
     validTo TEXT,
-    companyAddress TEXT
+    companyAddress TEXT,
+    subject TEXT
 );
 
 -- 5. Job Orders
