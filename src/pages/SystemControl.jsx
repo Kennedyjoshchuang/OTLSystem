@@ -24,8 +24,10 @@ const SystemControl = () => {
     invoices, deleteInvoice,
     maintenanceMode, setMaintenanceMode,
     clearAllData,
-    t, theme, language
+    t, theme, language, hasAccess
   } = useApp();
+
+  const canWrite = hasAccess ? hasAccess('systemControl', true) : false;
 
   const isID = language === 'id';
 
@@ -131,115 +133,109 @@ const SystemControl = () => {
         </div>
       </div>
 
-      <div className="glass-card" style={{ padding: '30px', marginBottom: '40px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <div style={{ 
-            padding: '15px', 
-            borderRadius: '15px', 
-            background: maintenanceMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-            color: maintenanceMode ? '#f59e0b' : '#10b981'
-          }}>
-            <Settings size={24} className={maintenanceMode ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text)' }}>{isID ? 'Mode Pemeliharaan' : 'Maintenance Mode'}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
-              {maintenanceMode 
-                ? (isID ? 'Sistem saat ini disembunyikan dari staf/publik.' : 'System is currently hidden from staff/public.') 
-                : (isID ? 'Sistem aktif dan dapat diakses oleh semua pengguna terotorisasi.' : 'System is live and accessible to all authorized users.')}
-            </p>
-          </div>
-        </div>
-        
-        <button 
-          onClick={() => setMaintenanceMode(!maintenanceMode)}
-          className={`btn ${maintenanceMode ? 'btn-gold' : 'btn-primary'}`}
-          style={{ borderRadius: '30px', padding: '10px 25px' }}
-        >
-          <Power size={18} />
-          {maintenanceMode ? (isID ? 'NONAKTIFKAN' : 'DEACTIVATE') : (isID ? 'AKTIFKAN' : 'ACTIVATE')}
-        </button>
-      </div>
-
-      <div className="grid-responsive-3" style={{ marginBottom: '40px' }}>
-        {stats.map((stat, idx) => (
-          <div key={idx} className="glass-card" style={{ padding: '30px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ padding: '15px', borderRadius: '12px', background: `${stat.color}15`, color: stat.color }}>
-              <stat.icon size={24} />
+      {canWrite ? (
+        <>
+          <div className="glass-card" style={{ padding: '30px', marginBottom: '40px', border: '1px solid var(--glass-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+              <div style={{ 
+                padding: '15px', 
+                borderRadius: '15px', 
+                background: maintenanceMode ? 'rgba(245, 158, 11, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                color: maintenanceMode ? '#f59e0b' : '#10b981'
+              }}>
+                <Settings size={24} className={maintenanceMode ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1.2rem', margin: 0, color: 'var(--text)' }}>{isID ? 'Mode Pemeliharaan' : 'Maintenance Mode'}</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
+                  {maintenanceMode 
+                    ? (isID ? 'Sistem saat ini disembunyikan dari staf/publik.' : 'System is currently hidden from staff/public.') 
+                    : (isID ? 'Sistem aktif dan dapat diakses oleh semua pengguna terotorisasi.' : 'System is live and accessible to all authorized users.')}
+                </p>
+              </div>
             </div>
-            <div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</p>
-              <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text)' }}>{stat.value}</h3>
-            </div>
+            
+            <button 
+              onClick={() => setMaintenanceMode(!maintenanceMode)}
+              className={`btn ${maintenanceMode ? 'btn-gold' : 'btn-primary'}`}
+              style={{ borderRadius: '30px', padding: '10px 25px' }}
+            >
+              <Power size={18} />
+              {maintenanceMode ? (isID ? 'NONAKTIFKAN' : 'DEACTIVATE') : (isID ? 'AKTIFKAN' : 'ACTIVATE')}
+            </button>
           </div>
-        ))}
-      </div>
 
-      <div style={{ marginBottom: '60px' }}>
-        <OTPKeys />
-      </div>
-
-      <div className="glass-card" style={{ padding: '40px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.02)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-          <div>
-            <h3 style={{ color: '#ef4444', marginBottom: '5px' }}>{isID ? 'Tindakan Sistem Kritis' : 'Critical System Actions'}</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{isID ? 'Tindakan ini bersifat permanen dan tidak dapat dibatalkan.' : 'These actions are permanent and cannot be undone.'}</p>
+          <div className="grid-responsive-3" style={{ marginBottom: '40px' }}>
+            {stats.map((stat, idx) => (
+              <div key={idx} className="glass-card" style={{ padding: '30px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ padding: '15px', borderRadius: '12px', background: `${stat.color}15`, color: stat.color }}>
+                  <stat.icon size={24} />
+                </div>
+                <div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '1px' }}>{stat.label}</p>
+                  <h3 style={{ fontSize: '1.5rem', margin: 0, color: 'var(--text)' }}>{stat.value}</h3>
+                </div>
+              </div>
+            ))}
           </div>
-          <button
-            className="btn"
-            style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: '1px solid rgba(239, 68, 68, 0.85)' }}
-            onClick={() => openConfirm('all', null, 'ALL SYSTEM DATA')}
-          >
-            <AlertTriangle size={18} />
-            {isID ? 'Atur Ulang Seluruh Sistem' : 'Reset Entire System'}
-          </button>
-        </div>
 
-        <div className="grid-responsive-2" style={{ gap: '30px' }}>
-          {/* Customers Section */}
-          <div>
-            <h4 style={{ color: 'var(--secondary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Users size={18} /> {isID ? 'Database Pelanggan' : 'Customer Database'}
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {customers.map(c => (
-                <div key={c.id} style={{ padding: '15px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{c.customerName}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {c.id}</div>
-                  </div>
-                  <button onClick={() => openConfirm('customer', c.id, c.customerName)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
-                    <Trash2 size={16} />
+          <div style={{ marginBottom: '60px' }}>
+            <OTPKeys />
+            <div className="grid-responsive-2" style={{ alignItems: 'start', gap: '30px' }}>
+              
+              {/* Reset Database (Owner Only) */}
+              <div>
+                <h4 style={{ color: '#ef4444', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <AlertTriangle size={18} /> {isID ? 'Operasi Kritis (Owner Only)' : 'Critical Operations (Owner Only)'}
+                </h4>
+                
+                <div className="glass-card" style={{ padding: '25px', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.02)' }}>
+                  <h5 style={{ color: 'var(--text)', margin: '0 0 10px 0', fontSize: '1rem' }}>{isID ? 'Setel Ulang Data Operasional' : 'Reset Operational Data'}</h5>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '0 0 20px 0', lineHeight: 1.5 }}>
+                    {isID 
+                      ? 'Menghapus seluruh data transaksi operasional termasuk customers, prospects, job orders, invoices, dan receivables. Akun karyawan dan pengaturan sistem tidak akan dihapus.' 
+                      : 'Wipes all operational transactional data including customers, prospects, job orders, invoices, and receivables. Employee accounts and system configurations will not be deleted.'}
+                  </p>
+                  <button onClick={() => openConfirm('all', null, isID ? 'Setel Ulang Seluruh Data' : 'Reset All System Data')} className="btn" style={{ background: '#ef4444', color: 'white', border: 'none', padding: '12px 25px', display: 'flex', alignItems: 'center', gap: '8px', width: '100%', justifyContent: 'center' }}>
+                    <Trash2 size={18} />
+                    <span>{isID ? 'SETEL ULANG SEKARANG' : 'RESET DATA NOW'}</span>
                   </button>
                 </div>
-              ))}
-              {customers.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center' }}>{isID ? 'Tidak ada pelanggan ditemukan.' : 'No customers found.'}</p>}
-            </div>
-          </div>
+              </div>
 
-          {/* Jobs & Invoices Section */}
-          <div>
-            <h4 style={{ color: 'var(--secondary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Database size={18} /> {isID ? 'Operasi & Keuangan' : 'Operations & Finance'}
-            </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '10px' }}>{isID ? 'Job & Faktur Terbaru' : 'Recent Jobs & Invoices'}</p>
-              {jobOrders.slice(0, 5).map(jo => (
-                <div key={jo.id} style={{ padding: '15px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{jo.id}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{jo.customerName}</div>
-                  </div>
-                  <button onClick={() => openConfirm('jo', jo.id, jo.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
+              {/* Jobs & Invoices Section */}
+              <div>
+                <h4 style={{ color: 'var(--secondary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Database size={18} /> {isID ? 'Operasi & Keuangan' : 'Operations & Finance'}
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '10px' }}>{isID ? 'Job & Faktur Terbaru' : 'Recent Jobs & Invoices'}</p>
+                  {jobOrders.slice(0, 5).map(jo => (
+                    <div key={jo.id} style={{ padding: '15px', background: 'var(--glass)', borderRadius: '12px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontWeight: '600', fontSize: '0.9rem' }}>{jo.id}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{jo.customerName}</div>
+                      </div>
+                      <button onClick={() => openConfirm('jo', jo.id, jo.id)} style={{ color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}>
                     <Trash2 size={16} />
                   </button>
+                    </div>
+                  ))}
+                  {jobOrders.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center' }}>{isID ? 'Tidak ada job order ditemukan.' : 'No job orders found.'}</p>}
                 </div>
-              ))}
-              {jobOrders.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center' }}>{isID ? 'Tidak ada job order ditemukan.' : 'No job orders found.'}</p>}
+              </div>
             </div>
           </div>
+        </>
+      ) : (
+        <div className="glass-card" style={{ padding: '40px', border: '1px solid var(--border)', background: 'rgba(255,255,255,0.01)', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <ShieldAlert size={48} style={{ margin: '0 auto 20px', color: 'var(--text-muted)', opacity: 0.5 }} />
+          <h3 style={{ color: 'var(--text)', marginBottom: '10px' }}>{isID ? 'Tindakan Sistem Terbatas' : 'Restricted System Actions'}</h3>
+          <p style={{ fontSize: '0.9rem', maxWidth: '400px', margin: '0 auto' }}>
+            {isID ? 'Anda memerlukan izin tulis System Control untuk melakukan tindakan sistem kritis seperti menghapus data atau menyetel ulang sistem.' : 'You require System Control write permissions to execute critical system actions such as deleting data or resetting the system.'}
+          </p>
         </div>
-      </div>
+      )}
 
       {/* 2-Step Verification Modal */}
       <AnimatePresence>

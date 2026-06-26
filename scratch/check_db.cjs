@@ -1,23 +1,27 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const db = new Database(path.join(process.cwd(), 'server', 'omega_trust.db'));
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 
-console.log("--- JOB ORDERS ---");
-const jos = db.prepare("SELECT id, customerName, instruction FROM job_orders").all();
-jos.forEach(jo => {
-    if (!jo.id || !jo.customerName) {
-        console.log("NULL FOUND in JO:", jo);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error('Missing credentials in .env');
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+async function check() {
+  try {
+    const { data, error } = await supabase.from('employee_accounts').select('*').limit(1);
+    if (error) {
+      console.error('Error fetching employee_accounts:', error);
+    } else {
+      console.log('Record from employee_accounts:', data);
     }
-});
-console.log(`Checked ${jos.length} JOs`);
+  } catch (err) {
+    console.error('Caught error:', err);
+  }
+}
 
-console.log("\n--- INVOICES ---");
-const invs = db.prepare("SELECT id, customerName FROM invoices").all();
-invs.forEach(inv => {
-    if (!inv.id || !inv.customerName) {
-        console.log("NULL FOUND in Invoice:", inv);
-    }
-});
-console.log(`Checked ${invs.length} Invoices`);
-
-db.close();
+check();

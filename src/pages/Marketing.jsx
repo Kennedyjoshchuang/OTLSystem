@@ -173,8 +173,11 @@ const Marketing = () => {
     user,
     t,
     loading,
-    language
+    language,
+    hasAccess
   } = context;
+
+  const canWrite = hasAccess ? hasAccess('marketing', true) : false;
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', color: 'var(--secondary)' }}>Loading Marketing Portal...</div>;
@@ -230,6 +233,7 @@ const Marketing = () => {
 
   const handleProspectEditSubmit = async (e) => {
     if (e) e.preventDefault();
+    if (!canWrite) return;
     try {
       await updateProspect(activeProspectForEdit.id, editProspectData);
       setActiveProspectForEdit(null);
@@ -241,6 +245,7 @@ const Marketing = () => {
 
   const handleProspectSubmit = (e) => {
     e.preventDefault();
+    if (!canWrite) return;
     addProspect(prospectData);
     setProspectData({ name: '', address: '', phone: '', email: '', pic: '', notes: '', description: '', marketingName: '', marketingPhone: '', marketingEmail: '', companyAddress: '' });
     setShowProspectForm(false);
@@ -250,6 +255,7 @@ const Marketing = () => {
 
   const handleCreateProspectQuotation = async (e) => {
     if (e) e.preventDefault();
+    if (!canWrite) return;
     if (!activeProspectForQuote) return;
 
     // Validate items
@@ -346,6 +352,7 @@ const Marketing = () => {
 
   const handleSaveQuotationEdit = async (e) => {
     if (e) e.preventDefault();
+    if (!canWrite) return;
     if (!activeQuotationForEdit) return;
 
     if (editQuoteItems.length === 0 || editQuoteItems.some(item => !item.description || !item.rate || !item.quantity)) {
@@ -1214,7 +1221,7 @@ const Marketing = () => {
         </div>
 
         <div>
-          {activeTab === 'prospects' ? (
+          {canWrite && activeTab === 'prospects' ? (
             <button className="btn btn-gold" onClick={() => setShowProspectForm(!showProspectForm)} style={{ marginBottom: '10px' }}>
               <Plus size={18} />
               {showProspectForm ? t('cancel') : t('addProspect')}

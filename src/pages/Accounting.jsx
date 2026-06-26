@@ -185,8 +185,11 @@ const Accounting = () => {
     getSystemConfig,
     loading,
     t,
-    language
+    language,
+    hasAccess
   } = context || {};
+
+  const canWrite = hasAccess ? hasAccess('accounting', true) : false;
 
   const isID = language === 'id';
 
@@ -2341,21 +2344,19 @@ const Accounting = () => {
           <Briefcase size={17} /> {isID ? 'Pemasukan & Pengeluaran' : 'Income & Expenses'}
         </button>
 
-        {(context?.user?.role === 'accounting' || context?.user?.role === 'owner') && (
-          <button
-            onClick={() => setActiveTab('reimbursements')}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '11px 22px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', transition: 'all 0.2s',
-              background: activeTab === 'reimbursements' ? 'linear-gradient(135deg, #14b8a6, #0f766e)' : 'rgba(255,255,255,0.05)',
-              color: activeTab === 'reimbursements' ? '#ffffff' : 'var(--text-muted)',
-              boxShadow: activeTab === 'reimbursements' ? '0 4px 15px rgba(20,184,166,0.4)' : 'none',
-              border: activeTab === 'reimbursements' ? 'none' : '1px solid var(--glass-border)'
-            }}
-          >
-            <Receipt size={17} /> {isID ? 'Reimbursement' : 'Reimbursements'}
-          </button>
-        )}
+        <button
+          onClick={() => setActiveTab('reimbursements')}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '11px 22px', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', fontSize: '0.95rem', transition: 'all 0.2s',
+            background: activeTab === 'reimbursements' ? 'linear-gradient(135deg, #14b8a6, #0f766e)' : 'rgba(255,255,255,0.05)',
+            color: activeTab === 'reimbursements' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: activeTab === 'reimbursements' ? '0 4px 15px rgba(20,184,166,0.4)' : 'none',
+            border: activeTab === 'reimbursements' ? 'none' : '1px solid var(--glass-border)'
+          }}
+        >
+          <Receipt size={17} /> {isID ? 'Reimbursement' : 'Reimbursements'}
+        </button>
 
         <button
           onClick={() => setActiveTab('hutang')}

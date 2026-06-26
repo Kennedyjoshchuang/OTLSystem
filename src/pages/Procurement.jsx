@@ -8,8 +8,9 @@ import { ButtonWithLoading } from '../components/ButtonWithLoading';
 const emptyVendor = { name: '', phone: '', email: '', address: '', bankName: '', bankAccount: '', services: [{ description: '', price: '' }], assets: [''] };
 
 const Procurement = () => {
-  const { vendors: vendorsRaw, addVendor, updateVendor, deleteVendor, user, language } = useApp();
+  const { vendors: vendorsRaw, addVendor, updateVendor, deleteVendor, user, language, hasAccess } = useApp();
   const isID = language === 'id';
+  const canWrite = hasAccess ? hasAccess('procurement', true) : false;
   const vendors = vendorsRaw || [];
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -62,6 +63,7 @@ const Procurement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canWrite) return;
     const cleanedServices = form.services.filter(s => s.description.trim());
     const cleanedAssets = form.assets.filter(a => a.trim());
     if (editingId) {
@@ -107,7 +109,7 @@ const Procurement = () => {
               </p>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn" style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--text)' }} onClick={() => setDeleteConfirm(null)}>{isID ? 'Batal' : 'Cancel'}</button>
-                <ButtonWithLoading className="btn" style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none' }} onClick={async () => { await deleteVendor(deleteConfirm.id); setDeleteConfirm(null); }}>{isID ? 'Hapus' : 'Delete'}</ButtonWithLoading>
+                <ButtonWithLoading className="btn" style={{ flex: 1, background: '#ef4444', color: 'white', border: 'none' }} onClick={async () => { if (!canWrite) return; await deleteVendor(deleteConfirm.id); setDeleteConfirm(null); }}>{isID ? 'Hapus' : 'Delete'}</ButtonWithLoading>
               </div>
             </motion.div>
           </motion.div>
@@ -120,9 +122,11 @@ const Procurement = () => {
           <h3 className="shimmer-text" style={{ fontSize: '1.8rem', margin: 0 }}>{isID ? 'Pengadaan & Tarif Vendor' : 'Procurement & Vendor Rates'}</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '6px' }}>{isID ? 'Kelola daftar vendor, harga layanan, dan aset operasional.' : 'Manage vendor lists, service rates, and operational assets.'}</p>
         </div>
-        <button className="btn btn-gold" onClick={() => { setForm(emptyVendor); setEditingId(null); setShowForm(!showForm); }}>
-          <Plus size={18} /> {showForm && !editingId ? (isID ? 'Batal' : 'Cancel') : (isID ? 'Tambah Vendor' : 'Add Vendor')}
-        </button>
+        {canWrite && (
+          <button className="btn btn-gold" onClick={() => { setForm(emptyVendor); setEditingId(null); setShowForm(!showForm); }}>
+            <Plus size={18} /> {showForm && !editingId ? (isID ? 'Batal' : 'Cancel') : (isID ? 'Tambah Vendor' : 'Add Vendor')}
+          </button>
+        )}
       </div>
 
       {/* Form */}

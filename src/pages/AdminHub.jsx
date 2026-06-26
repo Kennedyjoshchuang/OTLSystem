@@ -71,7 +71,8 @@ const AdminHub = () => {
   const [poNotes, setPoNotes] = useState('');
 
   if (!context) return null;
-  const { quotations = [], jobOrders = [], createJO, dispatchJO, vendors = [], purchaseOrders = [], createPurchaseOrder, updatePurchaseOrder, issuePurchaseOrder, deletePurchaseOrder, user, t, loading, language } = context;
+  const { quotations = [], jobOrders = [], createJO, dispatchJO, vendors = [], purchaseOrders = [], createPurchaseOrder, updatePurchaseOrder, issuePurchaseOrder, deletePurchaseOrder, user, t, loading, language, hasAccess } = context;
+  const canWrite = hasAccess ? hasAccess('admin', true) : false;
   const isID = language === 'id';
   
   if (loading) {
@@ -232,6 +233,7 @@ const AdminHub = () => {
 
   // Button: Simpan Draft
   const handleSaveDraft = async () => {
+    if (!canWrite) return;
     try {
       const payload = buildPOPayload();
       if (!payload) return;
@@ -249,6 +251,7 @@ const AdminHub = () => {
 
   // Button: Langsung Terbitkan
   const handleIssueDirectly = async () => {
+    if (!canWrite) return;
     try {
       const payload = buildPOPayload();
       if (!payload) return;
@@ -318,6 +321,7 @@ const AdminHub = () => {
   };
 
   const handleCreateJO = (quote) => {
+    if (!canWrite) return;
     const availableItems = getAvailableItems(quote, jobOrders);
     const hasItems = quote.items && quote.items.length > 0;
     const selectedItem = hasItems ? availableItems[selectedActivityIndex] : null;
@@ -348,6 +352,7 @@ const AdminHub = () => {
   };
 
   const handleDispatch = async (joId) => {
+    if (!canWrite) return;
     const jo = jobOrders.find(j => j.id === joId);
     const qty = quantities[joId] || jo.quantity || 1;
     await dispatchJO(joId, parseInt(qty));

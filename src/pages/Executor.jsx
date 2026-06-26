@@ -53,8 +53,9 @@ const formatDuration = (dispatchedAt, completedAt, t, language) => {
 };
 
 const Executor = () => {
-  const { jobOrders, updateJOStatus, completeJO, deleteJO, t, language } = useApp();
+  const { jobOrders, updateJOStatus, completeJO, deleteJO, t, language, hasAccess } = useApp();
   const isID = language === 'id';
+  const canWrite = hasAccess ? hasAccess('executor', true) : false;
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'records'
   const fileInputRef = useRef(null);
@@ -234,6 +235,7 @@ const Executor = () => {
   };
 
   const handlePhotoUpload = async (e) => {
+    if (!canWrite) return;
     const files = e.target.files;
     if (!files || !uploadingForId) return;
 
@@ -266,12 +268,14 @@ const Executor = () => {
   };
 
   const removePhoto = (joId, photoIndex) => {
+    if (!canWrite) return;
     const jo = jobOrders.find(j => j.id === joId);
     const newPhotos = jo.photos.filter((_, i) => i !== photoIndex);
     updateJOStatus(joId, { photos: newPhotos });
   };
 
   const handleDone = async (jo) => {
+    if (!canWrite) return;
     const rawData = localData[jo.id] || {
       containerNo: jo.containerNo,
       vehicleNo: jo.vehicleNo,
@@ -305,6 +309,7 @@ const Executor = () => {
   };
 
   const handleCancel = async (jo) => {
+    if (!canWrite) return;
     const confirmMsg = isID 
       ? `Apakah Anda yakin ingin membatalkan pengiriman untuk Job Order ${jo.id}? Status akan dikembalikan ke pending dan semua data input akan direset.`
       : `Are you sure you want to cancel dispatch for Job Order ${jo.id}? The status will be set back to pending and all input data will be reset.`;
@@ -334,6 +339,7 @@ const Executor = () => {
   };
 
   const handleSaveChanges = async (jo) => {
+    if (!canWrite) return;
     const rawData = localData[jo.id] || {
       containerNo: jo.containerNo,
       vehicleNo: jo.vehicleNo,
