@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Send, CheckCircle, Plus, X, FileText, ShoppingCart, Trash2, FileCheck, Search, FileSpreadsheet, ChevronDown, ChevronUp, Edit } from 'lucide-react';
+import { Send, CheckCircle, Plus, X, FileText, ShoppingCart, Trash2, FileCheck, Search, FileSpreadsheet, ChevronDown, ChevronUp, Edit, Folder, FolderOpen } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 
@@ -12,6 +13,7 @@ const AdminHub = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedQuoteId, setSelectedQuoteId] = useState('');
   const [selectedActivityIndex, setSelectedActivityIndex] = useState(0);
+  const [selectedActivities, setSelectedActivities] = useState({});
   const [issueQuantity, setIssueQuantity] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('created_desc');
@@ -285,12 +287,12 @@ const AdminHub = () => {
     const items = quote.items && quote.items.length > 0 ? quote.items : [];
     
     if (items.length > 0) {
-      // 1. Match JOs with non-empty instructions to items
-      const unmatchedItems = [...items];
+      // Match JOs with non-empty instructions to items, keeping track of original index
+      const unmatchedItems = items.map((item, idx) => ({ ...item, originalIndex: idx }));
       const unmatchedJOs = [];
       
       relatedJOs.forEach(jo => {
-        const joDesc = (jo.instruction || '').trim().toLowerCase();
+        const joDesc = (jo.instruction || jo.jobDescription || '').trim().toLowerCase();
         if (joDesc) {
           const matchIndex = unmatchedItems.findIndex(item => 
             (item.description || '').trim().toLowerCase() === joDesc
@@ -305,7 +307,6 @@ const AdminHub = () => {
         }
       });
       
-      // 2. Match remaining JOs (which have empty instruction) 1-to-1 with remaining items
       const finalUnmatchedItems = [...unmatchedItems];
       unmatchedJOs.forEach(() => {
         if (finalUnmatchedItems.length > 0) {
@@ -316,29 +317,50 @@ const AdminHub = () => {
       return finalUnmatchedItems;
     } else {
       const hasJO = relatedJOs.length > 0;
-      return hasJO ? [] : [{ description: quote.jobDescription || 'No description', rate: quote.rate, quantity: quote.quantity || 1 }];
+      return hasJO ? [] : [{ description: quote.jobDescription || 'No description', rate: quote.rate, quantity: quote.quantity || 1, originalIndex: -1 }];
     }
   };
 
-  const handleCreateJO = (quote) => {
+  const handleCreateJO = async (quote) => {
     if (!canWrite) return;
-    const availableItems = getAvailableItems(quote, jobOrders);
     const hasItems = quote.items && quote.items.length > 0;
-    const selectedItem = hasItems ? availableItems[selectedActivityIndex] : null;
-    const activityDetail = selectedItem ? selectedItem.description : quote.jobDescription;
-    const rateDetail = selectedItem ? parseFloat(selectedItem.rate) : quote.rate;
 
-    createJO({
-      quotationId: quote.id,
-      customerName: quote.customerName,
-      jobDescription: activityDetail,
-      phone: quote.phone || 'N/A',
-      email: quote.email || 'N/A',
-      rate: rateDetail,
-      quantity: issueQuantity // Set quantity at creation
-    });
+    if (hasItems) {
+      const selectedIndexes = Object.keys(selectedActivities).filter(idx => selectedActivities[idx]?.selected);
+      if (selectedIndexes.length === 0) {
+        toast(isID ? 'Pilih setidaknya satu aktivitas!' : 'Select at least one activity!');
+        return;
+      }
+
+      for (const idxStr of selectedIndexes) {
+        const idx = parseInt(idxStr, 10);
+        const item = quote.items[idx];
+        const qty = selectedActivities[idx]?.quantity || item.quantity || 1;
+        await createJO({
+          quotationId: quote.id,
+          customerName: quote.customerName,
+          jobDescription: item.description,
+          phone: quote.phone || 'N/A',
+          email: quote.email || 'N/A',
+          rate: parseFloat(item.rate || 0),
+          quantity: parseInt(qty, 10)
+        });
+      }
+    } else {
+      await createJO({
+        quotationId: quote.id,
+        customerName: quote.customerName,
+        jobDescription: quote.jobDescription || 'No description',
+        phone: quote.phone || 'N/A',
+        email: quote.email || 'N/A',
+        rate: parseFloat(quote.rate || 0),
+        quantity: parseInt(issueQuantity, 10)
+      });
+    }
+
     setShowModal(false);
     setSelectedQuoteId('');
+    setSelectedActivities({});
     setSelectedActivityIndex(0);
     setIssueQuantity(1);
   };
@@ -356,7 +378,23 @@ const AdminHub = () => {
     const jo = jobOrders.find(j => j.id === joId);
     const qty = quantities[joId] || jo.quantity || 1;
     await dispatchJO(joId, parseInt(qty));
-    alert(isID ? 'Job Order berhasil dikirim ke Pelaksana!' : 'Job Order dispatched to Executor!');
+    toast.success(isID ? 'Job Order berhasil dikirim ke Pelaksana!' : 'Job Order dispatched to Executor!');
+  };
+
+  const handleDispatchAll = async (group) => {
+    if (!canWrite) return;
+    const confirmed = window.confirm(
+      isID 
+        ? `Kirim semua ${group.jobOrders.length} JO untuk ${group.customerName}?` 
+        : `Dispatch all ${group.jobOrders.length} JOs for ${group.customerName}?`
+    );
+    if (confirmed) {
+      for (const jo of group.jobOrders) {
+        const qty = quantities[jo.id] || jo.quantity || 1;
+        await dispatchJO(jo.id, parseInt(qty));
+      }
+      toast.success(isID ? 'Semua Job Order berhasil dikirim ke Pelaksana!' : 'All Job Orders dispatched to Executor!');
+    }
   };
 
   return (
@@ -769,12 +807,22 @@ const AdminHub = () => {
                       setSelectedQuoteId(qId);
                       setSelectedActivityIndex(0);
 
-                      // Pre-fill quantity from quote if available
                       const quote = approvedQuotes.find(q => q.id === qId);
                       if (quote) {
                         const availableItems = getAvailableItems(quote, jobOrders);
                         const defaultQty = availableItems.length > 0 ? (availableItems[0].quantity || 1) : (quote.quantity || 1);
                         setIssueQuantity(parseInt(defaultQty));
+                        
+                        // Initialize selected activities (check all by default)
+                        const initialSelected = {};
+                        availableItems.forEach((item) => {
+                          if (item.originalIndex !== -1) {
+                            initialSelected[item.originalIndex] = { selected: true, quantity: parseInt(item.quantity || 1) };
+                          }
+                        });
+                        setSelectedActivities(initialSelected);
+                      } else {
+                        setSelectedActivities({});
                       }
                     }}
                     style={{
@@ -819,23 +867,84 @@ const AdminHub = () => {
                   const q = approvedQuotes.find(quote => quote.id === selectedQuoteId);
                   if (!q) return null;
                   const availableItems = getAvailableItems(q, jobOrders);
-                  const hasMultipleItems = availableItems.length > 1;
+                  const hasItems = q.items && q.items.length > 0;
 
                   return (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     >
-                      {hasMultipleItems && (
+                      {hasItems ? (
+                        <div style={{ marginBottom: '25px' }}>
+                          <label style={{ marginBottom: '12px', display: 'block', fontWeight: '600' }}>
+                            {isID ? 'Pilih Aktivitas untuk Di-issue' : 'Select Activities to Issue'}
+                          </label>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                            {availableItems.map((item) => {
+                              const idx = item.originalIndex;
+                              const isChecked = !!selectedActivities[idx]?.selected;
+                              const currentQty = selectedActivities[idx]?.quantity || item.quantity || 1;
+                              return (
+                                <div key={idx} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '15px', padding: '15px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      setSelectedActivities(prev => ({
+                                        ...prev,
+                                        [idx]: {
+                                          ...prev[idx],
+                                          selected: e.target.checked
+                                        }
+                                      }));
+                                    }}
+                                    style={{ width: '20px', height: '20px', accentColor: 'var(--secondary)', cursor: 'pointer' }}
+                                  />
+                                  <div style={{ flex: 1, minWidth: '150px' }}>
+                                    <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{item.description}</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                      {isID ? 'Kontrak:' : 'Contract:'} {item.quantity} {item.unit || 'unit'} | Rp {parseFloat(item.rate || 0).toLocaleString()}
+                                    </div>
+                                  </div>
+                                  <div style={{ width: '120px' }}>
+                                    <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                                      {isID ? 'Jumlah Issue:' : 'Issue Qty:'}
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={currentQty}
+                                      disabled={!isChecked}
+                                      onChange={(e) => {
+                                        setSelectedActivities(prev => ({
+                                          ...prev,
+                                          [idx]: {
+                                            ...prev[idx],
+                                            quantity: parseInt(e.target.value) || 1
+                                          }
+                                        }));
+                                      }}
+                                      style={{ width: '100%', padding: '6px 10px', borderRadius: '8px', background: 'var(--input-bg)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: '0.9rem', fontWeight: '700' }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
                         <div className="input-group" style={{ marginBottom: '25px' }}>
-                          <label>{isID ? 'Pilih Item Aktivitas Spesifik' : 'Select Specific Activity Item'}</label>
-                          <select
+                          <label style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                            <span>{isID ? 'Jumlah yang Dikeluarkan' : 'Quantity to Issue'}</span>
+                            <span style={{ color: 'var(--secondary)', fontSize: '0.75rem' }}>
+                              {isID ? 'Maks Kontrak: ' : 'Contract Max: '}{q.quantity || 1}
+                            </span>
+                          </label>
+                          <input
                             required
-                            value={selectedActivityIndex}
-                            onChange={e => {
-                              const idx = parseInt(e.target.value);
-                              setSelectedActivityIndex(idx);
-                              setIssueQuantity(parseInt(availableItems[idx].quantity || 1));
-                            }}
+                            type="number"
+                            min="1"
+                            value={issueQuantity}
+                            onChange={e => setIssueQuantity(e.target.value)}
                             style={{
                               width: '100%',
                               padding: '12px 15px',
@@ -843,65 +952,30 @@ const AdminHub = () => {
                               border: '1px solid var(--border)',
                               borderRadius: '12px',
                               color: 'var(--text)',
-                              fontSize: '1rem'
+                              fontSize: '1.2rem',
+                              fontWeight: '700'
                             }}
-                          >
-                            {availableItems.map((item, idx) => (
-                              <option key={idx} value={idx} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-                                {item.description} (Qty: {item.quantity})
-                              </option>
-                            ))}
-                          </select>
+                          />
                         </div>
                       )}
-
-                      <div className="input-group" style={{ marginBottom: '25px' }}>
-                        <label style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between' }}>
-                          <span>{isID ? 'Jumlah yang Dikeluarkan' : 'Quantity to Issue'}</span>
-                          <span style={{ color: 'var(--secondary)', fontSize: '0.75rem' }}>
-                            {isID ? 'Maks Kontrak: ' : 'Contract Max: '}{availableItems.length > 0 ? (availableItems[selectedActivityIndex]?.quantity || 1) : (q.quantity || 1)}
-                          </span>
-                        </label>
-                        <input
-                          required
-                          type="number"
-                          min="1"
-                          value={issueQuantity}
-                          onChange={e => setIssueQuantity(e.target.value)}
-                          style={{
-                            width: '100%',
-                            padding: '12px 15px',
-                            background: 'var(--input-bg)',
-                            border: '1px solid var(--border)',
-                            borderRadius: '12px',
-                            color: 'var(--text)',
-                            fontSize: '1.2rem',
-                            fontWeight: '700'
-                          }}
-                        />
-                      </div>
 
                       <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', marginBottom: '30px', border: '1px dashed var(--border)' }}>
                         <div style={{ marginBottom: '10px' }}>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Pelanggan:' : 'Customer:'}</span>
                           <div style={{ fontWeight: '600' }}>{q.customerName}</div>
                         </div>
-                        <div style={{ marginBottom: '10px' }}>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Detail Aktivitas Terpilih:' : 'Selected Activity Detail:'}</span>
-                          <div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>
-                            {hasMultipleItems
-                              ? availableItems[selectedActivityIndex]?.description
-                              : (availableItems[0]?.description || q.jobDescription || '-')}
+                        {q.companyAddress && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Alamat Perusahaan:' : 'Company Address:'}</span>
+                            <div style={{ fontSize: '0.9rem' }}>{q.companyAddress}</div>
                           </div>
-                        </div>
-                        <div>
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Harga Kontrak:' : 'Contract Rate:'}</span>
-                          <div style={{ fontWeight: '700', color: 'var(--secondary)' }}>
-                            Rp {hasMultipleItems
-                              ? parseFloat(availableItems[selectedActivityIndex]?.rate || 0).toLocaleString()
-                              : parseFloat(availableItems[0]?.rate || q.rate || 0).toLocaleString()}
+                        )}
+                        {!hasItems && (
+                          <div style={{ marginBottom: '10px' }}>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{isID ? 'Deskripsi:' : 'Description:'}</span>
+                            <div style={{ fontSize: '0.9rem', whiteSpace: 'pre-wrap' }}>{q.jobDescription}</div>
                           </div>
-                        </div>
+                        )}
                       </div>
                     </motion.div>
                   );
@@ -1033,61 +1107,130 @@ const AdminHub = () => {
         </AnimatePresence>
       </div>
 
-      <div className="glass-card" style={{ padding: '25px', marginTop: '30px'  , overflowX: 'auto' }}>
-        <h4 style={{ marginBottom: '25px' }}>{isID ? 'Job Order untuk Dikirim' : 'Job Orders for Dispatch'}</h4>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '25px' }}>
-          {jobOrders
-            .filter(jo => jo.status === 'pending')
-            .filter(jo => filterByDate(jo.date))
-            .filter(jo => {
-              const id = jo.id || '';
-              const name = jo.customerName || '';
-              const term = searchTerm.toLowerCase();
-              return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
-            })
-            .sort(sortPendingJOs)
-            .map(jo => (
-            <div key={jo.id} className="glass-card table-row-hover" style={{ padding: '25px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: '15px' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
-                  <span style={{ color: 'var(--secondary)', fontWeight: 'bold' }}>{jo.id}</span>
-                  <span className="badge badge-pending" style={{ fontSize: '0.7rem' }}>Draft</span>
+      <div className="glass-card" style={{ padding: '25px', marginTop: '30px', overflowX: 'auto' }}>
+        <h4 style={{ marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Folder size={20} style={{ color: 'var(--secondary)' }} />
+          {isID ? 'Job Order Draft (Grup Penawaran)' : 'Job Order Drafts (Grouped by Quotation)'}
+        </h4>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '30px' }}>
+          {(() => {
+            const filteredPendingJOs = jobOrders
+              .filter(jo => jo.status === 'pending')
+              .filter(jo => filterByDate(jo.date))
+              .filter(jo => {
+                const id = jo.id || '';
+                const name = jo.customerName || '';
+                const term = searchTerm.toLowerCase();
+                return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
+              });
+
+            const joGroups = {};
+            filteredPendingJOs.forEach(jo => {
+              const qId = jo.quotationId || 'no-quotation';
+              if (!joGroups[qId]) {
+                const quote = quotations.find(q => q.id === qId);
+                joGroups[qId] = {
+                  quotationId: qId,
+                  customerName: quote ? quote.customerName : jo.customerName,
+                  date: quote ? quote.date : jo.date,
+                  jobOrders: []
+                };
+              }
+              joGroups[qId].jobOrders.push(jo);
+            });
+
+            const joGroupsArray = Object.values(joGroups).sort((a, b) => {
+              const timeA = a.date ? new Date(a.date).getTime() : 0;
+              const timeB = b.date ? new Date(b.date).getTime() : 0;
+              return timeB - timeA;
+            });
+
+            if (joGroupsArray.length === 0) {
+              return (
+                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
+                  {isID ? 'Belum ada form JO draft.' : 'No JO forms drafted yet.'}
                 </div>
-                <button 
-                  className="btn-icon" 
-                  style={{ color: '#ffffff', background: 'rgba(239,68,68,0.75)', width: '32px', height: '32px' }} 
-                  onClick={() => setDeleteJOConfirm(jo)}
-                  title={isID ? "Batalkan / Hapus JO Draft" : "Cancel / Delete JO Draft"}
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-              <p style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '5px' }}>{jo.customerName}</p>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '20px', minHeight: '40px' }}>{jo.jobDescription}</p>
+              );
+            }
 
-              <div className="input-group" style={{ marginBottom: '20px' }}>
-                <label style={{ fontSize: '0.8rem' }}>{isID ? 'Jumlah Pekerjaan (Unit)' : 'Work Quantity (Units)'}</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={quantities[jo.id] || jo.quantity || ''}
-                  onChange={e => setQuantities({ ...quantities, [jo.id]: e.target.value })}
-                  placeholder={isID ? "Masukkan jumlah..." : "Enter quantity..."}
-                  style={{ borderRadius: '10px', padding: '10px' }}
-                />
-              </div>
+            return joGroupsArray.map(group => (
+              <div key={group.quotationId} className="glass-card" style={{ padding: '25px', border: '1px solid var(--secondary)', background: 'rgba(6, 95, 70, 0.03)' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--glass-border)', paddingBottom: '15px', marginBottom: '20px', gap: '15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <FolderOpen size={24} style={{ color: 'var(--secondary)' }} />
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>
+                        {isID ? 'RUJUKAN PENAWARAN' : 'QUOTATION REFERENCE'}
+                      </span>
+                      <strong style={{ color: 'var(--secondary)', fontSize: '1rem' }}>{group.quotationId}</strong>
+                      <span style={{ margin: '0 8px', color: 'var(--text-muted)' }}>|</span>
+                      <strong style={{ fontSize: '1rem' }}>{group.customerName}</strong>
+                    </div>
+                  </div>
+                  {canWrite && (
+                    <ButtonWithLoading 
+                      className="btn btn-gold" 
+                      style={{ padding: '8px 16px', fontSize: '0.8rem' }}
+                      onClick={() => handleDispatchAll(group)}
+                    >
+                      <Send size={15} />
+                      {isID ? 'Kirim Semua JO' : 'Dispatch All JOs'} ({group.jobOrders.length})
+                    </ButtonWithLoading>
+                  )}
+                </div>
 
-              <ButtonWithLoading className="btn btn-gold" style={{ width: '100%' }} onClick={() => handleDispatch(jo.id)}>
-                <Send size={18} />
-                {isID ? 'Kirim ke Pelaksana' : 'Dispatch to Executor'}
-              </ButtonWithLoading>
-            </div>
-          ))}
-          {jobOrders.filter(jo => jo.status === 'pending').length === 0 && (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>
-              {isID ? 'Belum ada form JO draft.' : 'No JO forms drafted yet.'}
-            </div>
-          )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 320px), 1fr))', gap: '20px' }}>
+                  {group.jobOrders.map(jo => (
+                    <div key={jo.id} style={{ padding: '20px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--glass-border)', borderRadius: '12px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                          <span style={{ fontWeight: '700', color: 'var(--secondary)', fontSize: '0.85rem' }}>{jo.id}</span>
+                          {canWrite && (
+                            <button 
+                              className="btn-icon" 
+                              style={{ color: 'var(--danger)', background: 'var(--danger-bg)', width: '28px', height: '28px' }} 
+                              onClick={() => setDeleteJOConfirm(jo)}
+                              title={isID ? "Hapus Draft JO" : "Delete Draft JO"}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '15px', minHeight: '35px', fontWeight: '500' }}>
+                          {jo.jobDescription}
+                        </p>
+                      </div>
+
+                      <div>
+                        <div className="input-group" style={{ marginBottom: '15px' }}>
+                          <label style={{ fontSize: '0.75rem', marginBottom: '4px', display: 'block' }}>{isID ? 'Jumlah Pekerjaan (Unit)' : 'Work Quantity (Units)'}</label>
+                          <input
+                            type="number"
+                            min="1"
+                            disabled={!canWrite}
+                            value={quantities[jo.id] || jo.quantity || ''}
+                            onChange={e => setQuantities({ ...quantities, [jo.id]: e.target.value })}
+                            placeholder={isID ? "Masukkan jumlah..." : "Enter quantity..."}
+                            style={{ borderRadius: '8px', padding: '6px 12px', fontSize: '0.9rem' }}
+                          />
+                        </div>
+                        {canWrite && (
+                          <ButtonWithLoading 
+                            className="btn btn-gold" 
+                            style={{ width: '100%', padding: '8px 12px', fontSize: '0.8rem' }} 
+                            onClick={() => handleDispatch(jo.id)}
+                          >
+                            <Send size={14} />
+                            {isID ? 'Kirim ke Pelaksana' : 'Dispatch'}
+                          </ButtonWithLoading>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ));
+          })()}
         </div>
       </div>
     </div>

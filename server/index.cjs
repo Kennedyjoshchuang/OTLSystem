@@ -535,9 +535,20 @@ app.post('/api/invoices', async (req, res) => {
     }
 
     // 3. Update Job Order status to 'invoiced'
-    const { error: joErr } = await supabase.from('job_orders').update({ status: 'invoiced' }).eq('id', joId);
-    if (joErr) {
-      console.error(`[POST /invoices] JO Update error for ${joId}:`, joErr.message);
+    let joIds = req.body.consolidatedJOs || [];
+    if (!Array.isArray(joIds)) joIds = [];
+    if (joId && !joIds.includes(joId)) {
+      joIds.push(joId);
+    }
+
+    if (joIds.length > 0) {
+      const { error: joErr } = await supabase
+        .from('job_orders')
+        .update({ status: 'invoiced' })
+        .in('id', joIds);
+      if (joErr) {
+        console.error(`[POST /invoices] JO Update error for JOs:`, joErr.message);
+      }
     }
 
     console.log(`[POST /invoices] Everything complete for ${id}`);
@@ -618,10 +629,61 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
 
 
 app.delete('/api/invoices/:id', async (req, res) => {
-  await supabase.from('receivables').delete().eq('invoiceId', req.params.id);
-  const { error } = await supabase.from('invoices').delete().eq('id', req.params.id);
-  if (error) return handleError(res, error, 'DELETE invoices');
-  res.sendStatus(204);
+  try {
+    // 1. Fetch the invoice first to identify linked Job Orders
+    const { data: invoice, error: fetchErr } = await supabase
+      .from('invoices')
+      .select('joId')
+      .eq('id', req.params.id)
+      .single();
+
+    if (!fetchErr && invoice) {
+      let joIds = [invoice.joId];
+
+      // Find the primary job order to get its quotationId
+      const { data: primaryJo } = await supabase
+        .from('job_orders')
+        .select('quotationId')
+        .eq('id', invoice.joId)
+        .single();
+
+      if (primaryJo && primaryJo.quotationId) {
+        // Find all job orders with same quotationId and status 'invoiced'
+        const { data: relatedJOs } = await supabase
+          .from('job_orders')
+          .select('id')
+          .eq('quotationId', primaryJo.quotationId)
+          .eq('status', 'invoiced');
+        
+        if (relatedJOs) {
+          relatedJOs.forEach(r => {
+            if (!joIds.includes(r.id)) {
+              joIds.push(r.id);
+            }
+          });
+        }
+      }
+
+      if (joIds.length > 0) {
+        const { error: joErr } = await supabase
+          .from('job_orders')
+          .update({ status: 'done' })
+          .in('id', joIds);
+        if (joErr) {
+          console.error(`[DELETE /invoices/:id] Failed to revert JO status:`, joErr.message);
+        }
+      }
+    }
+
+    // 2. Delete receivables and invoice
+    await supabase.from('receivables').delete().eq('invoiceId', req.params.id);
+    const { error } = await supabase.from('invoices').delete().eq('id', req.params.id);
+    if (error) return handleError(res, error, 'DELETE invoices');
+    res.sendStatus(204);
+  } catch (err) {
+    console.error('DELETE Invoice exception:', err);
+    res.status(500).json({ error: 'Internal server error during invoice deletion' });
+  }
 });
 
 // --- RECEIVABLES ---

@@ -607,7 +607,17 @@ export const AppProvider = ({ children }) => {
     // Revert JO status before deleting
     const invoiceToDelete = invoices.find(inv => inv.id === id);
     if (invoiceToDelete) {
-      const joIdsToRevert = invoiceToDelete.consolidatedJOs || [invoiceToDelete.joId];
+      let joIdsToRevert = [invoiceToDelete.joId];
+      const primaryJO = jobOrders.find(jo => jo.id === invoiceToDelete.joId);
+      if (primaryJO && primaryJO.quotationId) {
+        const relatedJOs = jobOrders.filter(jo => jo.quotationId === primaryJO.quotationId && jo.status === 'invoiced');
+        relatedJOs.forEach(jo => {
+          if (!joIdsToRevert.includes(jo.id)) {
+            joIdsToRevert.push(jo.id);
+          }
+        });
+      }
+
       setJobOrders(prev => prev.map(jo => 
         joIdsToRevert.includes(jo.id) ? { ...jo, status: 'done' } : jo
       ));
