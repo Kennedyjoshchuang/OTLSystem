@@ -79,7 +79,11 @@ app.post('/api/login', async (req, res) => {
     'accounting': { name: 'Accounting', role: 'accounting', key: 'Haiga1899.2003' }
   };
 
-  const userMatch = rolesMap[username];
+  const normalizedUsername = String(username || '').trim().toLowerCase();
+  let lookupKey = normalizedUsername;
+  if (normalizedUsername === 'admin office') lookupKey = 'admin';
+
+  const userMatch = rolesMap[lookupKey];
   if (userMatch && password === userMatch.key) {
     const userData = { 
       name: userMatch.name, 
@@ -97,7 +101,7 @@ app.post('/api/login', async (req, res) => {
   const { data: accounts, error: accError } = await supabase
     .from('employee_accounts')
     .select('*')
-    .eq('username', username)
+    .ilike('username', username)
     .eq('password', password);
 
   if (accError) return handleError(res, accError, 'login db check');
