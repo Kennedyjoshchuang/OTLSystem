@@ -162,6 +162,7 @@ const Accounting = () => {
   // Invoice Bank Selection
   const [issuingInvoiceJoId, setIssuingInvoiceJoId] = useState(null);
   const [selectedBankId, setSelectedBankId] = useState('');
+  const [invoiceNotes, setInvoiceNotes] = useState('');
   const [expandedCompletedGroups, setExpandedCompletedGroups] = useState({});
   const [receivableProofModal, setReceivableProofModal] = useState(null); // invoice to upload proof for
   const [settleModal, setSettleModal] = useState(null); // { id, amount, ... }
@@ -937,10 +938,11 @@ const Accounting = () => {
       return id.toLowerCase().includes(term) || name.toLowerCase().includes(term);
     });
   
-  const handleIssueInvoice = async (joId, bankAccount) => {
+  const handleIssueInvoice = async (joId, bankAccount, notes) => {
     try {
       if (!bankAccount) {
         setIssuingInvoiceJoId(joId);
+        setInvoiceNotes('');
         if (companyBankAccounts.length > 0) {
           setSelectedBankId(companyBankAccounts[0].id);
         }
@@ -948,7 +950,7 @@ const Accounting = () => {
       }
 
       console.log("Issuing invoice for JO:", joId, "with bank:", bankAccount.bankName);
-      const newInv = await createInvoice(joId);
+      const newInv = await createInvoice(joId, notes);
       
       if (!newInv) {
         throw new Error("Gagal menerbitkan invoice. Pastikan data Job Order & Quotation tersedia.");
@@ -5603,6 +5605,18 @@ const Accounting = () => {
               )}
             </div>
 
+            <div style={{ marginBottom:'30px', textAlign:'left' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>
+                {isID ? 'Catatan Kustom (Opsional)' : 'Custom Notes (Optional)'}
+              </label>
+              <textarea 
+                value={invoiceNotes}
+                onChange={(e) => setInvoiceNotes(e.target.value)}
+                placeholder={isID ? "Masukkan catatan tambahan untuk invoice..." : "Enter additional notes for the invoice..."}
+                style={{ width:'100%', minHeight:'80px', padding:'12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--text)', fontSize:'0.9rem', resize:'vertical' }}
+              />
+            </div>
+
             <div style={{ display:'flex', gap:'12px', justifyContent:'center' }}>
               <button 
                 onClick={() => setIssuingInvoiceJoId(null)} 
@@ -5615,7 +5629,7 @@ const Accounting = () => {
                 onClick={() => {
                   const bank = companyBankAccounts.find(b => b.id === selectedBankId);
                   if (bank) {
-                    handleIssueInvoice(issuingInvoiceJoId, bank);
+                    handleIssueInvoice(issuingInvoiceJoId, bank, invoiceNotes);
                   } else {
                     alert(isID ? "Silakan pilih rekening bank yang valid." : "Please select a valid bank account.");
                   }

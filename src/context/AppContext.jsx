@@ -393,7 +393,7 @@ export const AppProvider = ({ children }) => {
     return isNaN(parsed) ? 0 : parsed;
   };
 
-  const createInvoice = async (joId) => {
+  const createInvoice = async (joId, notes) => {
     console.log("Starting createInvoice for JO ID:", joId);
     const jo = jobOrders.find(j => String(j.id) === String(joId));
     if (!jo) {
@@ -458,6 +458,7 @@ export const AppProvider = ({ children }) => {
       tax: 0,
       date: new Date().toISOString(),
       status: 'unpaid',
+      notes: notes || null,
       extra_charges: [],
       signedReceiptPhoto: null,
       signedInvoicePhoto: null,

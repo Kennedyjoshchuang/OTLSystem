@@ -86,6 +86,7 @@ db.exec(`
     tax REAL,
     date TEXT,
     status TEXT,
+    notes TEXT,
     FOREIGN KEY(joId) REFERENCES job_orders(id)
   );
 
