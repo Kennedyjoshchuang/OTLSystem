@@ -306,6 +306,13 @@ app.delete('/api/customers/:id', async (req, res) => {
   res.sendStatus(204);
 });
 
+app.put('/api/customers/:id', async (req, res) => {
+  const { name, phone, email, address } = req.body;
+  const { error } = await supabase.from('customers').update({ name, phone, email, address }).eq('id', req.params.id);
+  if (error) return handleError(res, error, 'PUT customers');
+  res.sendStatus(200);
+});
+
 // --- PROSPECTS ---
 app.get('/api/prospects', async (req, res) => {
   const { data, error } = await supabase.from('prospects').select('*');
@@ -324,9 +331,43 @@ app.post('/api/prospects', async (req, res) => {
 });
 
 app.put('/api/prospects/:id', async (req, res) => {
-  const updates = req.body;
-  const { error } = await supabase.from('prospects').update(updates).eq('id', req.params.id);
+  const { cascadeTo, ...updates } = req.body;
+  const id = req.params.id;
+  const { error } = await supabase.from('prospects').update(updates).eq('id', id);
   if (error) return handleError(res, error, 'PUT prospects');
+
+  if (updates.name) {
+    const cascadeList = cascadeTo ?? ['quotations', 'jobOrders', 'invoices', 'receivables', 'purchaseOrders'];
+    const { data: quotes } = await supabase.from('quotations').select('id').eq('customerId', id);
+    const quoteIds = quotes ? quotes.map(q => q.id) : [];
+
+    if (quoteIds.length > 0) {
+      if (cascadeList.includes('quotations')) {
+        await supabase.from('quotations').update({ customerName: updates.name }).in('id', quoteIds);
+      }
+      const { data: jos } = await supabase.from('job_orders').select('id').in('quotationId', quoteIds);
+      const joIds = jos ? jos.map(j => j.id) : [];
+
+      if (joIds.length > 0) {
+        if (cascadeList.includes('jobOrders')) {
+          await supabase.from('job_orders').update({ customerName: updates.name }).in('id', joIds);
+        }
+        if (cascadeList.includes('invoices')) {
+          await supabase.from('invoices').update({ customerName: updates.name }).in('joId', joIds);
+        }
+        if (cascadeList.includes('receivables')) {
+          const { data: invs } = await supabase.from('invoices').select('id').in('joId', joIds);
+          if (invs && invs.length > 0) {
+            const invIds = invs.map(i => i.id);
+            await supabase.from('receivables').update({ customerName: updates.name }).in('invoiceId', invIds);
+          }
+        }
+        if (cascadeList.includes('purchaseOrders')) {
+          await supabase.from('purchase_orders').update({ customerName: updates.name }).in('joId', joIds);
+        }
+      }
+    }
+  }
   res.sendStatus(200);
 });
 
@@ -362,12 +403,41 @@ app.post('/api/quotations', async (req, res) => {
 app.put('/api/quotations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { pic, generalNotes, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress, subject } = req.body;
-    const { error } = await supabase.from('quotations').update({
+    const { pic, generalNotes, items, total, marketingName, marketingPhone, marketingEmail, validFrom, validTo, companyAddress, subject, customerName, cascadeTo } = req.body;
+    const updateObj = {
       pic, generalNotes, items: items || [], total, marketingName, marketingPhone, marketingEmail,
       validFrom, validTo, companyAddress, subject
-    }).eq('id', id);
+    };
+    if (customerName !== undefined) {
+      updateObj.customerName = customerName;
+    }
+    const { error } = await supabase.from('quotations').update(updateObj).eq('id', id);
     if (error) return handleError(res, error, 'PUT quotations');
+
+    if (customerName !== undefined) {
+      const cascadeList = cascadeTo ?? ['jobOrders', 'invoices', 'receivables', 'purchaseOrders'];
+      const { data: jos } = await supabase.from('job_orders').select('id').eq('quotationId', id);
+      const joIds = jos ? jos.map(j => j.id) : [];
+
+      if (joIds.length > 0) {
+        if (cascadeList.includes('jobOrders')) {
+          await supabase.from('job_orders').update({ customerName }).in('id', joIds);
+        }
+        if (cascadeList.includes('invoices')) {
+          await supabase.from('invoices').update({ customerName }).in('joId', joIds);
+        }
+        if (cascadeList.includes('receivables')) {
+          const { data: invs } = await supabase.from('invoices').select('id').in('joId', joIds);
+          if (invs && invs.length > 0) {
+            const invIds = invs.map(i => i.id);
+            await supabase.from('receivables').update({ customerName }).in('invoiceId', invIds);
+          }
+        }
+        if (cascadeList.includes('purchaseOrders')) {
+          await supabase.from('purchase_orders').update({ customerName }).in('joId', joIds);
+        }
+      }
+    }
     res.sendStatus(200);
   } catch (err) {
     console.error('Update Quotation Error:', err);
@@ -440,9 +510,33 @@ app.post('/api/job-orders', async (req, res) => {
 });
 
 app.put('/api/job-orders/:id', async (req, res) => {
-  const updates = req.body;
-  const { error } = await supabase.from('job_orders').update(updates).eq('id', req.params.id);
+  const { cascadeTo, ...updates } = req.body;
+  const id = req.params.id;
+  const { error } = await supabase.from('job_orders').update(updates).eq('id', id);
   if (error) return handleError(res, error, 'PUT job_orders');
+
+  if (updates.customerName) {
+    const cascadeList = cascadeTo ?? ['invoices', 'receivables', 'purchaseOrders', 'quotation'];
+    if (cascadeList.includes('invoices')) {
+      await supabase.from('invoices').update({ customerName: updates.customerName }).eq('joId', id);
+    }
+    if (cascadeList.includes('receivables')) {
+      const { data: invs } = await supabase.from('invoices').select('id').eq('joId', id);
+      if (invs && invs.length > 0) {
+        const invIds = invs.map(i => i.id);
+        await supabase.from('receivables').update({ customerName: updates.customerName }).in('invoiceId', invIds);
+      }
+    }
+    if (cascadeList.includes('purchaseOrders')) {
+      await supabase.from('purchase_orders').update({ customerName: updates.customerName }).eq('joId', id);
+    }
+    if (cascadeList.includes('quotation')) {
+      const { data: jo } = await supabase.from('job_orders').select('quotationId').eq('id', id).single();
+      if (jo && jo.quotationId) {
+        await supabase.from('quotations').update({ customerName: updates.customerName }).eq('id', jo.quotationId);
+      }
+    }
+  }
   res.sendStatus(200);
 });
 
@@ -571,7 +665,12 @@ app.put('/api/invoices/:id', async (req, res) => {
 
   // Sync receivables
   const { amount, ...recUpdates } = updates;
-  await supabase.from('receivables').update({ ...recUpdates, balance: amount || 0 }).eq('id', req.params.id);
+  const syncData = { ...recUpdates };
+  if (amount !== undefined) {
+    syncData.amount = amount;
+    syncData.balance = amount;
+  }
+  await supabase.from('receivables').update(syncData).eq('id', req.params.id);
   res.sendStatus(200);
 });
 

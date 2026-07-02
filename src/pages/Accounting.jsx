@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, DollarSign, Search, FileSpreadsheet, RotateCcw, Edit3, Save, Image, ChevronDown, ChevronUp, User, Briefcase, Banknote, Calendar, FileText, Trash2, Settings, ExternalLink, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
+import CascadeConfirmModal from '../components/CascadeConfirmModal';
 
 const defaultSubcategories = {
   'Gaji': [
@@ -177,6 +178,11 @@ const Accounting = () => {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef(null);
 
+  const [editingCustomerName, setEditingCustomerName] = useState(null); // { joId: string, currentName: string }
+  const [customerNameDraft, setCustomerNameDraft] = useState('');
+  const [cascadeModal, setCascadeModal] = useState(null); // { joId: string, oldName: string, newName: string, options: [...] }
+  const [savingCustomerName, setSavingCustomerName] = useState(false);
+
   const { 
     jobOrders = [], invoices = [], createInvoice, settleInvoice, deleteInvoice, updateInvoice, 
     receivables = [], vendors = [], purchaseOrders = [], updateJOStatus, updatePurchaseOrder, patchPurchaseOrderLocal,
@@ -188,12 +194,184 @@ const Accounting = () => {
     loading,
     t,
     language,
-    hasAccess
+    hasAccess,
+    updateCustomerName
   } = context || {};
 
   const canWrite = hasAccess ? hasAccess('accounting', true) : false;
 
   const isID = language === 'id';
+
+  const startEditCustomerName = (joId, currentName) => {
+    setEditingCustomerName({ joId, currentName });
+    setCustomerNameDraft(currentName);
+  };
+
+  const handleSaveCustomerNameClick = (joId, newName) => {
+    if (!newName.trim()) {
+      alert(isID ? "Nama tidak boleh kosong!" : "Name cannot be empty!");
+      return;
+    }
+    const oldName = editingCustomerName?.currentName || '';
+    if (newName.trim() === oldName.trim()) {
+      setEditingCustomerName(null);
+      return;
+    }
+
+    const linkedInvoices = invoices.filter(inv => inv.joId === joId);
+    const invoiceCount = linkedInvoices.length;
+    const linkedInvoiceIds = linkedInvoices.map(inv => inv.id);
+    const receivableCount = receivables.filter(r => linkedInvoiceIds.includes(r.invoiceId)).length;
+    const poCount = purchaseOrders.filter(po => po.joId === joId).length;
+    const jo = jobOrders.find(j => j.id === joId);
+    const quotationCount = jo && jo.quotationId ? 1 : 0;
+
+    const hasPaidInvoice = linkedInvoices.some(inv => inv.status === 'paid');
+
+    const options = [
+      { 
+        key: 'invoices', 
+        label: isID ? 'Invoice Penagihan' : 'Billing Invoices', 
+        count: invoiceCount, 
+        required: false,
+        hasWarning: hasPaidInvoice ? (isID ? 'Terdapat invoice lunas' : 'Includes paid invoice') : null 
+      },
+      { 
+        key: 'receivables', 
+        label: isID ? 'Piutang Dagang' : 'Receivables Ledger', 
+        count: receivableCount, 
+        required: false 
+      },
+      { 
+        key: 'purchaseOrders', 
+        label: isID ? 'Purchase Order (Hutang)' : 'Purchase Orders (Payables)', 
+        count: poCount, 
+        required: false 
+      },
+      { 
+        key: 'quotation', 
+        label: isID ? 'Quotation (Kontrak)' : 'Originating Quotation', 
+        count: quotationCount, 
+        required: false 
+      }
+    ].filter(o => o.count > 0);
+
+    setCascadeModal({
+      joId,
+      oldName,
+      newName,
+      options
+    });
+  };
+
+  const handleConfirmCascade = async (selectedKeys) => {
+    if (!cascadeModal) return;
+    setSavingCustomerName(true);
+    try {
+      await updateCustomerName(cascadeModal.joId, cascadeModal.newName, selectedKeys);
+      setCascadeModal(null);
+      setEditingCustomerName(null);
+    } catch (err) {
+      console.error(err);
+      alert(isID ? "Gagal memperbarui nama pelanggan" : "Failed to update customer name");
+    } finally {
+      setSavingCustomerName(false);
+    }
+  };
+
+  const renderEditableCustomerName = (joId, customerName) => {
+    if (!joId || !canWrite) {
+      return <span>{customerName}</span>;
+    }
+    const isEditing = editingCustomerName?.joId === joId;
+    if (isEditing) {
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }} onClick={e => e.stopPropagation()}>
+          <input
+            type="text"
+            className="customer-name-input"
+            value={customerNameDraft}
+            onChange={e => setCustomerNameDraft(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                handleSaveCustomerNameClick(joId, customerNameDraft);
+              } else if (e.key === 'Escape') {
+                setEditingCustomerName(null);
+              }
+            }}
+            autoFocus
+            style={{
+              fontSize: '0.85rem',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              border: '1px solid var(--secondary)',
+              background: 'var(--input-bg)',
+              color: 'var(--text)',
+              minWidth: '150px'
+            }}
+          />
+          <button
+            onClick={() => handleSaveCustomerNameClick(joId, customerNameDraft)}
+            style={{
+              background: '#10b981',
+              border: 'none',
+              borderRadius: '4px',
+              color: '#fff',
+              padding: '2px 6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ✓
+          </button>
+          <button
+            onClick={() => setEditingCustomerName(null)}
+            style={{
+              background: '#ef4444',
+              border: 'none',
+              borderRadius: '4px',
+              color: '#fff',
+              padding: '2px 6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            ✗
+          </button>
+        </span>
+      );
+    }
+    return (
+      <span className="customer-name-wrap" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+        <span>{customerName}</span>
+        <button
+          className="edit-name-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            startEditCustomerName(joId, customerName);
+          }}
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'var(--text-muted)',
+            cursor: 'pointer',
+            padding: '2px',
+            borderRadius: '4px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title={isID ? 'Ubah nama pelanggan' : 'Edit customer name'}
+        >
+          <Edit3 size={12} />
+        </button>
+      </span>
+    );
+  };
 
   const filterByDate = (itemDate) => {
     if (!itemDate) return true;
@@ -1018,7 +1196,7 @@ const Accounting = () => {
     // Pass the enriched invoice object (merging receivable and original invoice data)
     const enrichedInv = { ...originalInv, ...inv };
     
-    const consolidatedJOs = enrichedInv.consolidatedJOs 
+    const consolidatedJOs = (Array.isArray(enrichedInv.consolidatedJOs) && enrichedInv.consolidatedJOs.length > 0)
       ? jobOrders.filter(j => enrichedInv.consolidatedJOs.includes(j.id))
       : linkedJO ? [linkedJO] : [];
 
@@ -1121,7 +1299,8 @@ const Accounting = () => {
       amount: subtotal + extraChargesTotal,
       subtotal: subtotal,
       tax: 0, // Reset old tax field if used
-      extra_charges: editingInvoice.extra_charges || []
+      extra_charges: editingInvoice.extra_charges || [],
+      consolidatedJOs: editingInvoice.consolidatedJOs || []
     });
     setEditingInvoice(null);
     alert('Invoice updated successfully!');
@@ -2516,7 +2695,7 @@ const Accounting = () => {
                   return (
                     <tr key={jo.id} style={{ borderBottom:'1px solid var(--glass-border)' }} className="table-row-hover">
                        <td style={{padding:'12px',fontWeight:'700',color:'var(--secondary)',fontSize:'0.85rem'}}>{jo.id}</td>
-                       <td style={{padding:'12px',fontWeight:'600'}}>{jo.customerName}</td>
+                       <td style={{padding:'12px',fontWeight:'600'}}>{renderEditableCustomerName(jo.id, jo.customerName)}</td>
                        <td style={{padding:'12px',fontSize:'0.8rem',fontWeight:'700',color:'var(--secondary)'}}>
                          {invoice ? invoice.id : <span style={{color:'var(--text-muted)', fontWeight:'400'}}>{isID ? 'Belum Ada' : 'None Yet'}</span>}
                        </td>
@@ -2609,9 +2788,9 @@ const Accounting = () => {
                                 <span style={{ fontSize: '1.2rem' }}>📁</span>
                                 <span style={{ fontWeight: '800', color: 'var(--secondary)' }}>
                                   {group.quotationId === 'direct' ? (isID ? 'Pekerjaan Langsung' : 'Direct Jobs') : group.quotationId}
-                                </span>
-                                <span style={{ color: 'var(--text)', fontWeight: '700', marginLeft: '5px' }}>
-                                  — {group.customerName}
+                                  <span style={{ color: 'var(--text)', fontWeight: '700', marginLeft: '5px' }}>
+                                    — {renderEditableCustomerName(group.jobOrders[0]?.id, group.customerName)}
+                                  </span>
                                 </span>
                               </div>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -2644,7 +2823,7 @@ const Accounting = () => {
                                 <span style={{ color: 'var(--text-muted)', marginRight: '5px' }}>└</span> {jo.id}
                               </td>
                               <td style={{ padding: '15px' }}>
-                                <div style={{ fontWeight: '600' }}>{jo.customerName}</div>
+                                <div style={{ fontWeight: '600' }}>{renderEditableCustomerName(jo.id, jo.customerName)}</div>
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                   {jo.instruction || jo.jobDescription}
                                 </div>
@@ -2795,7 +2974,7 @@ const Accounting = () => {
                         <div style={{ fontWeight: '800', color: 'var(--secondary)' }}>{inv.id}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {inv.joId}</div>
                       </td>
-                      <td style={{ padding: '15px', fontWeight: '600' }}>{inv.customerName}</td>
+                      <td style={{ padding: '15px', fontWeight: '600' }}>{renderEditableCustomerName(inv.joId, inv.customerName)}</td>
                       <td style={{ padding: '15px', fontSize: '0.85rem' }}>{new Date(inv.date).toLocaleDateString()}</td>
                       <td 
                         style={{ padding: '15px', textAlign: 'right', fontWeight: '700', color: '#10b981', fontSize: '1rem', cursor: 'pointer' }}
@@ -3059,7 +3238,12 @@ const Accounting = () => {
                         />
                       </td>
                       <td style={{ padding: '15px', color: 'var(--secondary)', fontWeight: 'bold' }}>{item.id}</td>
-                      <td style={{ padding: '15px' }}>{item.customerName}</td>
+                      <td style={{ padding: '15px' }}>
+                        {(() => {
+                          const inv = invoices.find(i => i.id === item.invoiceId || i.id === item.id);
+                          return renderEditableCustomerName(inv?.joId, item.customerName);
+                        })()}
+                      </td>
                       <td style={{ padding: '15px', fontWeight: 'bold' }}>
                         Rp {(item.balance || item.amount).toLocaleString()}
                       </td>
@@ -3644,6 +3828,10 @@ const Accounting = () => {
                       <td style={{ padding: '15px' }}>
                         <div style={{ fontWeight: '700', color: 'var(--secondary)' }}>{po.id}</div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {po.joId}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                          {isID ? 'Pelanggan: ' : 'Customer: '}
+                          {renderEditableCustomerName(po.joId, po.customerName)}
+                        </div>
                       </td>
                       <td style={{ padding: '15px', fontWeight: '600' }}>{po.vendorName}</td>
                       <td style={{ padding: '15px' }}>{new Date(po.date).toLocaleDateString(isID ? 'id-ID' : 'en-US', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
@@ -5734,6 +5922,18 @@ const Accounting = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {cascadeModal && (
+        <CascadeConfirmModal
+          isOpen={!!cascadeModal}
+          oldName={cascadeModal.oldName}
+          newName={cascadeModal.newName}
+          cascadeOptions={cascadeModal.options}
+          onConfirm={handleConfirmCascade}
+          onCancel={() => setCascadeModal(null)}
+          loading={savingCustomerName}
+        />
       )}
     </div>
   );

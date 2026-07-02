@@ -118,18 +118,7 @@ conn
     username: VPS_USER,
     password: VPS_PASS,
     readyTimeout: 60000,
-    tryKeyboard: true,
-    authHandler(methodsLeft, partialSuccess, cb) {
-      const method = methodsLeft?.shift();
-      if (!method) { cb(false); return; }
-      if (method === 'password') {
-        cb({ type: 'password', username: VPS_USER, password: VPS_PASS });
-      } else if (method === 'keyboard-interactive') {
-        cb({ type: 'keyboard-interactive', username: VPS_USER });
-      } else {
-        cb({ type: method, username: VPS_USER });
-      }
-    }
+    tryKeyboard: true
   })
   .on('keyboard-interactive', (n, i, l, prompts, finish) => {
     console.log('Keyboard-interactive prompt received, sending password...');

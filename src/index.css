@@ -576,5 +576,34 @@ textarea:disabled {
   opacity: 0.75 !important;
 }
 
+/* Inline Customer Name Editing Styles */
+.customer-name-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.edit-name-btn {
+  opacity: 0.3;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: all 0.15s ease-in-out;
+  color: var(--secondary);
+}
+.customer-name-wrap:hover .edit-name-btn {
+  opacity: 1;
+}
+.customer-name-input {
+  font-size: inherit;
+  border: 1px solid var(--secondary);
+  border-radius: 4px;
+  padding: 2px 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  min-width: 160px;
+}
+
 
 

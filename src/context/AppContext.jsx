@@ -181,8 +181,40 @@ export const AppProvider = ({ children }) => {
         };
       });
       setJobOrders(parsedJOs);
-      setInvoices(safeParse(invData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']));
-      setReceivables(safeParse(recData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']));
+      const unpackInvoiceNotes = (inv) => {
+        let notesText = inv.notes || '';
+        let consolidatedJOs = [];
+        if (notesText && notesText.includes('|||')) {
+          const parts = notesText.split('|||');
+          notesText = parts[0].trim();
+          try {
+            const meta = JSON.parse(parts[1].trim());
+            if (Array.isArray(meta.consolidatedJOs)) {
+              consolidatedJOs = meta.consolidatedJOs;
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        return {
+          ...inv,
+          notes: notesText || null,
+          consolidatedJOs: consolidatedJOs.length > 0 ? consolidatedJOs : (inv.joId ? [inv.joId] : [])
+        };
+      };
+
+      setInvoices(safeParse(invData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']).map(unpackInvoiceNotes));
+
+      const parsedReceivables = safeParse(recData, ['extra_charges', 'tax_deduction_proof', 'taxes_deducted', 'paymentProofPhoto', 'signedInvoicePhoto', 'signedReceiptPhoto']).map(rec => {
+        const originalInv = invData.find(i => i.id === rec.id || i.id === rec.invoiceId);
+        const unpackedInv = originalInv ? unpackInvoiceNotes(originalInv) : null;
+        return {
+          ...rec,
+          joId: rec.joId || (unpackedInv ? unpackedInv.joId : null),
+          consolidatedJOs: (unpackedInv && unpackedInv.consolidatedJOs) ? unpackedInv.consolidatedJOs : (rec.joId ? [rec.joId] : [])
+        };
+      });
+      setReceivables(parsedReceivables);
       setVendors(safeParse(venData, ['services', 'assets']));
       setPurchaseOrders(safeParse(poData, ['items', 'vendorInvoicePhoto', 'paymentProofPhoto']));
       setSalaries(safeParse(salData, ['taxes']));
@@ -448,17 +480,20 @@ export const AppProvider = ({ children }) => {
     const newInvoiceId = `INV-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
     const consolidatedJOs = targetJOs.map(j => j.id);
 
+    const packedNotes = notes
+      ? `${notes} ||| ${JSON.stringify({ consolidatedJOs })}`
+      : `||| ${JSON.stringify({ consolidatedJOs })}`;
+
     const newInvoice = {
       id: newInvoiceId,
       joId, // Primary JO reference
-      consolidatedJOs, // Array of consolidated JO IDs
       customerName: jo.customerName || 'Pelanggan',
       amount: totalAmount,
       subtotal: totalAmount,
       tax: 0,
       date: new Date().toISOString(),
       status: 'unpaid',
-      notes: notes || null,
+      notes: packedNotes,
       extra_charges: [],
       signedReceiptPhoto: null,
       signedInvoicePhoto: null,
@@ -471,7 +506,12 @@ export const AppProvider = ({ children }) => {
         body: JSON.stringify(newInvoice)
       });
       
-      const finalInvoice = { ...newInvoice, id: data.id || newInvoice.id };
+      const finalInvoice = { 
+        ...newInvoice, 
+        id: data.id || newInvoice.id,
+        notes: notes || null,
+        consolidatedJOs
+      };
       
       setInvoices(prev => [...prev, finalInvoice]);
       setReceivables(prev => [...prev, { ...finalInvoice, balance: finalInvoice.amount }]);
@@ -629,9 +669,22 @@ export const AppProvider = ({ children }) => {
     setReceivables(prev => prev.filter(r => r.invoiceId !== id));
   };
   const updateInvoice = async (id, updates) => {
+    const { consolidatedJOs, ...cleanUpdates } = updates;
+    const originalInv = invoices.find(inv => inv.id === id);
+    const originalNotes = originalInv ? originalInv.notes : '';
+
+    if (consolidatedJOs !== undefined || updates.notes !== undefined) {
+      const targetConsolidated = consolidatedJOs !== undefined ? consolidatedJOs : (originalInv ? originalInv.consolidatedJOs : []);
+      const targetNotes = updates.notes !== undefined ? updates.notes : originalNotes;
+      const notesString = targetNotes || '';
+      cleanUpdates.notes = notesString 
+        ? `${notesString} ||| ${JSON.stringify({ consolidatedJOs: targetConsolidated })}`
+        : `||| ${JSON.stringify({ consolidatedJOs: targetConsolidated })}`;
+    }
+
     await apiRequest(`invoices/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(updates)
+      body: JSON.stringify(cleanUpdates)
     });
     setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, ...updates } : inv));
     // Also update receivable if it exists
@@ -810,6 +863,84 @@ export const AppProvider = ({ children }) => {
     return false;
   };
 
+  const updateCustomerName = async (joId, newName, cascadeTo) => {
+    await apiRequest(`job-orders/${joId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ customerName: newName, cascadeTo })
+    });
+    setJobOrders(prev => prev.map(j => j.id === joId ? { ...j, customerName: newName } : j));
+    if (cascadeTo.includes('invoices')) {
+      setInvoices(prev => prev.map(inv => inv.joId === joId ? { ...inv, customerName: newName } : inv));
+    }
+    if (cascadeTo.includes('receivables')) {
+      const linkedInvoiceIds = invoices.filter(inv => inv.joId === joId).map(inv => inv.id);
+      setReceivables(prev => prev.map(r => linkedInvoiceIds.includes(r.invoiceId) ? { ...r, customerName: newName } : r));
+    }
+    if (cascadeTo.includes('purchaseOrders')) {
+      setPurchaseOrders(prev => prev.map(po => po.joId === joId ? { ...po, customerName: newName } : po));
+    }
+    if (cascadeTo.includes('quotation')) {
+      const jo = jobOrders.find(j => j.id === joId);
+      if (jo && jo.quotationId) {
+        setQuotations(prev => prev.map(q => q.id === jo.quotationId ? { ...q, customerName: newName } : q));
+      }
+    }
+  };
+
+  const updateQuotationCustomerName = async (quotationId, newName, cascadeTo) => {
+    await apiRequest(`quotations/${quotationId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ customerName: newName, cascadeTo })
+    });
+    setQuotations(prev => prev.map(q => q.id === quotationId ? { ...q, customerName: newName } : q));
+    const linkedJoIds = jobOrders.filter(j => j.quotationId === quotationId).map(j => j.id);
+    if (linkedJoIds.length > 0) {
+      if (cascadeTo.includes('jobOrders')) {
+        setJobOrders(prev => prev.map(j => linkedJoIds.includes(j.id) ? { ...j, customerName: newName } : j));
+      }
+      if (cascadeTo.includes('invoices')) {
+        setInvoices(prev => prev.map(inv => linkedJoIds.includes(inv.joId) ? { ...inv, customerName: newName } : inv));
+      }
+      if (cascadeTo.includes('receivables')) {
+        const linkedInvoiceIds = invoices.filter(inv => linkedJoIds.includes(inv.joId)).map(inv => inv.id);
+        setReceivables(prev => prev.map(r => linkedInvoiceIds.includes(r.invoiceId) ? { ...r, customerName: newName } : r));
+      }
+      if (cascadeTo.includes('purchaseOrders')) {
+        setPurchaseOrders(prev => prev.map(po => linkedJoIds.includes(po.joId) ? { ...po, customerName: newName } : po));
+      }
+    }
+  };
+
+  const updateProspectName = async (prospectId, newName, cascadeTo) => {
+    await apiRequest(`prospects/${prospectId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ name: newName, cascadeTo })
+    });
+    setProspects(prev => prev.map(p => p.id === prospectId ? { ...p, name: newName } : p));
+    const linkedQuoteIds = quotations.filter(q => q.customerId === prospectId).map(q => q.id);
+    if (linkedQuoteIds.length > 0) {
+      if (cascadeTo.includes('quotations')) {
+        setQuotations(prev => prev.map(q => linkedQuoteIds.includes(q.id) ? { ...q, customerName: newName } : q));
+      }
+      const linkedJoIds = jobOrders.filter(j => linkedQuoteIds.includes(j.quotationId)).map(j => j.id);
+      if (linkedJoIds.length > 0) {
+        if (cascadeTo.includes('jobOrders')) {
+          setJobOrders(prev => prev.map(j => linkedJoIds.includes(j.id) ? { ...j, customerName: newName } : j));
+        }
+        if (cascadeTo.includes('invoices')) {
+          setInvoices(prev => prev.map(inv => linkedJoIds.includes(inv.joId) ? { ...inv, customerName: newName } : inv));
+        }
+        if (cascadeTo.includes('receivables')) {
+          const linkedInvoiceIds = invoices.filter(inv => linkedJoIds.includes(inv.joId)).map(inv => inv.id);
+          setReceivables(prev => prev.map(r => linkedInvoiceIds.includes(r.invoiceId) ? { ...r, customerName: newName } : r));
+        }
+        if (cascadeTo.includes('purchaseOrders')) {
+          setPurchaseOrders(prev => prev.map(po => linkedJoIds.includes(po.joId) ? { ...po, customerName: newName } : po));
+        }
+      }
+    }
+  };
+
   return (
     <AppContext.Provider value={{
       user, login, logout, hasAccess,
@@ -831,7 +962,8 @@ export const AppProvider = ({ children }) => {
       companyBankAccounts, updateCompanyBank, deleteCompanyBank,
       maintenanceMode, setMaintenanceMode,
       clearAllData,
-      getSystemConfig, updateSystemConfig
+      getSystemConfig, updateSystemConfig,
+      updateCustomerName, updateQuotationCustomerName, updateProspectName
     }}>
       {children}
     </AppContext.Provider>

@@ -4,6 +4,7 @@ import { Plus, Download, CheckCircle, XCircle, FileText, UserPlus, Search, Trash
 import { motion, AnimatePresence } from 'framer-motion';
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
+import CascadeConfirmModal from '../components/CascadeConfirmModal';
 
 const DEFAULT_TERMS = [
   "Harga belum termasuk PPh23",
@@ -127,6 +128,9 @@ const Marketing = () => {
   const [editQuoteItems, setEditQuoteItems] = useState([{ description: '', rate: '', quantity: '1', unit: '' }]);
   const [editQuoteTerms, setEditQuoteTerms] = useState(DEFAULT_TERMS);
   const [editQuoteCompanyAddress, setEditQuoteCompanyAddress] = useState('');
+  const [editQuoteCustomerName, setEditQuoteCustomerName] = useState('');
+  const [cascadeModal, setCascadeModal] = useState(null); // { type: 'prospect' | 'quotation', id: string, oldName: string, newName: string, options: [...] }
+  const [savingCustomerName, setSavingCustomerName] = useState(false);
 
   const addQuoteTerm = () => {
     setQuoteTerms([...quoteTerms, '']);
@@ -170,6 +174,8 @@ const Marketing = () => {
     prospectDrafts = [], generateProspectDraft,
     quotations = [], createQuotation, updateQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
     employees = [],
+    jobOrders = [], invoices = [], receivables = [], purchaseOrders = [],
+    updateQuotationCustomerName, updateProspectName,
     user,
     t,
     loading,
@@ -234,6 +240,74 @@ const Marketing = () => {
   const handleProspectEditSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!canWrite) return;
+    
+    const oldName = activeProspectForEdit.name || '';
+    const newName = editProspectData.name || '';
+    
+    if (newName.trim() !== oldName.trim()) {
+      const linkedQuotes = quotations.filter(q => q.customerId === activeProspectForEdit.id);
+      const quoteIds = linkedQuotes.map(q => q.id);
+      const quoteCount = linkedQuotes.length;
+
+      const linkedJOs = jobOrders.filter(jo => quoteIds.includes(jo.quotationId));
+      const joIds = linkedJOs.map(jo => jo.id);
+      const joCount = linkedJOs.length;
+
+      const linkedInvoices = invoices.filter(inv => joIds.includes(inv.joId));
+      const invoiceIds = linkedInvoices.map(inv => inv.id);
+      const invoiceCount = linkedInvoices.length;
+
+      const receivableCount = receivables.filter(r => invoiceIds.includes(r.invoiceId)).length;
+      const poCount = purchaseOrders.filter(po => joIds.includes(po.joId)).length;
+
+      const hasPaidInvoice = linkedInvoices.some(inv => inv.status === 'paid');
+
+      const options = [
+        { 
+          key: 'quotations', 
+          label: language === 'id' ? 'Quotation (Kontrak)' : 'Quotations', 
+          count: quoteCount, 
+          required: false 
+        },
+        { 
+          key: 'jobOrders', 
+          label: language === 'id' ? 'Job Order (Operasional)' : 'Job Orders', 
+          count: joCount, 
+          required: false 
+        },
+        { 
+          key: 'invoices', 
+          label: language === 'id' ? 'Invoice Penagihan' : 'Billing Invoices', 
+          count: invoiceCount, 
+          required: false,
+          hasWarning: hasPaidInvoice ? (language === 'id' ? 'Terdapat invoice lunas' : 'Includes paid invoice') : null 
+        },
+        { 
+          key: 'receivables', 
+          label: language === 'id' ? 'Piutang Dagang' : 'Receivables Ledger', 
+          count: receivableCount, 
+          required: false 
+        },
+        { 
+          key: 'purchaseOrders', 
+          label: language === 'id' ? 'Purchase Order (Hutang)' : 'Purchase Orders (Payables)', 
+          count: poCount, 
+          required: false 
+        }
+      ].filter(o => o.count > 0);
+
+      if (options.length > 0) {
+        setCascadeModal({
+          type: 'prospect',
+          id: activeProspectForEdit.id,
+          oldName,
+          newName,
+          options
+        });
+        return;
+      }
+    }
+
     try {
       await updateProspect(activeProspectForEdit.id, editProspectData);
       setActiveProspectForEdit(null);
@@ -370,23 +444,106 @@ const Marketing = () => {
       `${item.description} (Qty: ${item.quantity} ${item.unit || ''} @ Rp ${parseFloat(item.rate).toLocaleString()})`
     ).join('\n');
 
+    const oldName = activeQuotationForEdit.customerName || '';
+    const newName = editQuoteCustomerName || '';
+
+    const savePayload = {
+      pic: editQuotePic,
+      jobDescription: combinedDescription,
+      items: editQuoteItems,
+      generalNotes: editQuoteTerms.filter(t => t.trim()).join('\n'),
+      total: totalAmount,
+      rate: totalAmount,
+      validFrom: editQuoteValidFrom,
+      validTo: editQuoteValidTo,
+      companyAddress: editQuoteCompanyAddress,
+      subject: editQuoteSubject,
+      customerName: newName
+    };
+
+    if (newName.trim() !== oldName.trim()) {
+      const linkedJOs = jobOrders.filter(jo => jo.quotationId === activeQuotationForEdit.id);
+      const joIds = linkedJOs.map(jo => jo.id);
+      const joCount = linkedJOs.length;
+
+      const linkedInvoices = invoices.filter(inv => joIds.includes(inv.joId));
+      const invoiceIds = linkedInvoices.map(inv => inv.id);
+      const invoiceCount = linkedInvoices.length;
+
+      const receivableCount = receivables.filter(r => invoiceIds.includes(r.invoiceId)).length;
+      const poCount = purchaseOrders.filter(po => joIds.includes(po.joId)).length;
+
+      const hasPaidInvoice = linkedInvoices.some(inv => inv.status === 'paid');
+
+      const options = [
+        { 
+          key: 'jobOrders', 
+          label: language === 'id' ? 'Job Order (Operasional)' : 'Job Orders', 
+          count: joCount, 
+          required: false 
+        },
+        { 
+          key: 'invoices', 
+          label: language === 'id' ? 'Invoice Penagihan' : 'Billing Invoices', 
+          count: invoiceCount, 
+          required: false,
+          hasWarning: hasPaidInvoice ? (language === 'id' ? 'Terdapat invoice lunas' : 'Includes paid invoice') : null 
+        },
+        { 
+          key: 'receivables', 
+          label: language === 'id' ? 'Piutang Dagang' : 'Receivables Ledger', 
+          count: receivableCount, 
+          required: false 
+        },
+        { 
+          key: 'purchaseOrders', 
+          label: language === 'id' ? 'Purchase Order (Hutang)' : 'Purchase Orders (Payables)', 
+          count: poCount, 
+          required: false 
+        }
+      ].filter(o => o.count > 0);
+
+      if (options.length > 0) {
+        setCascadeModal({
+          type: 'quotation',
+          id: activeQuotationForEdit.id,
+          oldName,
+          newName,
+          options,
+          payload: savePayload
+        });
+        return;
+      }
+    }
+
     try {
-      await updateQuotation(activeQuotationForEdit.id, {
-        pic: editQuotePic,
-        jobDescription: combinedDescription,
-        items: editQuoteItems,
-        generalNotes: editQuoteTerms.filter(t => t.trim()).join('\n'),
-        total: totalAmount,
-        rate: totalAmount,
-        validFrom: editQuoteValidFrom,
-        validTo: editQuoteValidTo,
-        companyAddress: editQuoteCompanyAddress,
-        subject: editQuoteSubject
-      });
+      await updateQuotation(activeQuotationForEdit.id, savePayload);
       setActiveQuotationForEdit(null);
     } catch (error) {
       console.error("Quotation edit failed:", error);
       alert("Gagal menyimpan perubahan penawaran.");
+    }
+  };
+
+  const handleConfirmMarketingCascade = async (selectedKeys) => {
+    if (!cascadeModal) return;
+    setSavingCustomerName(true);
+    try {
+      if (cascadeModal.type === 'prospect') {
+        await updateProspect(cascadeModal.id, editProspectData);
+        await updateProspectName(cascadeModal.id, cascadeModal.newName, selectedKeys);
+      } else if (cascadeModal.type === 'quotation') {
+        await updateQuotation(cascadeModal.id, cascadeModal.payload);
+        await updateQuotationCustomerName(cascadeModal.id, cascadeModal.newName, selectedKeys);
+      }
+      setCascadeModal(null);
+      setActiveProspectForEdit(null);
+      setActiveQuotationForEdit(null);
+    } catch (err) {
+      console.error(err);
+      alert(language === 'id' ? "Gagal memperbarui nama" : "Failed to update name");
+    } finally {
+      setSavingCustomerName(false);
     }
   };
 
@@ -754,8 +911,19 @@ const Marketing = () => {
               className="glass-card" style={{ width: '100%', maxWidth: '900px', padding: '40px', maxHeight: '90vh', overflowY: 'auto', overflowX: 'auto' }}
             >
               <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>Edit Penawaran (Quotation) - {activeQuotationForEdit.id}</h3>
-              <h5 style={{ marginTop: '-15px', marginBottom: '25px', color: 'var(--text-muted)' }}>Pelanggan: {activeQuotationForEdit.customerName}</h5>
               <form onSubmit={handleSaveQuotationEdit}>
+
+                <div className="input-group" style={{ marginBottom: '25px' }}>
+                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>{language === 'id' ? 'Nama Pelanggan (Customer)' : 'Customer Name'}</label>
+                  <input
+                    required
+                    type="text"
+                    value={editQuoteCustomerName}
+                    onChange={e => setEditQuoteCustomerName(e.target.value)}
+                    placeholder="Nama pelanggan..."
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '12px', color: 'var(--text)', padding: '12px', width:'100%' }}
+                  />
+                </div>
 
                 <div className="input-group" style={{ marginBottom: '25px' }}>
                   <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
@@ -1717,6 +1885,17 @@ const Marketing = () => {
           </div>
         )}
       </motion.div>
+      {cascadeModal && (
+        <CascadeConfirmModal
+          isOpen={!!cascadeModal}
+          oldName={cascadeModal.oldName}
+          newName={cascadeModal.newName}
+          cascadeOptions={cascadeModal.options}
+          onConfirm={handleConfirmMarketingCascade}
+          onCancel={() => setCascadeModal(null)}
+          loading={savingCustomerName}
+        />
+      )}
     </div>
     </div>
   );
