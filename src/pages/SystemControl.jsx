@@ -107,7 +107,7 @@ const SystemControl = () => {
 
   const stats = [
     { label: isID ? 'Total Pelanggan' : 'Total Customers', value: customers.length, icon: Users, color: '#10b981' },
-    { label: isID ? 'Job Order Aktif' : 'Active Job Orders', value: jobOrders.length, icon: Briefcase, color: '#d4af37' },
+    { label: isID ? 'Job Order Aktif' : 'Active Job Orders', value: (jobOrders || []).filter(jo => jo.status !== 'invoiced').length, icon: Briefcase, color: '#d4af37' },
     { label: isID ? 'Faktur Sistem' : 'System Invoices', value: invoices.length, icon: FileText, color: '#3b82f6' },
   ];
 

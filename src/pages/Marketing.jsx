@@ -1574,6 +1574,13 @@ const Marketing = () => {
                 {quotations
                   .filter(q => q.status === 'approved' && filterByDate(q.date))
                   .filter(q => {
+                    const qJOs = jobOrders.filter(jo => String(jo.quotationId) === String(q.id));
+                    if (qJOs.length > 0 && qJOs.every(jo => jo.status === 'invoiced')) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .filter(q => {
                     const name = q.customerName || '';
                     const id = q.id || '';
                     const pic = q.pic || '';
