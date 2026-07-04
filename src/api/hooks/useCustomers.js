@@ -12,6 +12,19 @@ const CUSTOMERS_QUERY_KEY = ["customers"];
 export function useCustomers() {
   const queryClient = useQueryClient();
 
+  const hasAccessToCustomers = () => {
+    const saved = sessionStorage.getItem('omega_user');
+    if (!saved) return false;
+    try {
+      const user = JSON.parse(saved);
+      if (user.role === 'owner') return true;
+      const permissions = user.permissions || {};
+      return permissions.marketing === 'write' || permissions.marketing === 'read';
+    } catch (e) {
+      return false;
+    }
+  };
+
   // Fetch customers – cached and refetched based on React‑Query defaults
   const {
     data: customers = [],
@@ -21,7 +34,8 @@ export function useCustomers() {
     refetch,
   } = useQuery({
     queryKey: CUSTOMERS_QUERY_KEY,
-    queryFn: () => apiRequest("customers")
+    queryFn: () => apiRequest("customers"),
+    enabled: hasAccessToCustomers()
   });
 
   // Mutation to add a new customer

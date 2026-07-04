@@ -52,6 +52,23 @@ export const AppProvider = ({ children }) => {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const hasAccess = (moduleKey, writeRequired = false) => {
+    if (!user) return false;
+    if (user.role === 'owner') return true;
+    if (moduleKey === 'costApplications') return true;
+    
+    if (user.permissions && user.permissions[moduleKey]) {
+      const accessLevel = user.permissions[moduleKey];
+      if (writeRequired) {
+        return accessLevel === 'write';
+      }
+      return accessLevel === 'write' || accessLevel === 'read';
+    }
+    
+    return false;
+  };
+
+
   // Translation function
   const t = (key) => {
     return translations[language][key] || key;
@@ -98,25 +115,26 @@ export const AppProvider = ({ children }) => {
   const fetchData = async () => {
     try {
       const endpoints = [
-        'prospects',
-        'quotations',
-        'job-orders',
-        'invoices',
-        'receivables',
-        'vendors',
-        'purchase-orders',
-        'salaries',
-        'other-expenses',
-        'employees',
-        'employee-accounts',
-        'company-bank-accounts'
+        { name: 'prospects', allowed: hasAccess('marketing') },
+        { name: 'quotations', allowed: hasAccess('marketing') },
+        { name: 'job-orders', allowed: true },
+        { name: 'invoices', allowed: hasAccess('accounting') },
+        { name: 'receivables', allowed: hasAccess('accounting') },
+        { name: 'vendors', allowed: hasAccess('procurement') },
+        { name: 'purchase-orders', allowed: hasAccess('admin') || hasAccess('accounting') },
+        { name: 'salaries', allowed: hasAccess('accounting') },
+        { name: 'other-expenses', allowed: true },
+        { name: 'employees', allowed: hasAccess('hrd') },
+        { name: 'employee-accounts', allowed: hasAccess('hrd') },
+        { name: 'company-bank-accounts', allowed: hasAccess('accounting') }
       ];
-      const dataPromises = endpoints.map((endpoint) =>
-        apiRequest(endpoint).catch((err) => {
-          console.warn(`Fetch failed for ${endpoint}: ${err.message}`);
+      const dataPromises = endpoints.map((ep) => {
+        if (!ep.allowed) return Promise.resolve([]);
+        return apiRequest(ep.name).catch((err) => {
+          console.warn(`Fetch failed for ${ep.name}: ${err.message}`);
           return [];
-        })
-      );
+        });
+      });
       const [
         prosData,
         quoData,
@@ -232,6 +250,18 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      logout();
+      toast.error('Sesi Anda telah berakhir. Silakan login kembali.');
+    };
+    window.addEventListener('omega-auth-unauthorized', handleUnauthorized);
+    return () => {
+      window.removeEventListener('omega-auth-unauthorized', handleUnauthorized);
+    };
+  }, []);
+
 
   const addCustomer = async (customer) => {
     const newCustomer = { ...customer, id: `CUST-${Date.now().toString().slice(-4)}` };
@@ -848,21 +878,6 @@ export const AppProvider = ({ children }) => {
     setCompanyBankAccounts(prev => prev.filter(b => b.id !== id));
   };
 
-  const hasAccess = (moduleKey, writeRequired = false) => {
-    if (!user) return false;
-    if (user.role === 'owner') return true;
-    if (moduleKey === 'costApplications') return true;
-    
-    if (user.permissions && user.permissions[moduleKey]) {
-      const accessLevel = user.permissions[moduleKey];
-      if (writeRequired) {
-        return accessLevel === 'write';
-      }
-      return accessLevel === 'write' || accessLevel === 'read';
-    }
-    
-    return false;
-  };
 
   const updateCustomerName = async (joId, newName, cascadeTo) => {
     await apiRequest(`job-orders/${joId}`, {

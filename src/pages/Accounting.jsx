@@ -3642,12 +3642,17 @@ const Accounting = () => {
                         </td>
                         <td style={{ padding: '15px', textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                            <button onClick={() => handleEditReimbursement(r)} style={{ background: 'rgba(59, 130, 246, 0.75)', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Edit Data' : 'Edit Data'}>
-                              <Edit3 size={16} />
-                            </button>
-                            <button onClick={() => { if(window.confirm(isID ? 'Yakin hapus data ini?' : 'Delete this record?')) deleteOtherExpense(r.id); }} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Hapus Data' : 'Delete Data'}>
-                              <Trash2 size={16} />
-                            </button>
+                            {canWrite && (
+                              <button onClick={() => handleEditReimbursement(r)} style={{ background: 'rgba(59, 130, 246, 0.75)', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Edit Data' : 'Edit Data'}>
+                                <Edit3 size={16} />
+                              </button>
+                            )}
+                            {canWrite && (
+                              <button onClick={() => { if(window.confirm(isID ? 'Yakin hapus data ini?' : 'Delete this record?')) deleteOtherExpense(r.id); }} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', padding: '8px', borderRadius: '8px', cursor: 'pointer' }} title={isID ? 'Hapus Data' : 'Delete Data'}>
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                            {!canWrite && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>-</span>}
                           </div>
                         </td>
                       </tr>
@@ -3937,12 +3942,17 @@ const Accounting = () => {
                                       </td>
                                       <td style={{ padding: '15px', textAlign: 'center' }}>
                                         <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                          <button className="btn btn-sm" style={{ background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => handleEditOtherTransaction(t)}>
-                                            <Edit3 size={14} />
-                                          </button>
-                                          <button className="btn btn-sm btn-danger" onClick={() => deleteOtherExpense(t.id)} style={{ width:'32px', height:'32px' }}>
-                                            <Trash2 size={14} />
-                                          </button>
+                                          {canWrite && (
+                                            <button className="btn btn-sm" style={{ background: 'rgba(212, 175, 55, 0.75)', color: '#030712', border: '1px solid var(--secondary)', display:'flex', alignItems:'center', justifyContent:'center', width:'32px', height:'32px', borderRadius:'6px', cursor:'pointer' }} onClick={() => handleEditOtherTransaction(t)}>
+                                              <Edit3 size={14} />
+                                            </button>
+                                          )}
+                                          {canWrite && (
+                                            <button className="btn btn-sm btn-danger" onClick={() => deleteOtherExpense(t.id)} style={{ width:'32px', height:'32px' }}>
+                                              <Trash2 size={14} />
+                                            </button>
+                                          )}
+                                          {!canWrite && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>-</span>}
                                         </div>
                                       </td>
                                     </tr>

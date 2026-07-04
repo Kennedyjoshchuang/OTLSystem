@@ -240,6 +240,9 @@ const authorize = (req, res, next) => {
     }
     return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang untuk aksi ini.' });
   } else if (path.startsWith('/job-orders')) {
+    if (!isWrite) {
+      return next();
+    }
     const hasAdmin = hasModuleAccess(req.user, 'admin', isWrite);
     const hasExecutor = hasModuleAccess(req.user, 'executor', isWrite);
     if (hasAdmin || hasExecutor) {
@@ -979,8 +982,8 @@ app.post('/api/other-expenses', async (req, res) => {
 
   const payload = {
     id,
-    employeeName: hasAccounting ? employeeName : req.user.name,
-    position: hasAccounting ? position : (req.user.role || 'staff'),
+    employeeName: employeeName || req.user.name,
+    position: position || (req.user.role || 'staff'),
     bankAccount,
     bankName,
     amount: parseFloat(amount) || 0,
