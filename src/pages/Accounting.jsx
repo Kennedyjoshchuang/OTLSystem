@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, DollarSign, Search, FileSpreadsheet, RotateCcw, Edit3, Save, Image, ChevronDown, ChevronUp, User, Briefcase, Banknote, Calendar, FileText, Trash2, Settings, ExternalLink, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { exportToExcel } from '../utils/exportUtils';
@@ -46,7 +47,13 @@ const Accounting = () => {
     return new Date(dateStr).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const [activeTab, setActiveTab] = useState('billing'); // 'billing', 'piutang', or 'costing'
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state && location.state.activeTab) {
+      return location.state.activeTab;
+    }
+    return 'billing';
+  });
   const [expandedReportMonths, setExpandedReportMonths] = useState({});
   const [expandedOtherTxMonths, setExpandedOtherTxMonths] = useState({});
   const [joSortBy, setJoSortBy] = useState('created_desc');
@@ -203,6 +210,29 @@ const Accounting = () => {
   const canWrite = hasAccess ? hasAccess('accounting', true) : false;
 
   const isID = language === 'id';
+  const highlightId = location.state?.scrollToId;
+
+  React.useEffect(() => {
+    if (location.state && location.state.activeTab === 'other_expenses' && location.state.scrollToId) {
+      const txId = location.state.scrollToId;
+      const tx = (otherExpenses || []).find(e => e.id === txId);
+      if (tx) {
+        const tDate = tx.expenseDate || tx.date;
+        if (tDate) {
+          const d = new Date(tDate);
+          const mKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          setExpandedOtherTxMonths(prev => ({ ...prev, [mKey]: true }));
+          
+          setTimeout(() => {
+            const element = document.getElementById(`tx-row-${txId}`);
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }, 300);
+        }
+      }
+    }
+  }, [location.state, otherExpenses]);
 
   const startEditCustomerName = (joId, currentName) => {
     setEditingCustomerName({ joId, currentName });
@@ -1755,7 +1785,7 @@ const Accounting = () => {
                             <option value="" style={{color:'var(--text-muted)', background: 'var(--bg)'}}>-- {isID ? 'Pilih Layanan' : 'Select Service'} --</option>
                             {vendor?.services?.map((s,si)=><option key={si} value={si} style={{color:'var(--text)', background:'var(--bg)'}}>{s.description} — Rp {parseFloat(s.price||0).toLocaleString(isID ? 'id-ID' : 'en-US')}</option>)}
                           </select>
-                          <input type="number" min="1" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
+                          <input type="number" min="1" step="any" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
                           <div style={{padding:'9px',background:'rgba(255,255,255,0.03)',border:'1px solid var(--glass-border)',borderRadius:'8px',fontSize:'0.85rem',fontWeight:'700',color:'var(--secondary)',textAlign:'right'}}>{svc?`Rp ${sub.toLocaleString(isID ? 'id-ID' : 'en-US')}`:'Rp 0'}</div>
                           <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.75)',color:'#ffffff',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
                         </div>
@@ -2426,7 +2456,7 @@ const Accounting = () => {
                         )}
                       </select>
 
-                      <input type="number" min="1" value={line.qty} onChange={e=>updateCostLine(i,'qty',e.target.value)} placeholder="Qty" style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center' }}/>
+                      <input type="number" min="1" step="any" value={line.qty} onChange={e=>updateCostLine(i,'qty',e.target.value)} placeholder="Qty" style={{ padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center' }}/>
                       
                       <div style={{ fontSize:'0.85rem',color:'var(--secondary)',fontWeight:'600',padding:'9px',background:'rgba(3, 7, 18, 0.85)',borderRadius:'8px',border:'1px solid rgba(212, 175, 55, 0.3)' }}>
                         Rp {lineTotal.toLocaleString(isID ? 'id-ID' : 'en-US')}
@@ -2465,6 +2495,7 @@ const Accounting = () => {
                           <input 
                             type="number" 
                             min="0" 
+                            step="any" 
                             value={line.customPrice || ''} 
                             onChange={e=>updateCostLine(i,'customPrice',e.target.value)} 
                             placeholder={isID ? "Harga Satuan (Rp)" : "Unit Price (Rp)"} 
@@ -3805,7 +3836,15 @@ const Accounting = () => {
                                 </thead>
                                 <tbody>
                                   {monthData.items.map(t => (
-                                    <tr key={t.id} style={{ borderBottom: '1px solid var(--glass-border)' }} className="table-row-hover">
+                                    <tr 
+                                      key={t.id} 
+                                      id={`tx-row-${t.id}`}
+                                      style={{ 
+                                        borderBottom: '1px solid var(--glass-border)',
+                                        background: t.id === highlightId ? 'rgba(212, 175, 55, 0.15)' : undefined 
+                                      }} 
+                                      className="table-row-hover"
+                                    >
                                       <td style={{ padding: '15px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                           <span style={{
@@ -4520,6 +4559,7 @@ const Accounting = () => {
                   <span style={{ position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'var(--secondary)', fontWeight:'700' }}>Rp</span>
                   <input 
                     type="number" 
+                    step="any" 
                     value={editingInvoice.subtotal || editingInvoice.amount} 
                     onChange={e => setEditingInvoice({...editingInvoice, subtotal: e.target.value})}
                     style={{ width:'100%', padding:'12px 15px 12px 45px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--text)', fontSize:'1.1rem', fontWeight:'700' }}
@@ -4554,6 +4594,7 @@ const Accounting = () => {
                       />
                       <input 
                         type="number" 
+                        step="any" 
                         placeholder="Rp" 
                         value={charge.amount} 
                         onChange={e => {
@@ -4710,7 +4751,7 @@ const Accounting = () => {
             <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Nominal Gaji Pokok' : 'Base Salary Amount'}</label>
-                <input type="number" value={salaryForm.baseSalary} onChange={e => setSalaryForm({...salaryForm, baseSalary: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontWeight:'700' }} />
+                <input type="number" step="any" value={salaryForm.baseSalary} onChange={e => setSalaryForm({...salaryForm, baseSalary: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontWeight:'700' }} />
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Periode Bulan' : 'Monthly Period'}</label>
@@ -4737,7 +4778,7 @@ const Accounting = () => {
               {salaryForm.taxes.map((tax, idx) => (
                 <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 120px 32px', gap:'10px', marginBottom:'8px' }}>
                   <input type="text" placeholder={isID ? "Deskripsi (misal PPh21)" : "Description (e.g. Tax PPh21)"} value={tax.name} onChange={e => { const n=[...salaryForm.taxes]; n[idx].name=e.target.value; setSalaryForm({...salaryForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
-                  <input type="number" placeholder={isID ? "Nominal" : "Amount"} value={tax.amount} onChange={e => { const n=[...salaryForm.taxes]; n[idx].amount=e.target.value; setSalaryForm({...salaryForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
+                  <input type="number" step="any" placeholder={isID ? "Nominal" : "Amount"} value={tax.amount} onChange={e => { const n=[...salaryForm.taxes]; n[idx].amount=e.target.value; setSalaryForm({...salaryForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
                   <button onClick={() => setSalaryForm({...salaryForm, taxes: salaryForm.taxes.filter((_,i)=>i!==idx)})} style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', cursor:'pointer' }}><X size={14}/></button>
                 </div>
               ))}
@@ -4833,6 +4874,7 @@ const Accounting = () => {
                   />
                   <input
                     type="number"
+                    step="any"
                     value={item.amount}
                     onChange={e => { const items = [...reimbursementForm.items]; items[idx].amount = e.target.value; setReimbursementForm({ ...reimbursementForm, items }); }}
                     placeholder="Rp"
@@ -5212,7 +5254,7 @@ const Accounting = () => {
             <div className="grid-responsive-2" style={{ gap:'20px', marginBottom:'20px' }}>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Nominal (Rp)' : 'Amount (IDR)'}</label>
-                <input type="number" value={otherExpenseForm.amount || ''} onChange={e => setOtherExpenseForm({...otherExpenseForm, amount: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontWeight:'700' }} />
+                <input type="number" step="any" value={otherExpenseForm.amount || ''} onChange={e => setOtherExpenseForm({...otherExpenseForm, amount: e.target.value})} style={{ width:'100%', padding:'10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontWeight:'700' }} />
               </div>
               <div>
                 <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Tanggal Transaksi' : 'Transaction Date'}</label>
@@ -5229,7 +5271,7 @@ const Accounting = () => {
               {(otherExpenseForm.taxes || []).map((tax, idx) => (
                 <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 120px 32px', gap:'10px', marginBottom:'8px' }}>
                   <input type="text" placeholder={isID ? 'Deskripsi Potongan' : 'Deduction Description'} value={tax.name} onChange={e => { const n=[...otherExpenseForm.taxes]; n[idx].name=e.target.value; setOtherExpenseForm({...otherExpenseForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
-                  <input type="number" placeholder={isID ? 'Nominal' : 'Amount'} value={tax.amount} onChange={e => { const n=[...otherExpenseForm.taxes]; n[idx].amount=e.target.value; setOtherExpenseForm({...otherExpenseForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
+                  <input type="number" step="any" placeholder={isID ? 'Nominal' : 'Amount'} value={tax.amount} onChange={e => { const n=[...otherExpenseForm.taxes]; n[idx].amount=e.target.value; setOtherExpenseForm({...otherExpenseForm, taxes:n}); }} style={{ padding:'8px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.85rem' }} />
                   <button onClick={() => setOtherExpenseForm({...otherExpenseForm, taxes: otherExpenseForm.taxes.filter((_,i)=>i!==idx)})} style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', cursor:'pointer' }}><X size={14}/></button>
                 </div>
               ))}
@@ -5463,6 +5505,7 @@ const Accounting = () => {
                   <label style={{ display:'block', fontSize:'0.7rem', color:'var(--text-muted)', marginBottom:'5px' }}>{isID ? 'Nominal Pajak (Rp)' : 'Tax Amount (Rp)'}</label>
                   <input 
                     type="number" 
+                    step="any" 
                     value={settlePayableForm.taxAmount} 
                     onChange={e => setSettlePayableForm({...settlePayableForm, taxAmount: e.target.value})}
                     placeholder="0"
@@ -5795,6 +5838,7 @@ const Accounting = () => {
                   />
                   <input 
                     type="number" 
+                    step="any" 
                     placeholder={isID ? 'Nominal' : 'Amount'} 
                     value={tax.amount} 
                     onChange={e => {

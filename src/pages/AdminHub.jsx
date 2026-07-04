@@ -627,7 +627,7 @@ const AdminHub = () => {
                             <option value="" style={{color:'var(--text-muted)', background: 'var(--bg)'}}>-- {isID ? 'Pilih Layanan' : 'Select Service'} --</option>
                             {poVendor.services.map((s,si)=><option key={si} value={si} style={{color:'var(--text)', background:'var(--bg)'}}>{s.description} — Rp {parseFloat(s.price||0).toLocaleString('id-ID')}</option>)}
                           </select>
-                          <input type="number" min="1" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
+                          <input type="number" step="any" min="1" value={item.qty} onChange={e=>updatePOItem(i,'qty',e.target.value)} style={{padding:'9px',background:'var(--input-bg)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text)',fontSize:'0.85rem',textAlign:'center'}}/>
                           <div style={{padding:'9px',background:'rgba(255,255,255,0.03)',border:'1px solid var(--glass-border)',borderRadius:'8px',fontSize:'0.85rem',fontWeight:'700',color:'var(--secondary)',textAlign:'right'}}>{svc?`Rp ${sub.toLocaleString('id-ID')}`:'Rp 0'}</div>
                           <button type="button" onClick={()=>removePOItem(i)} disabled={poItems.length===1} style={{background:'rgba(239,68,68,0.75)',color:'#ffffff',border:'none',borderRadius:'8px',height:'36px',cursor:'pointer',display: 'flex', flexWrap: 'wrap',alignItems:'center',justifyContent:'center'}}><X size={13}/></button>
                         </div>
@@ -912,6 +912,7 @@ const AdminHub = () => {
                                     <input
                                       type="number"
                                       min="1"
+                                      step="any"
                                       value={currentQty}
                                       disabled={!isChecked}
                                       onChange={(e) => {
@@ -919,7 +920,7 @@ const AdminHub = () => {
                                           ...prev,
                                           [idx]: {
                                             ...prev[idx],
-                                            quantity: parseInt(e.target.value) || 1
+                                            quantity: parseFloat(e.target.value) || 1
                                           }
                                         }));
                                       }}
@@ -943,6 +944,7 @@ const AdminHub = () => {
                             required
                             type="number"
                             min="1"
+                            step="any"
                             value={issueQuantity}
                             onChange={e => setIssueQuantity(e.target.value)}
                             style={{
@@ -1207,6 +1209,7 @@ const AdminHub = () => {
                           <input
                             type="number"
                             min="1"
+                            step="any"
                             disabled={!canWrite}
                             value={quantities[jo.id] || jo.quantity || ''}
                             onChange={e => setQuantities({ ...quantities, [jo.id]: e.target.value })}
