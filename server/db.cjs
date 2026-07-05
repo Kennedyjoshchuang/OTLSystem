@@ -197,4 +197,24 @@ try {
   console.log('Added completedAt to job_orders');
 } catch (e) { /* column likely exists */ }
 
+try {
+  db.prepare("ALTER TABLE job_orders ADD COLUMN shipmentStatus TEXT").run();
+  console.log('Added shipmentStatus to job_orders');
+} catch (e) { /* column likely exists */ }
+
+try {
+  db.prepare("ALTER TABLE job_orders ADD COLUMN etd TEXT").run();
+  console.log('Added etd to job_orders');
+} catch (e) { /* column likely exists */ }
+
+try {
+  db.prepare("ALTER TABLE job_orders ADD COLUMN eta TEXT").run();
+  console.log('Added eta to job_orders');
+} catch (e) { /* column likely exists */ }
+
+try {
+  db.prepare("ALTER TABLE job_orders ADD COLUMN vesselName TEXT").run();
+  console.log('Added vesselName to job_orders');
+} catch (e) { /* column likely exists */ }
+
 module.exports = db;

@@ -498,16 +498,18 @@ app.get('/api/job-orders', async (req, res) => {
 app.post('/api/job-orders', async (req, res) => {
   try {
     const { quotationId, customerName, jobDescription, phone, email, rate, quantity, quoteValidity } = req.body;
-    const id = 'JO-' + Date.now();
+    const id = 'JO-' + Date.now() + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
     const date = new Date().toISOString().split('T')[0];
+    const parsedRate = rate !== undefined && rate !== null ? Math.round(parseFloat(rate)) : 0;
     const { error } = await supabase.from('job_orders').insert({
       id, quotationId, customerName, instruction: jobDescription,
       status: 'pending', quantity, issueQuantity: 0,
-      phone, email, rate, quoteValidity, date,
+      phone, email, rate: parsedRate, quoteValidity, date,
       photos: [], costs: [],
       containerNo: [], vehicleNo: [], driverName: []
     });
     if (error) return handleError(res, error, 'POST job_orders');
+    clearJobOrdersCache();
     res.status(201).json({ id });
   } catch (err) {
     console.error('Create JO Error:', err);
