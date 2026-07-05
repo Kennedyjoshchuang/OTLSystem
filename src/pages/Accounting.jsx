@@ -1290,7 +1290,7 @@ const Accounting = () => {
         bankAccount: bankAccount // Pass selected bank
       };
       
-      localStorage.setItem('print_invoice_data', JSON.stringify(printData));
+      localStorage.setItem('print_invoice_data_' + newInv.id, JSON.stringify(printData));
 
       // Update UI state
       setActiveTab('billing');
@@ -1298,7 +1298,7 @@ const Accounting = () => {
       setIssuingInvoiceJoId(null); // Reset modal
       
       // Open print page in a new tab
-      window.open('/print/invoice', '_blank');
+      window.open('/print/invoice?id=' + newInv.id, '_blank');
       
     } catch (err) {
       console.error("Issue Invoice error:", err);
@@ -1336,7 +1336,7 @@ const Accounting = () => {
       ? jobOrders.filter(j => enrichedInv.consolidatedJOs.includes(j.id))
       : linkedJO ? [linkedJO] : [];
 
-    localStorage.setItem('print_invoice_data', JSON.stringify({ 
+    localStorage.setItem('print_invoice_data_' + enrichedInv.id, JSON.stringify({ 
       invoice: enrichedInv, 
       jo: linkedJO, 
       consolidatedJOs: consolidatedJOs,
@@ -1344,10 +1344,10 @@ const Accounting = () => {
     }));
 
     // 1. Main Invoice
-    window.open('/print/invoice', '_blank');
+    window.open('/print/invoice?id=' + enrichedInv.id, '_blank');
     
     // 2. Receipt (STT)
-    window.open('/print/invoice-receipt', '_blank');
+    window.open('/print/invoice-receipt?id=' + enrichedInv.id, '_blank');
 
     // 3. Attachments (Operational Photos + Signed Docs + Payment/Tax Proofs)
     const hasOpsPhotos = linkedJO && Array.isArray(linkedJO.photos) && linkedJO.photos.length > 0;
@@ -1355,7 +1355,7 @@ const Accounting = () => {
     const hasProofs = enrichedInv.paymentProofPhoto || enrichedInv.tax_deduction_proof;
     
     if (hasOpsPhotos || hasSignedPhotos || hasProofs) {
-      window.open('/print/invoice-attachment', '_blank');
+      window.open('/print/invoice-attachment?id=' + enrichedInv.id, '_blank');
     }
   };
 
@@ -2014,14 +2014,39 @@ const Accounting = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      <tr style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '20px 12px' }}>
-                          <div style={{ fontWeight: '800', fontSize: '1.1rem' }}>Freight & Logistics Services</div>
-                          <div style={{ color: '#64748b', fontSize: '0.8rem' }}>JO Ref: {inv.joId}</div>
-                        </td>
-                        <td style={{ padding: '20px 12px', textAlign: 'center' }}>1</td>
-                        <td style={{ padding: '20px 12px', textAlign: 'right', fontWeight: '900', fontSize: '1.2rem' }}>Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</td>
-                      </tr>
+                      {Array.isArray(inv.items) && inv.items.length > 0 ? (
+                        inv.items.map((item, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                            <td style={{ padding: '16px 12px' }}>
+                              <div style={{ fontWeight: '800', fontSize: '1rem' }}>{item.description}</div>
+                              <div style={{ color: '#64748b', fontSize: '0.8rem' }}>JO Ref: {(() => {
+                                const ass = getAssociatedJOs(inv);
+                                return ass[idx] ? ass[idx].id : inv.joId;
+                              })()}</div>
+                            </td>
+                            <td style={{ padding: '16px 12px', textAlign: 'center' }}>{item.qty || 1}</td>
+                            <td style={{ padding: '16px 12px', textAlign: 'right', fontWeight: '900', fontSize: '1.1rem' }}>Rp {(parseFloat(item.rate || 0) * (item.qty || 1)).toLocaleString('id-ID')}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr style={{ borderBottom: '1px solid #eee' }}>
+                          <td style={{ padding: '20px 12px' }}>
+                            <div style={{ fontWeight: '800', fontSize: '1.1rem' }}>
+                              {(() => {
+                                const ass = getAssociatedJOs(inv);
+                                const firstJo = ass[0];
+                                if (firstJo) {
+                                  return firstJo.instruction || firstJo.jobDescription || 'Freight Forwarding Services';
+                                }
+                                return 'Freight Forwarding Services';
+                              })()}
+                            </div>
+                            <div style={{ color: '#64748b', fontSize: '0.8rem' }}>JO Ref: {inv.joId}</div>
+                          </td>
+                          <td style={{ padding: '20px 12px', textAlign: 'center' }}>1</td>
+                          <td style={{ padding: '20px 12px', textAlign: 'right', fontWeight: '900', fontSize: '1.2rem' }}>Rp {parseFloat(inv.amount).toLocaleString('id-ID')}</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table></div></div>
 
@@ -2130,7 +2155,7 @@ const Accounting = () => {
                       </div>
                       <div style={{ textAlign: 'right', fontSize:'0.85rem' }}>
                          <p style={{ margin:0 }}><strong>Tanggal:</strong> {formatDate(inv.date)}</p>
-                         <p style={{ margin:0 }}><strong>JO Ref:</strong> {inv.joId}</p>
+                         <p style={{ margin:0 }}><strong>JO Ref:</strong> {(() => { const ass = getAssociatedJOs(inv); return ass.length > 0 ? ass.map(j => j.id).join(', ') : inv.joId; })()}</p>
                       </div>
                     </div>
                     <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
@@ -2143,8 +2168,7 @@ const Accounting = () => {
                       <tbody>
                         <tr>
                           <td style={{ padding:'15px 14px', borderBottom:'1px solid #eee' }}>
-                             <div style={{ fontWeight:'800' }}>Freight & Logistics Services</div>
-                             <div style={{ fontSize:'0.75rem', color:'#64748b' }}>{linkedJO?.instruction || 'Logistics Services'}</div>
+                             <div style={{ fontWeight:'800' }}>{linkedJO?.instruction || linkedJO?.jobDescription || 'Freight Forwarding Services'}</div>
                           </td>
                           <td style={{ padding:'15px 14px', textAlign:'right', fontWeight:'900' }}>
                              Rp {parseFloat(inv.subtotal || inv.amount).toLocaleString('id-ID')}
@@ -2313,7 +2337,7 @@ const Accounting = () => {
                       </div>
                       <div style={{ textAlign: 'right', fontSize:'0.85rem' }}>
                          <p style={{ margin:0 }}><strong>Tanggal:</strong> {formatDate(inv.date)}</p>
-                         <p style={{ margin:0 }}><strong>JO Ref:</strong> {inv.joId}</p>
+                         <p style={{ margin:0 }}><strong>JO Ref:</strong> {(() => { const ass = getAssociatedJOs(inv); return ass.length > 0 ? ass.map(j => j.id).join(', ') : inv.joId; })()}</p>
                       </div>
                     </div>
                     <div className="table-container"><div className="table-container"><table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
@@ -2326,8 +2350,7 @@ const Accounting = () => {
                       <tbody>
                         <tr>
                           <td style={{ padding:'15px 14px', borderBottom:'1px solid #eee' }}>
-                             <div style={{ fontWeight:'800' }}>Freight & Logistics Services</div>
-                             <div style={{ fontSize:'0.75rem', color:'#64748b' }}>{linkedJO?.instruction || 'Logistics Services'}</div>
+                             <div style={{ fontWeight:'800' }}>{linkedJO?.instruction || linkedJO?.jobDescription || 'Freight Forwarding Services'}</div>
                           </td>
                           <td style={{ padding:'15px 14px', textAlign:'right', fontWeight:'900' }}>
                              Rp {parseFloat(inv.subtotal || inv.amount).toLocaleString('id-ID')}
@@ -3250,7 +3273,7 @@ const Accounting = () => {
                       </td>
                       <td style={{ padding: '15px' }}>
                         <div style={{ fontWeight: '800', color: 'var(--secondary)' }}>{inv.id}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {inv.joId}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>JO: {(() => { const ass = getAssociatedJOs(inv); return ass.length > 0 ? ass.map(j => j.id).join(', ') : inv.joId; })()}</div>
                       </td>
                       <td style={{ padding: '15px' }}>
                         {(() => {
@@ -3364,8 +3387,11 @@ const Accounting = () => {
                             onClick={() => {
                               const linkedJO = jobOrders.find(j => String(j.id) === String(inv.joId));
                               const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
-                              localStorage.setItem('print_invoice_data', JSON.stringify({ invoice: inv, jo: linkedJO, quotation: linkedQuo }));
-                              window.open('/print/invoice-delivery', '_blank');
+                              const consolidatedJOs = inv.consolidatedJOs
+                                ? jobOrders.filter(j => inv.consolidatedJOs.includes(j.id))
+                                : linkedJO ? [linkedJO] : [];
+                              localStorage.setItem('print_invoice_data_' + inv.id, JSON.stringify({ invoice: inv, jo: linkedJO, consolidatedJOs, quotation: linkedQuo }));
+                              window.open('/print/invoice-delivery?id=' + inv.id, '_blank');
                             }}
                           >
                             <FileText size={14} /> STT

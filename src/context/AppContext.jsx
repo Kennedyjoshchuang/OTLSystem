@@ -213,14 +213,19 @@ export const AppProvider = ({ children }) => {
       setJobOrders(parsedJOs);
       const unpackInvoiceNotes = (inv) => {
         let notesText = inv.notes || '';
-        let consolidatedJOs = [];
+        let consolidatedJOs = Array.isArray(inv.consolidatedJOs) ? inv.consolidatedJOs : [];
+        let items = Array.isArray(inv.items) ? inv.items : [];
+
         if (notesText && notesText.includes('|||')) {
           const parts = notesText.split('|||');
           notesText = parts[0].trim();
           try {
             const meta = JSON.parse(parts[1].trim());
-            if (Array.isArray(meta.consolidatedJOs)) {
+            if (Array.isArray(meta.consolidatedJOs) && consolidatedJOs.length === 0) {
               consolidatedJOs = meta.consolidatedJOs;
+            }
+            if (Array.isArray(meta.items) && items.length === 0) {
+              items = meta.items;
             }
           } catch (e) {
             // ignore
@@ -229,7 +234,8 @@ export const AppProvider = ({ children }) => {
         return {
           ...inv,
           notes: notesText || null,
-          consolidatedJOs: consolidatedJOs.length > 0 ? consolidatedJOs : (inv.joId ? [inv.joId] : [])
+          consolidatedJOs: consolidatedJOs.length > 0 ? consolidatedJOs : (inv.joId ? [inv.joId] : []),
+          items: items
         };
       };
 
@@ -241,7 +247,8 @@ export const AppProvider = ({ children }) => {
         return {
           ...rec,
           joId: rec.joId || (unpackedInv ? unpackedInv.joId : null),
-          consolidatedJOs: (unpackedInv && unpackedInv.consolidatedJOs) ? unpackedInv.consolidatedJOs : (rec.joId ? [rec.joId] : [])
+          consolidatedJOs: (unpackedInv && unpackedInv.consolidatedJOs) ? unpackedInv.consolidatedJOs : (rec.joId ? [rec.joId] : []),
+          items: unpackedInv ? (unpackedInv.items || []) : []
         };
       });
       setReceivables(parsedReceivables);
@@ -497,25 +504,25 @@ export const AppProvider = ({ children }) => {
       );
     }
     
-    // Calculate total amount across all target JOs
+    // Calculate total amount across all target JOs and build items list
     let totalAmount = 0;
-    targetJOs.forEach(targetJo => {
+    const items = targetJOs.map(targetJo => {
       const quotation = targetJo.quotationId 
         ? quotations.find(q => String(q.id) === String(targetJo.quotationId))
         : null;
       
-      let items = [];
+      let qItems = [];
       if (quotation && quotation.items) {
         try {
-          items = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
+          qItems = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
         } catch (e) {
-          items = [];
+          qItems = [];
         }
       }
-      if (!Array.isArray(items)) items = [];
+      if (!Array.isArray(qItems)) qItems = [];
       
       const targetDesc = (targetJo.instruction || targetJo.jobDescription || "").trim().toLowerCase();
-      const item = items.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
+      const item = qItems.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
       
       let rate = 0;
       if (item && item.rate) {
@@ -525,6 +532,12 @@ export const AppProvider = ({ children }) => {
       }
       const qty = cleanNumber(targetJo.issueQuantity || targetJo.quantity || 1);
       totalAmount += rate * qty;
+      
+      return {
+        description: targetJo.instruction || targetJo.jobDescription || 'Freight Forwarding Services',
+        qty,
+        rate
+      };
     });
     
     if (isNaN(totalAmount)) {
@@ -535,8 +548,8 @@ export const AppProvider = ({ children }) => {
     const consolidatedJOs = targetJOs.map(j => j.id);
 
     const packedNotes = notes
-      ? `${notes} ||| ${JSON.stringify({ consolidatedJOs })}`
-      : `||| ${JSON.stringify({ consolidatedJOs })}`;
+      ? `${notes} ||| ${JSON.stringify({ consolidatedJOs, items })}`
+      : `||| ${JSON.stringify({ consolidatedJOs, items })}`;
 
     const newInvoice = {
       id: newInvoiceId,
@@ -552,7 +565,8 @@ export const AppProvider = ({ children }) => {
       extra_charges: [],
       signedReceiptPhoto: null,
       signedInvoicePhoto: null,
-      deliveryStatus: 'not_sent'
+      deliveryStatus: 'not_sent',
+      items
     };
     
     try {
@@ -565,7 +579,8 @@ export const AppProvider = ({ children }) => {
         ...newInvoice, 
         id: data.id || newInvoice.id,
         notes: notes || null,
-        consolidatedJOs
+        consolidatedJOs,
+        items
       };
       
       setInvoices(prev => [...prev, finalInvoice]);
@@ -724,17 +739,18 @@ export const AppProvider = ({ children }) => {
     setReceivables(prev => prev.filter(r => r.invoiceId !== id));
   };
   const updateInvoice = async (id, updates) => {
-    const { consolidatedJOs, ...cleanUpdates } = updates;
+    const { consolidatedJOs, items, ...cleanUpdates } = updates;
     const originalInv = invoices.find(inv => inv.id === id);
-    const originalNotes = originalInv ? originalInv.notes : '';
-
-    if (consolidatedJOs !== undefined || updates.notes !== undefined) {
+    
+    if (consolidatedJOs !== undefined || items !== undefined || updates.notes !== undefined) {
       const targetConsolidated = consolidatedJOs !== undefined ? consolidatedJOs : (originalInv ? originalInv.consolidatedJOs : []);
-      const targetNotes = updates.notes !== undefined ? updates.notes : originalNotes;
+      const targetItems = items !== undefined ? items : (originalInv ? originalInv.items : []);
+      const targetNotes = updates.notes !== undefined ? updates.notes : (originalInv ? originalInv.notes : '');
       const notesString = targetNotes || '';
-      cleanUpdates.notes = notesString 
-        ? `${notesString} ||| ${JSON.stringify({ consolidatedJOs: targetConsolidated })}`
-        : `||| ${JSON.stringify({ consolidatedJOs: targetConsolidated })}`;
+      
+      cleanUpdates.notes = notesString
+        ? `${notesString} ||| ${JSON.stringify({ consolidatedJOs: targetConsolidated, items: targetItems })}`
+        : `||| ${JSON.stringify({ consolidatedJOs: targetConsolidated, items: targetItems })}`;
     }
 
     await apiRequest(`invoices/${id}`, {
