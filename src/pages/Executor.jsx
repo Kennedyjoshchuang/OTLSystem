@@ -620,7 +620,7 @@ const Executor = () => {
                             <div style={{ fontWeight: '600' }}>{jo.customerName}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{isID ? 'Jumlah:' : 'Qty:'} {jo.quantity}</div>
                           </td>
-                          <td style={{ padding: '15px', fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '200px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <td style={{ padding: '15px', fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '250px', whiteSpace: 'normal', wordBreak: 'break-word' }}>
                             {jo.jobDescription}
                           </td>
                           <td style={{ padding: '15px' }}>

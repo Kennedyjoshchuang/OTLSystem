@@ -142,7 +142,7 @@ const PrintInvoiceReceipt = () => {
             )}
           </div>
           <div style={{ textAlign: 'center', width: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <p style={{ fontSize: '12px', margin: '0 0 5px 0' }}>Jakarta, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <p style={{ fontSize: '12px', margin: '0 0 5px 0' }}>Batam, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             
             {/* Interactive Signature overlay area */}
             <div style={{ 
@@ -255,7 +255,7 @@ const PrintInvoiceReceipt = () => {
             RP. {totalAmount.toLocaleString('id-ID')}
           </div>
           <div style={{ textAlign: 'center', width: '150px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <p style={{ fontSize: '10px', margin: '0 0 3px 0' }}>Jakarta, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+            <p style={{ fontSize: '10px', margin: '0 0 3px 0' }}>Batam, {new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
             
             {/* Interactive Signature overlay area */}
             <div style={{ 

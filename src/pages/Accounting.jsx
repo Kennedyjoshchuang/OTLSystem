@@ -1710,8 +1710,8 @@ const Accounting = () => {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: '900', fontSize: '1.4rem', color: '#0f172a' }}>PT. OMEGA TRUST LOGISTIK</div>
                 <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: '600', marginTop: '5px' }}>
-                  Green Sedayu Bizpark DM 11 No. 51<br />
-                  Kalideres, Jakarta Barat<br />
+                  Jl. Duyung Kavling III, Batu Ampar<br />
+                  Batam, Kepulauan Riau<br />
                   Date: {printPO.date}
                 </div>
               </div>
@@ -1911,8 +1911,8 @@ const Accounting = () => {
                     <div style={{ textAlign: 'right' }}>
                       <div style={{ fontWeight: '900', fontSize: '1.2rem', color: '#0f172a' }}>PT. OMEGA TRUST LOGISTIK</div>
                       <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>
-                        Green Sedayu Bizpark DM 11 No. 51<br />
-                        Kalideres, Jakarta Barat<br />
+                        Jl. Duyung Kavling III, Batu Ampar<br />
+                        Batam, Kepulauan Riau<br />
                         T: +62 21 5000 8000
                       </div>
                     </div>
@@ -2044,7 +2044,7 @@ const Accounting = () => {
                         <img src="/assets/logo.png" alt="Logo" style={{ width: '65px', height: '65px', objectFit: 'contain' }} />
                         <div>
                           <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', color: '#1e293b' }}>PT. OMEGA TRUST LOGISTIK</h1>
-                          <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Green Sedayu Bizpark DM 11 No. 51, Jakarta Barat</p>
+                          <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau</p>
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -2226,7 +2226,7 @@ const Accounting = () => {
                         <img src="/assets/logo.png" alt="Logo" style={{ width: '65px', height: '65px', objectFit: 'contain' }} />
                         <div>
                           <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '900', color: '#1e293b' }}>PT. OMEGA TRUST LOGISTIK</h1>
-                          <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Green Sedayu Bizpark DM 11 No. 51, Jakarta Barat</p>
+                          <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b' }}>Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau</p>
                         </div>
                       </div>
                       <div style={{ textAlign: 'right' }}>
@@ -6277,12 +6277,12 @@ const Accounting = () => {
 
             <div style={{ marginBottom:'30px', textAlign:'left' }}>
               <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>
-                {isID ? 'Catatan Kustom (Opsional)' : 'Custom Notes (Optional)'}
+                {isID ? 'Keterangan (Opsional)' : 'Description (Optional)'}
               </label>
               <textarea 
                 value={invoiceNotes}
                 onChange={(e) => setInvoiceNotes(e.target.value)}
-                placeholder={isID ? "Masukkan catatan tambahan untuk invoice..." : "Enter additional notes for the invoice..."}
+                placeholder={isID ? "Masukkan keterangan tambahan untuk invoice..." : "Enter additional description for the invoice..."}
                 style={{ width:'100%', minHeight:'80px', padding:'12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color:'var(--text)', fontSize:'0.9rem', resize:'vertical' }}
               />
             </div>

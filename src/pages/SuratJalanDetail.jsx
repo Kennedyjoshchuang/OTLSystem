@@ -106,7 +106,7 @@ const SuratJalanDetail = () => {
               <div>
                 <h2 style={{ color: '#065f46', margin: 0, fontWeight: '800', fontSize: '1.8rem', background: 'none', WebkitTextFillColor: 'initial' }}>PT. OMEGA TRUST</h2>
                 <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '5px 0 0 0' }}>Logistik & Freight Forwarding System</p>
-                <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0 0' }}>Jl. Raya Freight No. 88, Jakarta Utara</p>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: '2px 0 0 0' }}>Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau</p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <h1 style={{ color: '#d4af37', fontSize: '2.2rem', margin: 0, fontWeight: '900', letterSpacing: '1px', background: 'none', WebkitTextFillColor: 'initial' }}>SURAT JALAN</h1>

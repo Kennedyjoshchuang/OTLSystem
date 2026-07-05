@@ -1232,7 +1232,7 @@ const Marketing = () => {
                     <div>
                       <h4 style={{ margin: 0, fontWeight: '900', fontSize: '1.1rem', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>LOGISTICS & FREIGHT FORWARDING</h4>
                       <div className="text-slate" style={{ fontSize: '0.75rem', lineHeight: '1.4', marginTop: '5px', maxWidth: '300px', fontWeight: '500' }}>
-                        {selectedDraft.companyAddress || "Green Sedayu Bizpark DM 11 No. 51, Kalideres, Jakarta Barat"}
+                        {selectedDraft.companyAddress || "Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau"}
                       </div>
                     </div>
                   </div>
