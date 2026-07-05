@@ -489,6 +489,10 @@ app.delete('/api/quotations/:id', async (req, res) => {
 });
 
 // --- JOB ORDERS ---
+const clearJobOrdersCache = () => {
+  // No-op as OTL doesn't use server-side cache for job orders
+};
+
 app.get('/api/job-orders', async (req, res) => {
   const { data, error } = await supabase.from('job_orders').select('*');
   if (error) return handleError(res, error, 'GET job_orders');
@@ -562,7 +566,7 @@ app.get('/api/invoices', async (req, res) => {
 });
 
 app.post('/api/invoices', async (req, res) => {
-  const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status, notes } = req.body;
+  const { id, joId, customerName, amount, subtotal, tax, extra_charges, date, status, notes, consolidatedJOs } = req.body;
   
   try {
     // 1. Create Invoice — try with all columns, fallback if schema is old
@@ -574,6 +578,7 @@ app.post('/api/invoices', async (req, res) => {
       extra_charges: extra_charges || [],
       date, status,
       notes: notes || null,
+      consolidatedJOs: consolidatedJOs || [],
       signedReceiptPhoto: req.body.signedReceiptPhoto || null,
       signedInvoicePhoto: req.body.signedInvoicePhoto || null,
       deliveryStatus: req.body.deliveryStatus || 'not_sent'
@@ -590,7 +595,7 @@ app.post('/api/invoices', async (req, res) => {
       invErr.code === 'PGRST204'
     )) {
       console.warn(`[POST /invoices] Schema mismatch for ${id} (Code: ${invErr.code}). Retrying without tracking columns...`);
-      const { signedReceiptPhoto, signedInvoicePhoto, deliveryStatus, notes: _, ...legacyData } = invoiceData;
+      const { signedReceiptPhoto, signedInvoicePhoto, deliveryStatus, notes: _, consolidatedJOs: __, ...legacyData } = invoiceData;
       console.log(`[POST /invoices] Retrying with keys: ${Object.keys(legacyData).join(', ')}`);
       const { error: retryErr } = await supabase.from('invoices').insert(legacyData);
       invErr = retryErr;
@@ -642,7 +647,22 @@ app.post('/api/invoices', async (req, res) => {
     }
 
     // 3. Update Job Order status to 'invoiced'
-    let joIds = req.body.consolidatedJOs || [];
+    let joIds = consolidatedJOs || [];
+    if (!Array.isArray(joIds) || joIds.length === 0) {
+      // Check notes for packed consolidatedJOs
+      const notesVal = notes || '';
+      if (notesVal && notesVal.includes('|||')) {
+        try {
+          const parts = notesVal.split('|||');
+          const meta = JSON.parse(parts[1].trim());
+          if (Array.isArray(meta.consolidatedJOs)) {
+            joIds = meta.consolidatedJOs;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
     if (!Array.isArray(joIds)) joIds = [];
     if (joId && !joIds.includes(joId)) {
       joIds.push(joId);
@@ -655,6 +675,8 @@ app.post('/api/invoices', async (req, res) => {
         .in('id', joIds);
       if (joErr) {
         console.error(`[POST /invoices] JO Update error for JOs:`, joErr.message);
+      } else {
+        clearJobOrdersCache();
       }
     }
 
@@ -745,35 +767,29 @@ app.delete('/api/invoices/:id', async (req, res) => {
     // 1. Fetch the invoice first to identify linked Job Orders
     const { data: invoice, error: fetchErr } = await supabase
       .from('invoices')
-      .select('joId')
+      .select('joId, notes, consolidatedJOs')
       .eq('id', req.params.id)
       .single();
 
     if (!fetchErr && invoice) {
-      let joIds = [invoice.joId];
-
-      // Find the primary job order to get its quotationId
-      const { data: primaryJo } = await supabase
-        .from('job_orders')
-        .select('quotationId')
-        .eq('id', invoice.joId)
-        .single();
-
-      if (primaryJo && primaryJo.quotationId) {
-        // Find all job orders with same quotationId and status 'invoiced'
-        const { data: relatedJOs } = await supabase
-          .from('job_orders')
-          .select('id')
-          .eq('quotationId', primaryJo.quotationId)
-          .eq('status', 'invoiced');
-        
-        if (relatedJOs) {
-          relatedJOs.forEach(r => {
-            if (!joIds.includes(r.id)) {
-              joIds.push(r.id);
+      let joIds = invoice.consolidatedJOs || [];
+      if (!Array.isArray(joIds) || joIds.length === 0) {
+        // Check notes for packed consolidatedJOs
+        const notesVal = invoice.notes || '';
+        if (notesVal && notesVal.includes('|||')) {
+          try {
+            const parts = notesVal.split('|||');
+            const meta = JSON.parse(parts[1].trim());
+            if (Array.isArray(meta.consolidatedJOs)) {
+              joIds = meta.consolidatedJOs;
             }
-          });
+          } catch (e) {
+            // ignore
+          }
         }
+      }
+      if (invoice.joId && !joIds.includes(invoice.joId)) {
+        joIds.push(invoice.joId);
       }
 
       if (joIds.length > 0) {
@@ -783,6 +799,8 @@ app.delete('/api/invoices/:id', async (req, res) => {
           .in('id', joIds);
         if (joErr) {
           console.error(`[DELETE /invoices/:id] Failed to revert JO status:`, joErr.message);
+        } else {
+          clearJobOrdersCache();
         }
       }
     }

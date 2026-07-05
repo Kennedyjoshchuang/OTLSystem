@@ -541,6 +541,7 @@ export const AppProvider = ({ children }) => {
     const newInvoice = {
       id: newInvoiceId,
       joId, // Primary JO reference
+      consolidatedJOs, // Array of consolidated JO IDs
       customerName: jo.customerName || 'Pelanggan',
       amount: totalAmount,
       subtotal: totalAmount,
