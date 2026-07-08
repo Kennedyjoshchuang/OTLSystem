@@ -173,7 +173,7 @@ export const AppProvider = ({ children }) => {
 
       setProspects(Array.isArray(prosData) ? prosData : []);
       setQuotations(safeParse(quoData, ['items']));
-      const parsedJOs = safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName']).map(jo => {
+      const parsedJOs = safeParse(joData, ['photos', 'costs', 'containerNo', 'vehicleNo', 'driverName', 'items']).map(jo => {
         let instructionText = jo.instruction || '';
         let dispatchedAt = jo.dispatchedAt || null;
         let completedAt = jo.completedAt || null;
@@ -377,7 +377,7 @@ export const AppProvider = ({ children }) => {
   const createJO = async (joData) => {
     const newJO = {
       ...joData,
-      instruction: joData.jobDescription,
+      instruction: joData.jobDescription || joData.instruction || '',
       id: `JO-${Date.now().toString().slice(-6)}`,
       status: 'pending',
       containerNo: '',
@@ -385,6 +385,7 @@ export const AppProvider = ({ children }) => {
       driverName: '',
       activityStatus: '',
       photos: [],
+      items: joData.items || [],
       date: new Date().toISOString()
     };
     const { id } = await apiRequest('job-orders', {
@@ -396,9 +397,12 @@ export const AppProvider = ({ children }) => {
     return finalJO;
   };
 
-  const dispatchJO = async (joId, quantity) => {
+  const dispatchJO = async (joId, quantity, updatedItems) => {
     const dispatchedAt = new Date().toISOString();
-    await updateJOStatus(joId, { status: 'dispatched', issueQuantity: quantity, dispatchedAt });
+    const updates = { status: 'dispatched', dispatchedAt };
+    if (quantity !== undefined && quantity !== null) updates.issueQuantity = quantity;
+    if (updatedItems) updates.items = updatedItems;
+    await updateJOStatus(joId, updates);
   };
 
   const updateJOStatus = async (joId, updates) => {
@@ -506,38 +510,53 @@ export const AppProvider = ({ children }) => {
     
     // Calculate total amount across all target JOs and build items list
     let totalAmount = 0;
-    const items = targetJOs.map(targetJo => {
-      const quotation = targetJo.quotationId 
-        ? quotations.find(q => String(q.id) === String(targetJo.quotationId))
-        : null;
-      
-      let qItems = [];
-      if (quotation && quotation.items) {
-        try {
-          qItems = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
-        } catch (e) {
-          qItems = [];
-        }
-      }
-      if (!Array.isArray(qItems)) qItems = [];
-      
-      const targetDesc = (targetJo.instruction || targetJo.jobDescription || "").trim().toLowerCase();
-      const item = qItems.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
-      
-      let rate = 0;
-      if (item && item.rate) {
-        rate = cleanNumber(item.rate);
+    const items = [];
+    targetJOs.forEach(targetJo => {
+      if (Array.isArray(targetJo.items) && targetJo.items.length > 0) {
+        // Multi-item job order
+        targetJo.items.forEach(item => {
+          if (item.status === 'done' || String(targetJo.id) === String(joId)) {
+            const qty = cleanNumber(item.issueQuantity || item.quantity || 1);
+            const rate = cleanNumber(item.rate);
+            totalAmount += rate * qty;
+            items.push({
+              description: item.description || 'Freight Forwarding Services',
+              qty,
+              rate
+            });
+          }
+        });
       } else {
-        rate = cleanNumber(targetJo.rate);
+        // Legacy single-item job order
+        const quotation = targetJo.quotationId 
+          ? quotations.find(q => String(q.id) === String(targetJo.quotationId))
+          : null;
+        let qItems = [];
+        if (quotation && quotation.items) {
+          try {
+            qItems = typeof quotation.items === 'string' ? JSON.parse(quotation.items) : quotation.items;
+          } catch (e) {
+            qItems = [];
+          }
+        }
+        if (!Array.isArray(qItems)) qItems = [];
+        const targetDesc = (targetJo.instruction || targetJo.jobDescription || "").trim().toLowerCase();
+        const matchedItem = qItems.find(i => (i.description || "").trim().toLowerCase() === targetDesc);
+        
+        let rate = 0;
+        if (matchedItem && matchedItem.rate) {
+          rate = cleanNumber(matchedItem.rate);
+        } else {
+          rate = cleanNumber(targetJo.rate);
+        }
+        const qty = cleanNumber(targetJo.issueQuantity || targetJo.quantity || 1);
+        totalAmount += rate * qty;
+        items.push({
+          description: targetJo.instruction || targetJo.jobDescription || 'Freight Forwarding Services',
+          qty,
+          rate
+        });
       }
-      const qty = cleanNumber(targetJo.issueQuantity || targetJo.quantity || 1);
-      totalAmount += rate * qty;
-      
-      return {
-        description: targetJo.instruction || targetJo.jobDescription || 'Freight Forwarding Services',
-        qty,
-        rate
-      };
     });
     
     if (isNaN(totalAmount)) {
@@ -626,6 +645,86 @@ export const AppProvider = ({ children }) => {
         tax_deduction_proof: taxDeductionProof 
       } : r
     ));
+  };
+
+  const createCustomInvoice = async (invoiceData) => {
+    console.log("Starting createCustomInvoice for customer:", invoiceData.customerName);
+    const newInvoiceId = invoiceData.id || `INV-CUST-${Date.now()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    
+    const consolidatedJOs = Array.isArray(invoiceData.consolidatedJOs) && invoiceData.consolidatedJOs.length > 0
+      ? invoiceData.consolidatedJOs
+      : invoiceData.joId ? [invoiceData.joId] : [];
+
+    const items = invoiceData.items || [];
+    const packedNotes = invoiceData.notes
+      ? `${invoiceData.notes} ||| ${JSON.stringify({ consolidatedJOs, items })}`
+      : `||| ${JSON.stringify({ consolidatedJOs, items })}`;
+
+    const newInvoice = {
+      id: newInvoiceId,
+      joId: invoiceData.joId || null,
+      consolidatedJOs,
+      customerName: invoiceData.customerName || 'Pelanggan',
+      customerAddress: invoiceData.customerAddress || '',
+      customerPic: invoiceData.customerPic || '',
+      customerPhone: invoiceData.customerPhone || '',
+      customerEmail: invoiceData.customerEmail || '',
+      amount: cleanNumber(invoiceData.amount),
+      subtotal: cleanNumber(invoiceData.subtotal || invoiceData.amount),
+      tax: cleanNumber(invoiceData.tax || 0),
+      date: invoiceData.date || new Date().toISOString(),
+      status: invoiceData.status || 'unpaid',
+      notes: packedNotes,
+      extra_charges: invoiceData.extra_charges || [],
+      signedReceiptPhoto: null,
+      signedInvoicePhoto: null,
+      deliveryStatus: 'not_sent',
+      items
+    };
+
+    try {
+      const data = await apiRequest('invoices', {
+        method: 'POST',
+        body: JSON.stringify(newInvoice)
+      });
+      
+      const finalInvoice = { 
+        ...newInvoice, 
+        id: data.id || newInvoice.id,
+        notes: invoiceData.notes || null,
+        consolidatedJOs,
+        items
+      };
+      
+      setInvoices(prev => [...prev, finalInvoice]);
+      setReceivables(prev => [...prev, { ...finalInvoice, balance: finalInvoice.amount }]);
+      
+      if (consolidatedJOs.length > 0) {
+        setJobOrders(prev => prev.map(j =>
+          consolidatedJOs.includes(j.id) ? { ...j, status: 'invoiced' } : j
+        ));
+      }
+      
+      return finalInvoice;
+    } catch (error) {
+      console.error("Failed to create custom invoice:", error);
+      throw error;
+    }
+  };
+
+  const convertLegacyJOs = async (primaryJoId, joIdsToDelete, items) => {
+    try {
+      await apiRequest('job-orders/convert-legacy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ primaryJoId, joIdsToDelete, items })
+      });
+      await fetchData();
+      return true;
+    } catch (error) {
+      console.error("Failed to convert legacy job orders:", error);
+      throw error;
+    }
   };
 
   const settleReceivable = async (invoiceId) => {
@@ -1009,8 +1108,8 @@ export const AppProvider = ({ children }) => {
       prospects, addProspect, updateProspectStatus, convertProspectToCustomer, deleteProspect, updateProspect,
       prospectDrafts,
       quotations, createQuotation, updateQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
-      jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO,
-      invoices, createInvoice, settleInvoice, deleteInvoice, updateInvoice,
+      jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO, convertLegacyJOs,
+      invoices, createInvoice, createCustomInvoice, settleInvoice, deleteInvoice, updateInvoice,
       receivables, settleReceivable,
       salaries, addSalary, deleteSalary, updateSalary,
       otherExpenses, addOtherExpense, deleteOtherExpense, updateOtherExpense,
