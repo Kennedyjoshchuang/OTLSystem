@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useCustomers } from '../api/hooks/useCustomers';
 import { apiRequest, API_URL } from '../api/api';
 import { translations } from '../translations/translations';
+import { toast } from 'react-hot-toast';
 
 const AppContext = createContext();
 
@@ -727,6 +728,31 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const convertBatchLegacyJOs = async (batches, onProgress) => {
+    try {
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        if (onProgress) {
+          onProgress(i, batches.length, batch.quotationId || batch.primaryJoId);
+        }
+        await apiRequest('job-orders/convert-legacy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            primaryJoId: batch.primaryJoId, 
+            joIdsToDelete: batch.joIdsToDelete, 
+            items: batch.items 
+          })
+        });
+      }
+      await fetchData();
+      return true;
+    } catch (error) {
+      console.error("Failed to convert batch legacy job orders:", error);
+      throw error;
+    }
+  };
+
   const settleReceivable = async (invoiceId) => {
     await settleInvoice(invoiceId);
   };
@@ -1108,7 +1134,7 @@ export const AppProvider = ({ children }) => {
       prospects, addProspect, updateProspectStatus, convertProspectToCustomer, deleteProspect, updateProspect,
       prospectDrafts,
       quotations, createQuotation, updateQuotation, approveQuotation, unapproveQuotation, deleteQuotation,
-      jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO, convertLegacyJOs,
+      jobOrders, createJO, dispatchJO, updateJOStatus, completeJO, deleteJO, convertLegacyJOs, convertBatchLegacyJOs,
       invoices, createInvoice, createCustomInvoice, settleInvoice, deleteInvoice, updateInvoice,
       receivables, settleReceivable,
       salaries, addSalary, deleteSalary, updateSalary,

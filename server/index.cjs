@@ -541,7 +541,7 @@ app.post('/api/job-orders', async (req, res) => {
 app.post('/api/job-orders/convert-legacy', async (req, res) => {
   try {
     const { primaryJoId, joIdsToDelete, items } = req.body;
-    if (!primaryJoId || !Array.isArray(joIdsToDelete) || joIdsToDelete.length === 0 || !Array.isArray(items)) {
+    if (!primaryJoId || !Array.isArray(joIdsToDelete) || !Array.isArray(items)) {
       return res.status(400).json({ error: 'Invalid parameters: primaryJoId, joIdsToDelete, and items are required.' });
     }
 
@@ -760,12 +760,14 @@ app.post('/api/job-orders/convert-legacy', async (req, res) => {
     }
 
     // 6. Delete secondary Job Orders
-    const { error: deleteJOErr } = await supabase
-      .from('job_orders')
-      .delete()
-      .in('id', joIdsToDelete);
+    if (joIdsToDelete.length > 0) {
+      const { error: deleteJOErr } = await supabase
+        .from('job_orders')
+        .delete()
+        .in('id', joIdsToDelete);
 
-    if (deleteJOErr) throw deleteJOErr;
+      if (deleteJOErr) throw deleteJOErr;
+    }
 
     // 7. Clear caches
     clearJobOrdersCache();

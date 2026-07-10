@@ -77,35 +77,131 @@ const AdminHub = () => {
   const [showConverterModal, setShowConverterModal] = useState(false);
   const [selectedConvertGroup, setSelectedConvertGroup] = useState(null);
   const [converting, setConverting] = useState(false);
+  const [batchConverting, setBatchConverting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState('');
+  const [selectedGroupKeys, setSelectedGroupKeys] = useState(new Set());
 
   if (!context) return null;
-  const { quotations = [], jobOrders = [], createJO, dispatchJO, vendors = [], purchaseOrders = [], createPurchaseOrder, updatePurchaseOrder, issuePurchaseOrder, deletePurchaseOrder, user, t, loading, language, hasAccess, convertLegacyJOs } = context;
+  const { quotations = [], jobOrders = [], createJO, dispatchJO, vendors = [], purchaseOrders = [], invoices = [], createPurchaseOrder, updatePurchaseOrder, issuePurchaseOrder, deletePurchaseOrder, user, t, loading, language, hasAccess, convertLegacyJOs, convertBatchLegacyJOs } = context;
   
   const legacyGroups = React.useMemo(() => {
     const groups = {};
     jobOrders.forEach(jo => {
-      if (jo.quotationId) {
-        if (!groups[jo.quotationId]) {
-          groups[jo.quotationId] = [];
+      const isLegacy = !jo.items || jo.items.length === 0;
+      if (isLegacy) {
+        if (jo.quotationId) {
+          if (!groups[jo.quotationId]) {
+            groups[jo.quotationId] = [];
+          }
+          groups[jo.quotationId].push(jo);
+        } else {
+          groups['direct-' + jo.id] = [jo];
         }
-        groups[jo.quotationId].push(jo);
       }
     });
 
-    const groupsWithMultipleJOs = [];
-    Object.keys(groups).forEach(quoId => {
-      const jos = groups[quoId];
-      if (jos.length > 1) {
-        groupsWithMultipleJOs.push({
-          quotationId: quoId,
-          customerName: jos[0].customerName || 'Unknown Customer',
-          date: jos[0].date || '',
-          jobOrders: jos
+    const groupsList = [];
+    Object.keys(groups).forEach(groupId => {
+      const jos = groups[groupId];
+      const isDirect = groupId.startsWith('direct-');
+      groupsList.push({
+        quotationId: isDirect ? 'Direct JO' : groupId,
+        isDirect: isDirect,
+        groupId: groupId,
+        customerName: jos[0].customerName || 'Unknown Customer',
+        date: jos[0].date || '',
+        jobOrders: jos
+      });
+    });
+    return groupsList;
+  }, [jobOrders]);
+
+  const compileLegacyGroupItems = (group) => {
+    const compiledItems = [];
+    group.jobOrders.forEach(jo => {
+      if (Array.isArray(jo.items) && jo.items.length > 0) {
+        jo.items.forEach(it => {
+          compiledItems.push({
+            description: it.description || jo.instruction || jo.jobDescription || 'Freight Forwarding Services',
+            qty: parseInt(it.issueQuantity || it.quantity || jo.issueQuantity || jo.quantity || 1, 10),
+            rate: parseFloat(it.rate || jo.rate || 0),
+            status: it.status || jo.status || 'pending',
+            containerNo: Array.isArray(it.containerNo) ? it.containerNo : (jo.containerNo ? [jo.containerNo] : []),
+            vehicleNo: Array.isArray(it.vehicleNo) ? it.vehicleNo : (jo.vehicleNo ? [jo.vehicleNo] : []),
+            driverName: Array.isArray(it.driverName) ? it.driverName : (jo.driverName ? [jo.driverName] : [])
+          });
+        });
+      } else {
+        compiledItems.push({
+          description: jo.instruction || jo.jobDescription || 'Freight Forwarding Services',
+          qty: parseInt(jo.issueQuantity || jo.quantity || 1, 10),
+          rate: parseFloat(jo.rate || 0),
+          status: jo.status || 'pending',
+          containerNo: Array.isArray(jo.containerNo) ? jo.containerNo : (jo.containerNo ? [jo.containerNo] : []),
+          vehicleNo: Array.isArray(jo.vehicleNo) ? jo.vehicleNo : (jo.vehicleNo ? [jo.vehicleNo] : []),
+          driverName: Array.isArray(jo.driverName) ? jo.driverName : (jo.driverName ? [jo.driverName] : [])
         });
       }
     });
-    return groupsWithMultipleJOs;
-  }, [jobOrders]);
+    return compiledItems;
+  };
+
+  const handleBatchConvert = async () => {
+    if (selectedGroupKeys.size === 0) return;
+    setBatchConverting(true);
+    
+    const batches = [];
+    selectedGroupKeys.forEach(gKey => {
+      const group = legacyGroups.find(g => g.groupId === gKey);
+      if (group) {
+        batches.push({
+          primaryJoId: group.jobOrders[0].id,
+          joIdsToDelete: group.jobOrders.slice(1).map(j => j.id),
+          items: compileLegacyGroupItems(group),
+          quotationId: group.quotationId
+        });
+      }
+    });
+
+    try {
+      await convertBatchLegacyJOs(batches, (currentIndex, total, id) => {
+        setBatchProgress(isID 
+          ? `Mengonversi ${currentIndex + 1} dari ${total} (${id === 'Direct JO' ? 'Pekerjaan Langsung' : id})...`
+          : `Converting ${currentIndex + 1} of ${total} (${id})...`
+        );
+      });
+      toast.success(isID 
+        ? `Berhasil mengonversi ${batches.length} data legacy!` 
+        : `Successfully converted ${batches.length} legacy records!`
+      );
+      setSelectedGroupKeys(new Set());
+    } catch (err) {
+      console.error(err);
+      toast.error(isID ? 'Gagal melakukan konversi batch.' : 'Failed to run batch conversion.');
+    } finally {
+      setBatchConverting(false);
+      setBatchProgress('');
+    }
+  };
+
+  const toggleGroupSelection = (groupId) => {
+    const next = new Set(selectedGroupKeys);
+    if (next.has(groupId)) {
+      next.delete(groupId);
+    } else {
+      next.add(groupId);
+    }
+    setSelectedGroupKeys(next);
+  };
+
+  const toggleAllGroups = () => {
+    if (selectedGroupKeys.size === legacyGroups.length) {
+      setSelectedGroupKeys(new Set());
+    } else {
+      setSelectedGroupKeys(new Set(legacyGroups.map(g => g.groupId)));
+    }
+  };
+
   const canWrite = hasAccess ? hasAccess('admin', true) : false;
   const isID = language === 'id';
   
@@ -783,17 +879,15 @@ const AdminHub = () => {
             <Plus size={18} />
             {isID ? 'Buat Job Order' : 'Create Job Order'}
           </button>
-          {legacyGroups.length > 0 && (
-            <button 
-              className="btn btn-danger" 
-              style={{ padding: '10px 22px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700' }}
-              onClick={() => {
-                setShowConverterModal(true);
-              }}
-            >
-              <RefreshCw size={18} /> {isID ? 'Konverter Legacy' : 'Legacy Converter'}
-            </button>
-          )}
+          <button 
+            className="btn btn-danger" 
+            style={{ padding: '10px 22px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', borderRadius: '12px', fontWeight: '700' }}
+            onClick={() => {
+              setShowConverterModal(true);
+            }}
+          >
+            <RefreshCw size={18} /> {isID ? 'Konverter Legacy' : 'Legacy Converter'}
+          </button>
         </div>
       </div>
 
@@ -1420,6 +1514,33 @@ const AdminHub = () => {
               {isID ? 'Daftar di bawah menunjukkan Quotation yang memiliki beberapa Job Order terpisah. Anda dapat menggabungkannya menjadi satu Job Order multi-item baru untuk menyederhanakan tracking operasional, costing, dan invoicing.' : 'The list below displays Quotations that have multiple separate legacy Job Orders. You can merge them into a single consolidated multi-item Job Order to simplify operational, costing, and billing tracking.'}
             </p>
 
+            {batchProgress && (
+              <div style={{ background: 'rgba(212,175,55,0.1)', border: '1px solid var(--secondary)', color: 'var(--secondary)', padding: '12px 20px', borderRadius: '8px', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                <span className="spinner-border spinner-border-sm" style={{ border: '2px solid', borderTopColor: 'transparent', borderRadius: '50%', width: '16px', height: '16px', display: 'inline-block', animation: 'spin 1s linear infinite' }}></span>
+                {batchProgress}
+              </div>
+            )}
+
+            {selectedGroupKeys.size > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.2)', padding: '12px 20px', borderRadius: '10px', marginBottom: '15px' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text)' }}>
+                  {isID 
+                    ? `Terpilih ${selectedGroupKeys.size} item untuk dikonversi` 
+                    : `Selected ${selectedGroupKeys.size} items to convert`}
+                </span>
+                <button 
+                  className="btn btn-danger" 
+                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                  onClick={handleBatchConvert}
+                  disabled={batchConverting}
+                >
+                  {batchConverting 
+                    ? (batchProgress || (isID ? 'Memproses...' : 'Processing...'))
+                    : (isID ? `Konversi Sekaligus (${selectedGroupKeys.size})` : `Batch Convert (${selectedGroupKeys.size})`)}
+                </button>
+              </div>
+            )}
+
             {legacyGroups.length === 0 ? (
               <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
                 🎉 {isID ? 'Semua data Job Order sudah menggunakan format baru!' : 'All Job Order data is already in the new format!'}
@@ -1429,6 +1550,14 @@ const AdminHub = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '12px', width: '40px', textAlign: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedGroupKeys.size > 0 && selectedGroupKeys.size === legacyGroups.length}
+                          onChange={toggleAllGroups}
+                          disabled={batchConverting}
+                        />
+                      </th>
                       <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>QUO ID</th>
                       <th style={{ padding: '12px', textAlign: 'left', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isID ? 'PELANGGAN' : 'CUSTOMER'}</th>
                       <th style={{ padding: '12px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{isID ? 'JUMLAH JO SEPARASI' : 'SEPARATED JO COUNT'}</th>
@@ -1438,6 +1567,14 @@ const AdminHub = () => {
                   <tbody>
                     {legacyGroups.map((group, idx) => (
                       <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedGroupKeys.has(group.groupId)}
+                            onChange={() => toggleGroupSelection(group.groupId)}
+                            disabled={batchConverting}
+                          />
+                        </td>
                         <td style={{ padding: '12px', fontWeight: '700' }}>{group.quotationId}</td>
                         <td style={{ padding: '12px' }}>{group.customerName}</td>
                         <td style={{ padding: '12px', textAlign: 'center', fontWeight: '800', color: 'var(--warning)' }}>{group.jobOrders.length}</td>
@@ -1446,6 +1583,7 @@ const AdminHub = () => {
                             className="btn btn-primary" 
                             style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                             onClick={() => setSelectedConvertGroup(group)}
+                            disabled={batchConverting}
                           >
                             {isID ? 'Gabungkan & Konversi' : 'Merge & Convert'}
                           </button>
@@ -1493,6 +1631,11 @@ const AdminHub = () => {
           }
         });
 
+        const linkedInvoices = invoices.filter(inv => String(inv.joId) === String(primaryJo.id) || joIdsToDelete.includes(inv.joId));
+        const linkedPOs = purchaseOrders.filter(po => String(po.joId) === String(primaryJo.id) || joIdsToDelete.includes(po.joId));
+        const manualCostsCount = jos.reduce((acc, j) => acc + (Array.isArray(j.costs) ? j.costs.length : 0), 0);
+        const photosCount = jos.reduce((acc, j) => acc + (Array.isArray(j.photos) ? j.photos.length : 0), 0);
+
         const handleConfirmMerge = async () => {
           setConverting(true);
           try {
@@ -1528,7 +1671,9 @@ const AdminHub = () => {
 
               {/* Legacy JOs to delete */}
               <div style={{ marginBottom: '25px' }}>
-                <h4 style={{ color: 'var(--danger)', fontSize: '0.9rem', marginBottom: '10px', textTransform: 'uppercase', fontWeight: '800' }}>🚨 {isID ? 'Job Order yang Akan Digabungkan' : 'Job Orders to be Merged'}</h4>
+                <h4 style={{ color: 'var(--danger)', fontSize: '0.9rem', marginBottom: '10px', textTransform: 'uppercase', fontWeight: '800' }}>
+                  🚨 {isID ? (jos.length > 1 ? 'Job Order yang Akan Digabungkan' : 'Job Order yang Akan Dikonversi') : (jos.length > 1 ? 'Job Orders to be Merged' : 'Job Order to be Converted')}
+                </h4>
                 <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px' }}>
                   {jos.map((j, i) => (
                     <div key={j.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: i < jos.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
@@ -1542,6 +1687,64 @@ const AdminHub = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              {/* Linked Invoices to Remap */}
+              <div style={{ marginBottom: '25px' }}>
+                <h4 style={{ color: 'var(--secondary)', fontSize: '0.9rem', marginBottom: '10px', textTransform: 'uppercase', fontWeight: '800' }}>📄 {isID ? 'Invoice Terkait (Akan Di-remap)' : 'Linked Invoices to be Remapped'}</h4>
+                {linkedInvoices.length === 0 ? (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, paddingLeft: '5px' }}>{isID ? 'Tidak ada invoice terkait.' : 'No associated invoices.'}</p>
+                ) : (
+                  <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px' }}>
+                    {linkedInvoices.map((inv, idx) => (
+                      <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: idx < linkedInvoices.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        <div>
+                          <strong style={{ color: 'var(--secondary)', marginRight: '10px' }}>{inv.id}</strong>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>({isID ? 'Asal JO:' : 'Origin JO:'} {inv.joId})</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '15px' }}>
+                          <span style={{ fontSize: '0.85rem' }}>{isID ? 'Tanggal:' : 'Date:'} {inv.date || '-'}</span>
+                          <span style={{ fontSize: '0.85rem' }}>Total: <strong>Rp {parseFloat(inv.amount || inv.subtotal || 0).toLocaleString()}</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Linked Purchase Orders to Remap */}
+              <div style={{ marginBottom: '25px' }}>
+                <h4 style={{ color: 'var(--secondary)', fontSize: '0.9rem', marginBottom: '10px', textTransform: 'uppercase', fontWeight: '800' }}>🛒 {isID ? 'Purchase Order Terkait (Akan Di-remap)' : 'Linked Purchase Orders to be Remapped'}</h4>
+                {linkedPOs.length === 0 ? (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, paddingLeft: '5px' }}>{isID ? 'Tidak ada Purchase Order terkait.' : 'No associated Purchase Orders.'}</p>
+                ) : (
+                  <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px' }}>
+                    {linkedPOs.map((po, idx) => (
+                      <div key={po.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: idx < linkedPOs.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                        <div>
+                          <strong style={{ color: 'var(--secondary)', marginRight: '10px' }}>{po.id}</strong>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>({isID ? 'Asal JO:' : 'Origin JO:'} {po.joId})</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '15px' }}>
+                          <span style={{ fontSize: '0.85rem' }}>Vendor: <strong>{po.vendorName}</strong></span>
+                          <span style={{ fontSize: '0.85rem' }}>Total: <strong>Rp {parseFloat(po.grandTotal || 0).toLocaleString()}</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Photos and Manual Costings to aggregate */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'block', marginBottom: '4px' }}>💵 {isID ? 'Biaya Manual yang Digabungkan:' : 'Aggregated Manual Costs:'}</span>
+                  <strong style={{ fontSize: '1rem', color: 'var(--secondary)' }}>{manualCostsCount} {isID ? 'Biaya' : 'Entries'}</strong>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border)', borderRadius: '10px', padding: '15px' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'block', marginBottom: '4px' }}>🖼️ {isID ? 'Foto Operasional yang Digabungkan:' : 'Aggregated Operational Photos:'}</span>
+                  <strong style={{ fontSize: '1rem', color: 'var(--secondary)' }}>{photosCount} {isID ? 'Foto' : 'Photos'}</strong>
                 </div>
               </div>
 

@@ -1065,6 +1065,11 @@ const Executor = () => {
                 const groups = {};
                 completedJOs.forEach(jo => {
                   const qId = jo.quotationId || 'direct';
+                  // If it's a direct job, only include it if it hasn't been invoiced yet!
+                  if (!jo.quotationId) {
+                    const hasInvoice = invoices.some(inv => String(inv.joId) === String(jo.id) || (Array.isArray(inv.consolidatedJOs) && inv.consolidatedJOs.includes(jo.id)));
+                    if (hasInvoice) return;
+                  }
                   if (!groups[qId]) {
                     groups[qId] = {
                       quotationId: qId,
@@ -1075,7 +1080,20 @@ const Executor = () => {
                   groups[qId].jobOrders.push(jo);
                 });
 
-                if (Object.keys(groups).length === 0) {
+                // Filter out quotation groups where ALL completed job orders have already been invoiced
+                const pendingGroups = Object.values(groups).filter(group => {
+                  if (group.quotationId === 'direct') {
+                    return group.jobOrders.length > 0;
+                  }
+                  // Check if any job order in this quotation group is NOT invoiced yet
+                  const hasUninvoicedJO = group.jobOrders.some(jo => {
+                    const hasInvoice = invoices.some(inv => String(inv.joId) === String(jo.id) || (Array.isArray(inv.consolidatedJOs) && inv.consolidatedJOs.includes(jo.id)));
+                    return !hasInvoice;
+                  });
+                  return hasUninvoicedJO;
+                });
+
+                if (pendingGroups.length === 0) {
                   return (
                     <tr>
                       <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
@@ -1085,9 +1103,9 @@ const Executor = () => {
                   );
                 }
 
-                return Object.values(groups).map(group => {
+                return pendingGroups.map(group => {
                   const isGroupExpanded = expandedCompletedGroups[group.quotationId] !== false;
-                  const uninvoicedJOs = group.jobOrders.filter(jo => !invoices.some(inv => String(inv.joId) === String(jo.id)));
+                  const uninvoicedJOs = group.jobOrders.filter(jo => !invoices.some(inv => String(inv.joId) === String(jo.id) || (Array.isArray(inv.consolidatedJOs) && inv.consolidatedJOs.includes(jo.id))));
                   const allInvoiced = uninvoicedJOs.length === 0;
 
                   return (
