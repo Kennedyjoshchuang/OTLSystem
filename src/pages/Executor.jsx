@@ -1147,13 +1147,75 @@ const Executor = () => {
                                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                     {jo.items.map((item, idx) => (
                                       <div key={idx} style={{ marginTop: '4px' }}>
-                                        • {item.description} ({isID ? 'Jumlah:' : 'Qty:'} {item.issueQuantity || item.quantity || 1}) 
+                                        • {item.description} ({isID ? 'Jumlah:' : 'Qty:'} {item.issueQuantity || item.quantity || 1} | {isID ? 'Tarif:' : 'Rate:'} Rp {parseFloat(item.rate || 0).toLocaleString(isID ? 'id-ID' : 'en-US')}) 
                                         {item.status && <span style={{ fontSize: '0.65rem', marginLeft: '6px' }} className={`badge badge-${item.status}`}>{item.status}</span>}
-                                        {(item.containerNo?.some?.(Boolean) || item.vehicleNo?.some?.(Boolean) || item.driverName?.some?.(Boolean)) && (
-                                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '10px', display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '2px' }}>
-                                            {item.containerNo?.some?.(Boolean) && <span>[C: {item.containerNo.filter(Boolean).join(', ')}]</span>}
-                                            {item.vehicleNo?.some?.(Boolean) && <span>[V: {item.vehicleNo.filter(Boolean).join(', ')}]</span>}
-                                            {item.driverName?.some?.(Boolean) && <span>[D: {item.driverName.filter(Boolean).join(', ')}]</span>}
+                                        {item.containerNo?.some?.(Boolean) && (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '10px' }}>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                              {isID ? 'Kontainer:' : 'Containers:'}
+                                            </span>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                              {item.containerNo.filter(Boolean).map((num, cIdx) => (
+                                                <span key={cIdx} style={{ 
+                                                  fontFamily: 'monospace', 
+                                                  fontSize: '0.7rem', 
+                                                  background: 'rgba(212, 175, 55, 0.1)', 
+                                                  color: 'var(--secondary)', 
+                                                  border: '1px solid rgba(212, 175, 55, 0.25)', 
+                                                  padding: '1px 5px', 
+                                                  borderRadius: '4px',
+                                                  whiteSpace: 'nowrap'
+                                                }}>
+                                                  {num}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {item.vehicleNo?.some?.(Boolean) && (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '10px' }}>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                              {isID ? 'Armada:' : 'Vehicles:'}
+                                            </span>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                              {item.vehicleNo.filter(Boolean).map((num, vIdx) => (
+                                                <span key={vIdx} style={{ 
+                                                  fontFamily: 'monospace', 
+                                                  fontSize: '0.7rem', 
+                                                  background: 'rgba(59, 130, 246, 0.1)', 
+                                                  color: '#3b82f6', 
+                                                  border: '1px solid rgba(59, 130, 246, 0.25)', 
+                                                  padding: '1px 5px', 
+                                                  borderRadius: '4px',
+                                                  whiteSpace: 'nowrap'
+                                                }}>
+                                                  {num}
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                        {item.driverName?.some?.(Boolean) && (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '10px' }}>
+                                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                              {isID ? 'Supir:' : 'Drivers:'}
+                                            </span>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                              {item.driverName.filter(Boolean).map((num, dIdx) => (
+                                                <span key={dIdx} style={{ 
+                                                  fontFamily: 'monospace', 
+                                                  fontSize: '0.7rem', 
+                                                  background: 'rgba(16, 185, 129, 0.1)', 
+                                                  color: '#10b981', 
+                                                  border: '1px solid rgba(16, 185, 129, 0.25)', 
+                                                  padding: '1px 5px', 
+                                                  borderRadius: '4px',
+                                                  whiteSpace: 'nowrap'
+                                                }}>
+                                                  {num}
+                                                </span>
+                                              ))}
+                                            </div>
                                           </div>
                                         )}
                                       </div>
@@ -1168,7 +1230,7 @@ const Executor = () => {
                                   </>
                                 )}
                               </div>
-                              {jo.containerNo && (() => {
+                              {(!jo.items || jo.items.length === 0) && jo.containerNo && (() => {
                                 const cNo = jo.containerNo;
                                 let filtered = [];
                                 if (Array.isArray(cNo)) {
@@ -1394,14 +1456,76 @@ const Executor = () => {
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 {jo.items.map((item, idx) => (
                                    <div key={idx} style={{ borderBottom: '1px dashed rgba(255,255,255,0.03)', paddingBottom: '4px', marginTop: '4px' }}>
-                                     • {item.description} ({isID ? 'Jumlah:' : 'Qty:'} {item.issueQuantity || item.quantity || 1})
-                                     {(item.containerNo?.some?.(Boolean) || item.vehicleNo?.some?.(Boolean) || item.driverName?.some?.(Boolean)) && (
-                                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', paddingLeft: '8px', display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px' }}>
-                                         {item.containerNo?.some?.(Boolean) && <span>[C: {item.containerNo.filter(Boolean).join(', ')}]</span>}
-                                         {item.vehicleNo?.some?.(Boolean) && <span>[V: {item.vehicleNo.filter(Boolean).join(', ')}]</span>}
-                                         {item.driverName?.some?.(Boolean) && <span>[D: {item.driverName.filter(Boolean).join(', ')}]</span>}
-                                       </div>
-                                     )}
+                                     • {item.description} ({isID ? 'Jumlah:' : 'Qty:'} {item.issueQuantity || item.quantity || 1} | {isID ? 'Tarif:' : 'Rate:'} Rp {parseFloat(item.rate || 0).toLocaleString(isID ? 'id-ID' : 'en-US')})
+                                      {item.containerNo?.some?.(Boolean) && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '8px' }}>
+                                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                            {isID ? 'Kontainer:' : 'Containers:'}
+                                          </span>
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                            {item.containerNo.filter(Boolean).map((num, cIdx) => (
+                                              <span key={cIdx} style={{ 
+                                                fontFamily: 'monospace', 
+                                                fontSize: '0.7rem', 
+                                                background: 'rgba(212, 175, 55, 0.1)', 
+                                                color: 'var(--secondary)', 
+                                                border: '1px solid rgba(212, 175, 55, 0.25)', 
+                                                padding: '1px 5px', 
+                                                borderRadius: '4px',
+                                                whiteSpace: 'nowrap'
+                                              }}>
+                                                {num}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {item.vehicleNo?.some?.(Boolean) && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '8px' }}>
+                                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                            {isID ? 'Armada:' : 'Vehicles:'}
+                                          </span>
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                            {item.vehicleNo.filter(Boolean).map((num, vIdx) => (
+                                              <span key={vIdx} style={{ 
+                                                fontFamily: 'monospace', 
+                                                fontSize: '0.7rem', 
+                                                background: 'rgba(59, 130, 246, 0.1)', 
+                                                color: '#3b82f6', 
+                                                border: '1px solid rgba(59, 130, 246, 0.25)', 
+                                                padding: '1px 5px', 
+                                                borderRadius: '4px',
+                                                whiteSpace: 'nowrap'
+                                              }}>
+                                                {num}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                      {item.driverName?.some?.(Boolean) && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginTop: '4px', paddingLeft: '8px' }}>
+                                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.5px' }}>
+                                            {isID ? 'Supir:' : 'Drivers:'}
+                                          </span>
+                                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                            {item.driverName.filter(Boolean).map((num, dIdx) => (
+                                              <span key={dIdx} style={{ 
+                                                fontFamily: 'monospace', 
+                                                fontSize: '0.7rem', 
+                                                background: 'rgba(16, 185, 129, 0.1)', 
+                                                color: '#10b981', 
+                                                border: '1px solid rgba(16, 185, 129, 0.25)', 
+                                                padding: '1px 5px', 
+                                                borderRadius: '4px',
+                                                whiteSpace: 'nowrap'
+                                              }}>
+                                                {num}
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
                                    </div>
                                  ))}
                               </div>

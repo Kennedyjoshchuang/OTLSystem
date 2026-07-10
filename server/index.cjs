@@ -569,12 +569,62 @@ app.post('/api/job-orders/convert-legacy', async (req, res) => {
     let aggregatedPhotos = [];
     let aggregatedCosts = [];
 
+    // Calculate index offsets for each JO's items in the consolidated list
+    let currentIdxOffset = 0;
+    const joIdxOffsets = {};
+    
+    // Iterate in the same order as frontend (primary first, then delete list)
+    const orderedJOs = [primaryJo, ...jobOrders.filter(j => String(j.id) !== String(primaryJoId))];
+
+    orderedJOs.forEach(jo => {
+      joIdxOffsets[jo.id] = currentIdxOffset;
+      const joItemsCount = Array.isArray(jo.items) && jo.items.length > 0 
+        ? jo.items.length 
+        : 1;
+      currentIdxOffset += joItemsCount;
+    });
+
     jobOrders.forEach(jo => {
-      // Aggregate root lists
-      const joContainers = Array.isArray(jo.containerNo) ? jo.containerNo : [];
-      const joVehicles = Array.isArray(jo.vehicleNo) ? jo.vehicleNo : [];
-      const joDrivers = Array.isArray(jo.driverName) ? jo.driverName : [];
-      const joPhotos = Array.isArray(jo.photos) ? jo.photos : [];
+      // Aggregate root lists with robust string/JSON parsing
+      let joContainers = [];
+      if (jo.containerNo) {
+        try {
+          joContainers = typeof jo.containerNo === 'string' ? JSON.parse(jo.containerNo) : jo.containerNo;
+        } catch (e) {
+          joContainers = [jo.containerNo];
+        }
+      }
+      if (!Array.isArray(joContainers)) joContainers = jo.containerNo ? [jo.containerNo] : [];
+
+      let joVehicles = [];
+      if (jo.vehicleNo) {
+        try {
+          joVehicles = typeof jo.vehicleNo === 'string' ? JSON.parse(jo.vehicleNo) : jo.vehicleNo;
+        } catch (e) {
+          joVehicles = [jo.vehicleNo];
+        }
+      }
+      if (!Array.isArray(joVehicles)) joVehicles = jo.vehicleNo ? [jo.vehicleNo] : [];
+
+      let joDrivers = [];
+      if (jo.driverName) {
+        try {
+          joDrivers = typeof jo.driverName === 'string' ? JSON.parse(jo.driverName) : jo.driverName;
+        } catch (e) {
+          joDrivers = [jo.driverName];
+        }
+      }
+      if (!Array.isArray(joDrivers)) joDrivers = jo.driverName ? [jo.driverName] : [];
+
+      let joPhotos = [];
+      if (jo.photos) {
+        try {
+          joPhotos = typeof jo.photos === 'string' ? JSON.parse(jo.photos) : jo.photos;
+        } catch (e) {
+          joPhotos = [jo.photos];
+        }
+      }
+      if (!Array.isArray(joPhotos)) joPhotos = jo.photos ? [jo.photos] : [];
       
       let joCosts = [];
       if (jo.costs) {
@@ -586,11 +636,23 @@ app.post('/api/job-orders/convert-legacy', async (req, res) => {
       }
       if (!Array.isArray(joCosts)) joCosts = [];
 
+      // Shift targetItemIdx for costs belonging to merged secondary JOs
+      const offset = joIdxOffsets[jo.id] || 0;
+      const shiftedCosts = joCosts.map(c => {
+        const targetIdx = c.targetItemIdx !== undefined && c.targetItemIdx !== null 
+          ? parseInt(c.targetItemIdx, 10) 
+          : 0;
+        return {
+          ...c,
+          targetItemIdx: targetIdx + offset
+        };
+      });
+
       aggregatedContainers = [...aggregatedContainers, ...joContainers];
       aggregatedVehicles = [...aggregatedVehicles, ...joVehicles];
       aggregatedDrivers = [...aggregatedDrivers, ...joDrivers];
       aggregatedPhotos = [...aggregatedPhotos, ...joPhotos];
-      aggregatedCosts = [...aggregatedCosts, ...joCosts];
+      aggregatedCosts = [...aggregatedCosts, ...shiftedCosts];
     });
 
     // Deduplicate lists
