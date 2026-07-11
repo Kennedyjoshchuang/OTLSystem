@@ -138,7 +138,7 @@ const Executor = () => {
     const primaryJo = jobOrders.find(j => String(j.id) === String(invoice.joId));
     const consolidated = invoice.consolidatedJOs || [];
     if (consolidated.length > 0) {
-      return jobOrders.filter(j => consolidated.includes(j.id));
+      return jobOrders.filter(j => consolidated.map(String).includes(String(j.id)));
     }
     return primaryJo ? [primaryJo] : [];
   };
@@ -240,9 +240,9 @@ const Executor = () => {
               description: item.description || 'Freight Forwarding Services',
               qty,
               rate,
-              containerNo: item.containerNo,
-              vehicleNo: item.vehicleNo,
-              driverName: item.driverName,
+              containerNo: Array.isArray(item.containerNo) ? item.containerNo : (item.containerNo ? [item.containerNo] : []),
+              vehicleNo: Array.isArray(item.vehicleNo) ? item.vehicleNo : (item.vehicleNo ? [item.vehicleNo] : []),
+              driverName: Array.isArray(item.driverName) ? item.driverName : (item.driverName ? [item.driverName] : []),
             });
           });
         } else {
@@ -263,9 +263,9 @@ const Executor = () => {
             description: targetJo.instruction || targetJo.jobDescription || 'Freight Forwarding Services',
             qty,
             rate,
-            containerNo: targetJo.containerNo,
-            vehicleNo: targetJo.vehicleNo,
-            driverName: targetJo.driverName,
+            containerNo: Array.isArray(targetJo.containerNo) ? targetJo.containerNo : (targetJo.containerNo ? [targetJo.containerNo] : []),
+            vehicleNo: Array.isArray(targetJo.vehicleNo) ? targetJo.vehicleNo : (targetJo.vehicleNo ? [targetJo.vehicleNo] : []),
+            driverName: Array.isArray(targetJo.driverName) ? targetJo.driverName : (targetJo.driverName ? [targetJo.driverName] : []),
           });
         }
       });
@@ -317,9 +317,9 @@ const Executor = () => {
           qty, 
           rate, 
           amount,
-          containerNo: line.containerNo,
-          vehicleNo: line.vehicleNo,
-          driverName: line.driverName,
+          containerNo: line.containerNo || [],
+          vehicleNo: line.vehicleNo || [],
+          driverName: line.driverName || [],
         };
       });
 
@@ -1634,7 +1634,7 @@ const Executor = () => {
                                       const linkedJO = jobOrders.find(j => String(j.id) === String(existingInvoice.joId));
                                       const linkedQuo = linkedJO ? quotations.find(q => String(q.id) === String(linkedJO.quotationId)) : null;
                                       const consolidatedJOs = existingInvoice.consolidatedJOs 
-                                        ? jobOrders.filter(j => existingInvoice.consolidatedJOs.includes(j.id))
+                                        ? jobOrders.filter(j => existingInvoice.consolidatedJOs.map(String).includes(String(j.id)))
                                         : linkedJO ? [linkedJO] : [];
                                       
                                       localStorage.setItem('print_invoice_data', JSON.stringify({ 
