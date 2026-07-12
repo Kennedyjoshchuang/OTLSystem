@@ -624,12 +624,12 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  const settleInvoice = async (invoiceId, paymentProofPhoto, taxesDeducted, taxDeductionProof) => {
+  const settleInvoice = async (invoiceId, paymentProofPhoto, taxesDeducted, taxDeductionProof, paidDate) => {
     const totalTax = Array.isArray(taxesDeducted) ? taxesDeducted.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0) : 0;
     
     await apiRequest(`invoices/${invoiceId}/settle`, { 
       method: 'PUT',
-      body: JSON.stringify({ paymentProofPhoto, taxesDeducted, taxDeductionProof })
+      body: JSON.stringify({ paymentProofPhoto, taxesDeducted, taxDeductionProof, paidDate })
     });
     setInvoices(prev => prev.map(inv => 
       inv.id === invoiceId ? { 
@@ -638,7 +638,8 @@ export const AppProvider = ({ children }) => {
         paymentProofPhoto,
         tax_deduction: totalTax, 
         taxes_deducted: taxesDeducted,
-        tax_deduction_proof: taxDeductionProof 
+        tax_deduction_proof: taxDeductionProof,
+        paidDate
       } : inv
     ));
     setReceivables(prev => prev.map(r => 
@@ -649,7 +650,8 @@ export const AppProvider = ({ children }) => {
         paymentProofPhoto, 
         tax_deduction: totalTax, 
         taxes_deducted: taxesDeducted,
-        tax_deduction_proof: taxDeductionProof 
+        tax_deduction_proof: taxDeductionProof,
+        paidDate
       } : r
     ));
   };

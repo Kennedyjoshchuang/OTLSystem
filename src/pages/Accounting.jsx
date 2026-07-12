@@ -152,7 +152,7 @@ const Accounting = () => {
       quantity: parseInt(item.quantity || 1, 10),
       issueQuantity: parseInt(item.issueQuantity || 0, 10),
       autoGenerateInvoice: !!parentInvoice,
-      invoiceId: generatedInvId,
+      invoiceId: '',
       invoiceDate: new Date().toISOString().substring(0, 10),
       taxPercent,
       bankAccountId: initialBankAccountId,
@@ -2066,14 +2066,15 @@ const Accounting = () => {
     setSettleForm({ 
       paymentProof: getInitialPhotos(inv.paymentProofPhoto), 
       taxes: existingTaxes, 
-      taxProof: getInitialPhotos(inv.tax_deduction_proof) 
+      taxProof: getInitialPhotos(inv.tax_deduction_proof),
+      paymentDate: new Date().toLocaleDateString('sv-SE')
     });
   };
 
   const confirmSettle = async () => {
     if (!settleModal) return;
     try {
-      await settleInvoice(settleModal.id, settleForm.paymentProof, settleForm.taxes, settleForm.taxProof);
+      await settleInvoice(settleModal.id, settleForm.paymentProof, settleForm.taxes, settleForm.taxProof, settleForm.paymentDate);
       setSettleModal(null);
       alert('Payment settled! Invoice moved to Lunas Records.');
     } catch (err) {
@@ -5139,6 +5140,11 @@ const Accounting = () => {
                       </td>
                       <td style={{ padding: '15px', fontWeight: 'bold' }}>
                         Rp {(item.balance || item.amount).toLocaleString()}
+                        {receivableSubTab === 'lunas' && item.paidDate && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 'normal', marginTop: '4px' }}>
+                            {isID ? 'Lunas: ' : 'Paid: '}{item.paidDate}
+                          </div>
+                        )}
                       </td>
                       {receivableSubTab === 'lunas' && (
                         <td style={{ padding: '15px' }}>
@@ -7650,6 +7656,28 @@ const Accounting = () => {
             <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Invoice: <strong>{settleModal.id}</strong> - {settleModal.customerName}</p>
             
             <div style={{ marginBottom:'20px' }}>
+              <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>
+                {isID ? 'Tanggal Pembayaran' : 'Payment Date'}
+              </label>
+              <input 
+                type="date"
+                required
+                value={settleForm.paymentDate || ''}
+                onChange={e => setSettleForm({...settleForm, paymentDate: e.target.value})}
+                style={{ 
+                  padding:'10px', 
+                  background:'var(--input-bg)', 
+                  border:'1px solid var(--border)', 
+                  borderRadius:'8px', 
+                  color:'var(--text)', 
+                  fontSize:'0.9rem',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom:'20px' }}>
               <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>{isID ? 'Bukti Pembayaran' : 'Bukti Pembayaran (Payment Proof)'}</label>
               <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(70px, 1fr))', gap:'10px', marginBottom:'10px' }}>
                 {(settleForm.paymentProof || []).map((p, i) => (
@@ -8276,6 +8304,7 @@ const Accounting = () => {
                         style={{ width:'100%', padding:'8px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid var(--glass-border)', color:'var(--text)', borderRadius:'6px' }}
                         value={splitForm.invoiceId}
                         onChange={e => setSplitForm({ ...splitForm, invoiceId: e.target.value })}
+                        placeholder={isID ? '(Otomatis - Sequential)' : '(Auto-generated Sequential)'}
                       />
                     </div>
                     <div>
