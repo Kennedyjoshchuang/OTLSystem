@@ -883,7 +883,8 @@ app.post('/api/invoices', async (req, res) => {
       consolidatedJOs: consolidatedJOs || [],
       signedReceiptPhoto: req.body.signedReceiptPhoto || null,
       signedInvoicePhoto: req.body.signedInvoicePhoto || null,
-      deliveryStatus: req.body.deliveryStatus || 'not_sent'
+      deliveryStatus: req.body.deliveryStatus || 'not_sent',
+      items: req.body.items || []
     };
 
     console.log(`[POST /invoices] Attempting insert for ${id} with keys: ${Object.keys(invoiceData).join(', ')}`);
@@ -897,7 +898,7 @@ app.post('/api/invoices', async (req, res) => {
       invErr.code === 'PGRST204'
     )) {
       console.warn(`[POST /invoices] Schema mismatch for ${id} (Code: ${invErr.code}). Retrying without tracking columns...`);
-      const { signedReceiptPhoto, signedInvoicePhoto, deliveryStatus, notes: _, consolidatedJOs: __, ...legacyData } = invoiceData;
+      const { signedReceiptPhoto, signedInvoicePhoto, deliveryStatus, notes: _, consolidatedJOs: __, items: ___, ...legacyData } = invoiceData;
       console.log(`[POST /invoices] Retrying with keys: ${Object.keys(legacyData).join(', ')}`);
       const { error: retryErr } = await supabase.from('invoices').insert(legacyData);
       invErr = retryErr;
@@ -995,14 +996,26 @@ app.put('/api/invoices/:id', async (req, res) => {
   const { error } = await supabase.from('invoices').update(updates).eq('id', req.params.id);
   if (error) return handleError(res, error, 'PUT invoices');
 
-  // Sync receivables
-  const { amount, ...recUpdates } = updates;
-  const syncData = { ...recUpdates };
-  if (amount !== undefined) {
-    syncData.amount = amount;
-    syncData.balance = amount;
+  // Sync receivables with only valid columns
+  const recUpdates = {};
+  if (updates.customerName !== undefined) recUpdates.customerName = updates.customerName;
+  if (updates.amount !== undefined) {
+    recUpdates.amount = updates.amount;
+    recUpdates.balance = updates.amount;
   }
-  await supabase.from('receivables').update(syncData).eq('id', req.params.id);
+  if (updates.subtotal !== undefined) recUpdates.subtotal = updates.subtotal;
+  if (updates.tax !== undefined) recUpdates.tax = updates.tax;
+  if (updates.extra_charges !== undefined) recUpdates.extra_charges = updates.extra_charges;
+  if (updates.status !== undefined) recUpdates.status = updates.status;
+  if (updates.paymentProofPhoto !== undefined) recUpdates.paymentProofPhoto = updates.paymentProofPhoto;
+  if (updates.paidDate !== undefined) recUpdates.paidDate = updates.paidDate;
+
+  if (Object.keys(recUpdates).length > 0) {
+    const { error: recError } = await supabase.from('receivables').update(recUpdates).eq('id', req.params.id);
+    if (recError) {
+      console.error(`[PUT /invoices/:id] Failed to sync receivables for ${req.params.id}:`, recError.message);
+    }
+  }
   res.sendStatus(200);
 });
 
