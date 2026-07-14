@@ -590,6 +590,7 @@ const Accounting = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [editingInvoice, setEditingInvoice] = useState(null);
+  const [editingJOsData, setEditingJOsData] = useState({});
   const [photoViewer, setPhotoViewer] = useState(null); // holds { joId, photos }
   const [isPendingCollapsed, setIsPendingCollapsed] = useState(false);
   const [isIssuedCollapsed, setIsIssuedCollapsed] = useState(false);
@@ -2302,21 +2303,135 @@ const Accounting = () => {
     }
   };
 
+  const handleStartEditInvoice = (inv) => {
+    const originalInv = invoices.find(i => i.id === inv.id || i.id === inv.invoiceId) || inv;
+    
+    const preparedItems = (originalInv.items || []).map(it => ({
+      ...it,
+      joId: it.joId || originalInv.joId,
+      containerNoRaw: Array.isArray(it.containerNo) ? it.containerNo.filter(Boolean).join(', ') : (it.containerNo || ''),
+      vehicleNoRaw: Array.isArray(it.vehicleNo) ? it.vehicleNo.filter(Boolean).join(', ') : (it.vehicleNo || ''),
+      driverNameRaw: Array.isArray(it.driverName) ? it.driverName.filter(Boolean).join(', ') : (it.driverName || '')
+    }));
+
+    const preparedInv = {
+      ...originalInv,
+      items: preparedItems
+    };
+
+    const joIds = preparedInv.consolidatedJOs && preparedInv.consolidatedJOs.length > 0 
+      ? preparedInv.consolidatedJOs 
+      : (preparedInv.joId ? [preparedInv.joId] : []);
+
+    const initialJOData = {};
+    joIds.forEach(id => {
+      const jo = jobOrders.find(j => String(j.id) === String(id));
+      if (jo) {
+        initialJOData[String(id)] = {
+          instruction: (jo.instruction || jo.jobDescription || '').split(' ||| ')[0].trim(),
+          vesselName: jo.vesselName || ''
+        };
+      }
+    });
+
+    setEditingJOsData(initialJOData);
+    setEditingInvoice(preparedInv);
+  };
+
   const handleSaveInvoiceEdit = async () => {
     if (!editingInvoice) return;
-    const extraChargesTotal = (editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
-    const subtotal = parseFloat(editingInvoice.subtotal || editingInvoice.amount);
-    
-    await updateInvoice(editingInvoice.id, {
-      amount: subtotal + extraChargesTotal,
-      subtotal: subtotal,
-      tax: 0, // Reset old tax field if used
-      extra_charges: editingInvoice.extra_charges || [],
-      consolidatedJOs: editingInvoice.consolidatedJOs || [],
-      items: editingInvoice.items
-    });
-    setEditingInvoice(null);
-    alert('Invoice updated successfully!');
+    try {
+      const extraChargesTotal = (editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0);
+      const subtotal = parseFloat(editingInvoice.subtotal || editingInvoice.amount);
+      const finalAmount = subtotal + extraChargesTotal;
+
+      const cleanedInvoiceItems = (editingInvoice.items || []).map(it => {
+        const { containerNoRaw, vehicleNoRaw, driverNameRaw, ...rest } = it;
+        
+        const containerNo = typeof containerNoRaw === 'string'
+          ? containerNoRaw.split(',').map(s => s.trim()).filter(Boolean)
+          : (it.containerNo || []);
+        const vehicleNo = typeof vehicleNoRaw === 'string'
+          ? vehicleNoRaw.split(',').map(s => s.trim()).filter(Boolean)
+          : (it.vehicleNo || []);
+        const driverName = typeof driverNameRaw === 'string'
+          ? driverNameRaw.split(',').map(s => s.trim()).filter(Boolean)
+          : (it.driverName || []);
+
+        return {
+          ...rest,
+          containerNo,
+          vehicleNo,
+          driverName
+        };
+      });
+
+      await updateInvoice(editingInvoice.id, {
+        amount: finalAmount,
+        subtotal: subtotal,
+        tax: 0,
+        extra_charges: editingInvoice.extra_charges || [],
+        consolidatedJOs: editingInvoice.consolidatedJOs || [],
+        items: cleanedInvoiceItems
+      });
+
+      const joIds = editingInvoice.consolidatedJOs && editingInvoice.consolidatedJOs.length > 0 
+        ? editingInvoice.consolidatedJOs 
+        : (editingInvoice.joId ? [editingInvoice.joId] : []);
+
+      for (const joId of joIds) {
+        const jo = jobOrders.find(j => String(j.id) === String(joId));
+        if (!jo) continue;
+
+        const joItems = (editingInvoice.items || []).filter(it => String(it.joId) === String(joId));
+
+        const updatedJoItems = joItems.map(it => {
+          const containerNo = typeof it.containerNoRaw === 'string'
+            ? it.containerNoRaw.split(',').map(s => s.trim()).filter(Boolean)
+            : (it.containerNo || []);
+          const vehicleNo = typeof it.vehicleNoRaw === 'string'
+            ? it.vehicleNoRaw.split(',').map(s => s.trim()).filter(Boolean)
+            : (it.vehicleNo || []);
+          const driverName = typeof it.driverNameRaw === 'string'
+            ? it.driverNameRaw.split(',').map(s => s.trim()).filter(Boolean)
+            : (it.driverName || []);
+          
+          return {
+            description: it.description,
+            rate: parseFloat(it.rate || 0),
+            quantity: parseFloat(it.qty || it.quantity || 1),
+            issueQuantity: parseFloat(it.qty || it.quantity || 1),
+            status: 'done',
+            containerNo,
+            vehicleNo,
+            driverName
+          };
+        });
+
+        const containerNo = [...new Set(updatedJoItems.flatMap(item => Array.isArray(item.containerNo) ? item.containerNo : [item.containerNo || '']))].filter(Boolean);
+        const vehicleNo = [...new Set(updatedJoItems.flatMap(item => Array.isArray(item.vehicleNo) ? item.vehicleNo : [item.vehicleNo || '']))].filter(Boolean);
+        const driverName = [...new Set(updatedJoItems.flatMap(item => Array.isArray(item.driverName) ? item.driverName : [item.driverName || '']))].filter(Boolean);
+
+        const joDraft = editingJOsData[String(joId)] || {};
+        const instruction = joDraft.instruction !== undefined ? joDraft.instruction : (jo.instruction || jo.jobDescription || '');
+        const vesselName = joDraft.vesselName !== undefined ? joDraft.vesselName : (jo.vesselName || '');
+
+        await updateJOStatus(joId, {
+          items: updatedJoItems,
+          containerNo,
+          vehicleNo,
+          driverName,
+          instruction,
+          vesselName
+        });
+      }
+
+      setEditingInvoice(null);
+      alert('Invoice and linked Job Orders updated successfully!');
+    } catch (err) {
+      console.error('Error saving invoice/job order changes:', err);
+      alert('Gagal menyimpan perubahan: ' + err.message);
+    }
   };
 
   const handleCreatePOFromAccounting = (joId) => {
@@ -4911,7 +5026,7 @@ const Accounting = () => {
                                             <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: '0.7rem', gap: '4px' }} onClick={() => handleDownloadInvoice(inv)}>
                                               <Download size={12} /> {isID ? 'Lihat' : 'View'}
                                             </button>
-                                            <button className="btn" style={{ padding: '4px 8px', fontSize: '0.7rem', gap: '4px', background: 'rgba(16, 185, 129, 0.75)', color: '#ffffff', border: '1px solid rgba(16, 185, 129, 0.8)' }} onClick={() => setEditingInvoice(inv)}>
+                                            <button className="btn" style={{ padding: '4px 8px', fontSize: '0.7rem', gap: '4px', background: 'rgba(16, 185, 129, 0.75)', color: '#ffffff', border: '1px solid rgba(16, 185, 129, 0.8)' }} onClick={() => handleStartEditInvoice(inv)}>
                                               <Edit3 size={12} /> Edit
                                             </button>
                                             <button className="btn" style={{ padding: '4px 8px', fontSize: '0.7rem', gap: '4px', background: 'rgba(59, 130, 246, 0.75)', color: '#ffffff', border: '1px solid rgba(59, 130, 246, 0.8)' }} onClick={() => {
@@ -5163,7 +5278,7 @@ const Accounting = () => {
                           <button 
                             className="btn" 
                             style={{ padding: '6px 10px', fontSize: '0.75rem', gap: '5px', background: 'rgba(16, 185, 129, 0.75)', color: '#ffffff', border: '1px solid rgba(16, 185, 129, 0.8)' }} 
-                            onClick={() => setEditingInvoice(inv)}
+                            onClick={() => handleStartEditInvoice(inv)}
                           >
                             <Edit3 size={14} /> Edit
                           </button>
@@ -5412,10 +5527,7 @@ const Accounting = () => {
                           <button 
                             className="btn" 
                             style={{ padding: '6px 12px', fontSize: '0.8rem', background: 'rgba(16, 185, 129, 0.75)', color: '#ffffff', border: '1px solid rgba(16, 185, 129, 0.8)' }}
-                            onClick={() => {
-                              const originalInv = invoices.find(i => i.id === item.id || i.id === item.invoiceId);
-                              setEditingInvoice(originalInv || item);
-                            }}
+                            onClick={() => handleStartEditInvoice(item)}
                           >
                             <Edit3 size={14} /> {isID ? 'Ubah' : 'Edit'}
                           </button>
@@ -6640,210 +6752,349 @@ const Accounting = () => {
       ) : null}
 
       {/* Edit Invoice Modal */}
-      {editingInvoice && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
-          <div className="glass-card" style={{ width:'100%', maxWidth: editingInvoice.items ? '750px' : '500px', padding:'30px', position:'relative' }}>
-            <button onClick={() => setEditingInvoice(null)} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
-            <h3 style={{ color:'var(--secondary)', marginBottom:'5px' }}>Edit Invoice Details</h3>
-            <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Revision for <strong style={{color:'var(--text)'}}>{editingInvoice.id}</strong></p>
-            
-            <div style={{ display:'grid', gap:'20px' }}>
-              <div>
-                <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Base Amount (Revenue)</label>
-                <div style={{ position:'relative' }}>
-                  <span style={{ position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'var(--secondary)', fontWeight:'700' }}>Rp</span>
-                  <input 
-                    type="number" 
-                    step="any" 
-                    value={editingInvoice.subtotal || editingInvoice.amount} 
-                    onChange={e => setEditingInvoice({...editingInvoice, subtotal: e.target.value})}
-                    disabled={Array.isArray(editingInvoice.items)}
-                    style={{ width:'100%', padding:'12px 15px 12px 45px', background: Array.isArray(editingInvoice.items) ? 'rgba(255,255,255,0.02)' : 'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color: Array.isArray(editingInvoice.items) ? 'var(--text-muted)' : 'var(--text)', fontSize:'1.1rem', fontWeight:'700', cursor: Array.isArray(editingInvoice.items) ? 'not-allowed' : 'auto' }}
-                  />
-                </div>
-              </div>
+      {editingInvoice && (() => {
+        const joIds = editingInvoice.consolidatedJOs && editingInvoice.consolidatedJOs.length > 0 
+          ? editingInvoice.consolidatedJOs 
+          : (editingInvoice.joId ? [editingInvoice.joId] : []);
+        const linkedJOs = jobOrders.filter(j => joIds.map(String).includes(String(j.id)));
 
-              {Array.isArray(editingInvoice.items) && (
+        return (
+          <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.85)', zIndex:10000, display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+            <div className="glass-card" style={{ width:'100%', maxWidth: editingInvoice.items ? '800px' : '500px', padding:'30px', position:'relative', maxHeight:'90vh', overflowY:'auto' }}>
+              <button onClick={() => setEditingInvoice(null)} style={{ position:'absolute', top:'15px', right:'15px', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer' }}><X size={20}/></button>
+              <h3 style={{ color:'var(--secondary)', marginBottom:'5px' }}>Edit Invoice Details</h3>
+              <p style={{ color:'var(--text-muted)', fontSize:'0.85rem', marginBottom:'25px' }}>Revision for <strong style={{color:'var(--text)'}}>{editingInvoice.id}</strong></p>
+              
+              <div style={{ display:'grid', gap:'20px' }}>
+                <div>
+                  <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'8px', textTransform:'uppercase', fontWeight:'700' }}>Base Amount (Revenue)</label>
+                  <div style={{ position:'relative' }}>
+                    <span style={{ position:'absolute', left:'15px', top:'50%', transform:'translateY(-50%)', color:'var(--secondary)', fontWeight:'700' }}>Rp</span>
+                    <input 
+                      type="number" 
+                      step="any" 
+                      value={editingInvoice.subtotal || editingInvoice.amount} 
+                      onChange={e => setEditingInvoice({...editingInvoice, subtotal: e.target.value})}
+                      disabled={Array.isArray(editingInvoice.items)}
+                      style={{ width:'100%', padding:'12px 15px 12px 45px', background: Array.isArray(editingInvoice.items) ? 'rgba(255,255,255,0.02)' : 'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'10px', color: Array.isArray(editingInvoice.items) ? 'var(--text-muted)' : 'var(--text)', fontSize:'1.1rem', fontWeight:'700', cursor: Array.isArray(editingInvoice.items) ? 'not-allowed' : 'auto' }}
+                    />
+                  </div>
+                </div>
+
+                {Array.isArray(editingInvoice.items) && (
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+                      <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>
+                        {isID ? 'Item Invoice (Per Item)' : 'Invoice Items'}
+                      </label>
+                      <button 
+                        onClick={() => {
+                          const defaultJoId = joIds.length > 0 ? joIds[0] : '';
+                          const newItems = [...(editingInvoice.items || []), { 
+                            description: 'Freight Forwarding Services', 
+                            qty: 1, 
+                            rate: 0, 
+                            amount: 0,
+                            joId: defaultJoId,
+                            containerNo: [],
+                            vehicleNo: [],
+                            driverName: [],
+                            containerNoRaw: '',
+                            vehicleNoRaw: '',
+                            driverNameRaw: ''
+                          }];
+                          const newSubtotal = newItems.reduce((sum, item) => sum + (parseFloat(item.qty || 0) * parseFloat(item.rate || 0)), 0);
+                          setEditingInvoice({
+                            ...editingInvoice,
+                            items: newItems,
+                            subtotal: newSubtotal
+                          });
+                        }}
+                        style={{ background:'rgba(212, 175, 55, 0.75)', color:'#030712', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
+                      >
+                        + {isID ? 'Tambah Item' : 'Add Item'}
+                      </button>
+                    </div>
+
+                    <div style={{ display:'grid', gap:'12px', maxHeight:'300px', overflowY:'auto', paddingRight:'5px', marginBottom: '10px' }}>
+                      {(editingInvoice.items || []).map((item, idx) => (
+                        <div key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px', marginBottom: '8px' }}>
+                          <div style={{ display:'grid', gridTemplateColumns:'2.2fr 0.8fr 1.2fr 1fr 32px', gap:'8px', alignItems:'center' }}>
+                            <div>
+                              <input 
+                                type="text" 
+                                placeholder={isID ? "Deskripsi" : "Description"}
+                                value={item.description || ''} 
+                                onChange={e => {
+                                  const newItems = [...editingInvoice.items];
+                                  newItems[idx] = { ...newItems[idx], description: e.target.value };
+                                  setEditingInvoice({...editingInvoice, items: newItems});
+                                }}
+                                style={{ width: '100%', padding:'6px 10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem' }}
+                              />
+                            </div>
+                            <div>
+                              <input 
+                                type="number" 
+                                placeholder="Qty" 
+                                value={item.qty || 0} 
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value || 0);
+                                  const newItems = [...editingInvoice.items];
+                                  const newRate = parseFloat(newItems[idx].rate || 0);
+                                  newItems[idx] = { 
+                                    ...newItems[idx], 
+                                    qty: val,
+                                    amount: val * newRate
+                                  };
+                                  const newSubtotal = newItems.reduce((sum, it) => sum + (parseFloat(it.qty || 0) * parseFloat(it.rate || 0)), 0);
+                                  setEditingInvoice({...editingInvoice, items: newItems, subtotal: newSubtotal});
+                                }}
+                                style={{ width: '100%', padding:'6px 10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem', fontWeight:'600' }}
+                              />
+                            </div>
+                            <div>
+                              <input 
+                                type="number" 
+                                placeholder="Rate" 
+                                value={item.rate || 0} 
+                                onChange={e => {
+                                  const val = parseFloat(e.target.value || 0);
+                                  const newItems = [...editingInvoice.items];
+                                  const newQty = parseFloat(newItems[idx].qty || 0);
+                                  newItems[idx] = { 
+                                    ...newItems[idx], 
+                                    rate: val,
+                                    amount: newQty * val
+                                  };
+                                  const newSubtotal = newItems.reduce((sum, it) => sum + (parseFloat(it.qty || 0) * parseFloat(it.rate || 0)), 0);
+                                  setEditingInvoice({...editingInvoice, items: newItems, subtotal: newSubtotal});
+                                }}
+                                style={{ width: '100%', padding:'6px 10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem', fontWeight:'600' }}
+                              />
+                            </div>
+                            <div style={{ padding:'6px 10px', color:'var(--text)', fontSize:'0.8rem', fontWeight:'700', textAlign: 'right' }}>
+                              Rp {((item.qty || 0) * (item.rate || 0)).toLocaleString()}
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const newItems = (editingInvoice.items || []).filter((_, i) => i !== idx);
+                                const newSubtotal = newItems.reduce((sum, it) => sum + (parseFloat(it.qty || 0) * parseFloat(it.rate || 0)), 0);
+                                setEditingInvoice({...editingInvoice, items: newItems, subtotal: newSubtotal});
+                              }}
+                              style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', height:'32px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor:'pointer' }}
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' + (joIds.length > 1 ? ' 1.2fr' : ''), gap: '8px', marginTop: '8px', paddingLeft: '10px' }}>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Container No</label>
+                              <input
+                                type="text"
+                                value={item.containerNoRaw || ''}
+                                onChange={e => {
+                                  const newItems = [...editingInvoice.items];
+                                  newItems[idx] = { ...newItems[idx], containerNoRaw: e.target.value };
+                                  setEditingInvoice({ ...editingInvoice, items: newItems });
+                                }}
+                                placeholder="C1, C2"
+                                style={{ width: '100%', padding: '4px 8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.75rem' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Vehicle No</label>
+                              <input
+                                type="text"
+                                value={item.vehicleNoRaw || ''}
+                                onChange={e => {
+                                  const newItems = [...editingInvoice.items];
+                                  newItems[idx] = { ...newItems[idx], vehicleNoRaw: e.target.value };
+                                  setEditingInvoice({ ...editingInvoice, items: newItems });
+                                }}
+                                placeholder="B 1234 XX"
+                                style={{ width: '100%', padding: '4px 8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.75rem' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Driver Name</label>
+                              <input
+                                type="text"
+                                value={item.driverNameRaw || ''}
+                                onChange={e => {
+                                  const newItems = [...editingInvoice.items];
+                                  newItems[idx] = { ...newItems[idx], driverNameRaw: e.target.value };
+                                  setEditingInvoice({ ...editingInvoice, items: newItems });
+                                }}
+                                placeholder="John Doe"
+                                style={{ width: '100%', padding: '4px 8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.75rem' }}
+                              />
+                            </div>
+                            {joIds.length > 1 && (
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.62rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Job Order ID</label>
+                                <select
+                                  value={item.joId || ''}
+                                  onChange={e => {
+                                    const newItems = [...editingInvoice.items];
+                                    newItems[idx] = { ...newItems[idx], joId: e.target.value };
+                                    setEditingInvoice({ ...editingInvoice, items: newItems });
+                                  }}
+                                  style={{ width: '100%', padding: '4px 8px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text)', fontSize: '0.75rem' }}
+                                >
+                                  {joIds.map(id => (
+                                    <option key={id} value={id}>{id}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {(editingInvoice.items || []).length === 0 && (
+                        <p style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'0.8rem', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:'8px' }}>
+                          {isID ? 'Tidak ada item' : 'No items'}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-                    <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>
-                      {isID ? 'Item Invoice (Per Item)' : 'Invoice Items'}
-                    </label>
+                    <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>Biaya Tambahan (Extra Charges)</label>
                     <button 
-                      onClick={() => {
-                        const newItems = [...(editingInvoice.items || []), { description: 'Freight Forwarding Services', qty: 1, rate: 0, amount: 0 }];
-                        const newSubtotal = newItems.reduce((sum, item) => sum + (parseFloat(item.qty || 0) * parseFloat(item.rate || 0)), 0);
-                        setEditingInvoice({
-                          ...editingInvoice,
-                          items: newItems,
-                          subtotal: newSubtotal
-                        });
-                      }}
+                      onClick={() => setEditingInvoice({...editingInvoice, extra_charges: [...(editingInvoice.extra_charges || []), { description: '', amount: 0 }]})}
                       style={{ background:'rgba(212, 175, 55, 0.75)', color:'#030712', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
                     >
-                      + {isID ? 'Tambah Item' : 'Add Item'}
+                      + Tambah Biaya
                     </button>
                   </div>
-
-                  <div style={{ display:'grid', gap:'12px', maxHeight:'200px', overflowY:'auto', paddingRight:'5px', marginBottom: '10px' }}>
-                    {(editingInvoice.items || []).map((item, idx) => (
-                      <div key={idx} style={{ display:'grid', gridTemplateColumns:'2.2fr 0.8fr 1.2fr 1fr 32px', gap:'8px', alignItems:'center' }}>
-                        <div>
-                          <input 
-                            type="text" 
-                            placeholder={isID ? "Deskripsi" : "Description"}
-                            value={item.description || ''} 
-                            onChange={e => {
-                              const newItems = [...editingInvoice.items];
-                              newItems[idx] = { ...newItems[idx], description: e.target.value };
-                              setEditingInvoice({...editingInvoice, items: newItems});
-                            }}
-                            style={{ width: '100%', padding:'6px 10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem' }}
-                          />
-                        </div>
-                        <div>
-                          <input 
-                            type="number" 
-                            placeholder="Qty" 
-                            value={item.qty || 0} 
-                            onChange={e => {
-                              const val = parseFloat(e.target.value || 0);
-                              const newItems = [...editingInvoice.items];
-                              const newRate = parseFloat(newItems[idx].rate || 0);
-                              newItems[idx] = { 
-                                ...newItems[idx], 
-                                qty: val,
-                                amount: val * newRate
-                              };
-                              const newSubtotal = newItems.reduce((sum, it) => sum + (parseFloat(it.qty || 0) * parseFloat(it.rate || 0)), 0);
-                              setEditingInvoice({...editingInvoice, items: newItems, subtotal: newSubtotal});
-                            }}
-                            style={{ width: '100%', padding:'6px 10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem', fontWeight:'600' }}
-                          />
-                        </div>
-                        <div>
-                          <input 
-                            type="number" 
-                            placeholder="Rate" 
-                            value={item.rate || 0} 
-                            onChange={e => {
-                              const val = parseFloat(e.target.value || 0);
-                              const newItems = [...editingInvoice.items];
-                              const newQty = parseFloat(newItems[idx].qty || 0);
-                              newItems[idx] = { 
-                                ...newItems[idx], 
-                                rate: val,
-                                amount: newQty * val
-                              };
-                              const newSubtotal = newItems.reduce((sum, it) => sum + (parseFloat(it.qty || 0) * parseFloat(it.rate || 0)), 0);
-                              setEditingInvoice({...editingInvoice, items: newItems, subtotal: newSubtotal});
-                            }}
-                            style={{ width: '100%', padding:'6px 10px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'6px', color:'var(--text)', fontSize:'0.8rem', fontWeight:'600' }}
-                          />
-                        </div>
-                        <div style={{ padding:'6px 10px', color:'var(--text)', fontSize:'0.8rem', fontWeight:'700', textAlign: 'right' }}>
-                          Rp {((item.qty || 0) * (item.rate || 0)).toLocaleString()}
-                        </div>
+                  
+                  <div style={{ display:'grid', gap:'10px', maxHeight:'200px', overflowY:'auto', paddingRight:'5px' }}>
+                    {(editingInvoice.extra_charges || []).map((charge, idx) => (
+                      <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 120px 32px', gap:'8px', alignItems:'center' }}>
+                        <input 
+                          type="text" 
+                          placeholder="Deskripsi Biaya" 
+                          value={charge.description} 
+                          onChange={e => {
+                            const n = [...editingInvoice.extra_charges];
+                            n[idx].description = e.target.value;
+                            setEditingInvoice({...editingInvoice, extra_charges: n});
+                          }}
+                          style={{ padding:'8px 12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem' }}
+                        />
+                        <input 
+                          type="number" 
+                          step="any" 
+                          placeholder="Rp" 
+                          value={charge.amount} 
+                          onChange={e => {
+                            const n = [...editingInvoice.extra_charges];
+                            n[idx].amount = e.target.value;
+                            setEditingInvoice({...editingInvoice, extra_charges: n});
+                          }}
+                          style={{ padding:'8px 12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', fontWeight:'600' }}
+                        />
                         <button 
                           onClick={() => {
-                            const newItems = (editingInvoice.items || []).filter((_, i) => i !== idx);
-                            const newSubtotal = newItems.reduce((sum, it) => sum + (parseFloat(it.qty || 0) * parseFloat(it.rate || 0)), 0);
-                            setEditingInvoice({...editingInvoice, items: newItems, subtotal: newSubtotal});
+                            const n = (editingInvoice.extra_charges || []).filter((_, i) => i !== idx);
+                            setEditingInvoice({...editingInvoice, extra_charges: n});
                           }}
-                          style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', height:'32px', width: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor:'pointer' }}
+                          style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', height:'32px', cursor:'pointer' }}
                         >
                           <X size={14} />
                         </button>
                       </div>
                     ))}
-                    {(editingInvoice.items || []).length === 0 && (
-                      <p style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'0.8rem', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:'8px' }}>
-                        {isID ? 'Tidak ada item' : 'No items'}
-                      </p>
+                    {(editingInvoice.extra_charges || []).length === 0 && (
+                      <p style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'0.8rem', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:'8px' }}>Tidak ada biaya tambahan</p>
                     )}
                   </div>
                 </div>
-              )}
 
-              <div>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
-                  <label style={{ fontSize:'0.75rem', color:'var(--text-muted)', textTransform:'uppercase', fontWeight:'700' }}>Biaya Tambahan (Extra Charges)</label>
-                  <button 
-                    onClick={() => setEditingInvoice({...editingInvoice, extra_charges: [...(editingInvoice.extra_charges || []), { description: '', amount: 0 }]})}
-                    style={{ background:'rgba(212, 175, 55, 0.75)', color:'#030712', border:'1px solid var(--secondary)', borderRadius:'6px', padding:'4px 10px', fontSize:'0.7rem', cursor:'pointer' }}
-                  >
-                    + Tambah Biaya
-                  </button>
-                </div>
-                
-                <div style={{ display:'grid', gap:'10px', maxHeight:'200px', overflowY:'auto', paddingRight:'5px' }}>
-                  {(editingInvoice.extra_charges || []).map((charge, idx) => (
-                    <div key={idx} style={{ display:'grid', gridTemplateColumns:'1fr 120px 32px', gap:'8px', alignItems:'center' }}>
-                      <input 
-                        type="text" 
-                        placeholder="Deskripsi Biaya" 
-                        value={charge.description} 
-                        onChange={e => {
-                          const n = [...editingInvoice.extra_charges];
-                          n[idx].description = e.target.value;
-                          setEditingInvoice({...editingInvoice, extra_charges: n});
-                        }}
-                        style={{ padding:'8px 12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem' }}
-                      />
-                      <input 
-                        type="number" 
-                        step="any" 
-                        placeholder="Rp" 
-                        value={charge.amount} 
-                        onChange={e => {
-                          const n = [...editingInvoice.extra_charges];
-                          n[idx].amount = e.target.value;
-                          setEditingInvoice({...editingInvoice, extra_charges: n});
-                        }}
-                        style={{ padding:'8px 12px', background:'var(--input-bg)', border:'1px solid var(--border)', borderRadius:'8px', color:'var(--text)', fontSize:'0.85rem', fontWeight:'600' }}
-                      />
-                      <button 
-                        onClick={() => {
-                          const n = (editingInvoice.extra_charges || []).filter((_, i) => i !== idx);
-                          setEditingInvoice({...editingInvoice, extra_charges: n});
-                        }}
-                        style={{ background:'rgba(239, 68, 68, 0.75)', color:'#ffffff', border:'none', borderRadius:'6px', height:'32px', cursor:'pointer' }}
-                      >
-                        <X size={14} />
-                      </button>
+                {linkedJOs.length > 0 && (
+                  <div style={{ marginTop: '10px' }}>
+                    <label style={{ display:'block', fontSize:'0.75rem', color:'var(--text-muted)', marginBottom:'10px', textTransform:'uppercase', fontWeight:'700' }}>
+                      {isID ? 'Detail Job Order Terkait' : 'Linked Job Order Details'}
+                    </label>
+                    <div style={{ display: 'grid', gap: '15px' }}>
+                      {linkedJOs.map(jo => {
+                        const joDraft = editingJOsData[String(jo.id)] || { instruction: (jo.instruction || jo.jobDescription || '').split(' ||| ')[0].trim(), vesselName: jo.vesselName || '' };
+                        return (
+                          <div key={jo.id} style={{ padding: '15px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border)', borderRadius: '10px' }}>
+                            <div style={{ fontWeight: '700', fontSize: '0.85rem', marginBottom: '10px', color: 'var(--secondary)' }}>
+                              Job Order: {jo.id} ({jo.customerName})
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
+                                  {isID ? 'Instruksi Pekerjaan' : 'Job Instruction'}
+                                </label>
+                                <textarea
+                                  value={joDraft.instruction}
+                                  onChange={e => {
+                                    setEditingJOsData({
+                                      ...editingJOsData,
+                                      [String(jo.id)]: { ...joDraft, instruction: e.target.value }
+                                    });
+                                  }}
+                                  rows={2}
+                                  style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.8rem', resize: 'vertical' }}
+                                />
+                              </div>
+                              <div>
+                                <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '5px' }}>
+                                  {isID ? 'Nama Kapal' : 'Vessel Name'}
+                                </label>
+                                <input
+                                  type="text"
+                                  value={joDraft.vesselName}
+                                  onChange={e => {
+                                    setEditingJOsData({
+                                      ...editingJOsData,
+                                      [String(jo.id)]: { ...joDraft, vesselName: e.target.value }
+                                    });
+                                  }}
+                                  style={{ width: '100%', padding: '8px 12px', background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', fontSize: '0.8rem' }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                  {(editingInvoice.extra_charges || []).length === 0 && (
-                    <p style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'0.8rem', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:'8px' }}>Tidak ada biaya tambahan</p>
-                  )}
-                </div>
-              </div>
+                  </div>
+                )}
 
-              <div style={{ marginTop:'10px', padding:'15px', background:'rgba(212,175,55,0.05)', borderRadius:'10px', border:'1px solid rgba(212,175,55,0.1)' }}>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'5px', fontSize:'0.85rem' }}>
-                  <span style={{ color:'var(--text-muted)' }}>Base Amount</span>
-                  <span>Rp {parseFloat(editingInvoice.subtotal || editingInvoice.amount || 0).toLocaleString()}</span>
+                <div style={{ marginTop:'10px', padding:'15px', background:'rgba(212,175,55,0.05)', borderRadius:'10px', border:'1px solid rgba(212,175,55,0.1)' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'5px', fontSize:'0.85rem' }}>
+                    <span style={{ color:'var(--text-muted)' }}>Base Amount</span>
+                    <span>Rp {parseFloat(editingInvoice.subtotal || editingInvoice.amount || 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'5px', fontSize:'0.85rem' }}>
+                    <span style={{ color:'var(--text-muted)' }}>Extra Total</span>
+                    <span>Rp {(editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontWeight:'700', color:'var(--secondary)', fontSize:'1.1rem', marginTop:'10px', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:'10px' }}>
+                    <span>Total Billing</span>
+                    <span>Rp {(parseFloat(editingInvoice.subtotal || editingInvoice.amount || 0) + (editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0)).toLocaleString()}</span>
+                  </div>
                 </div>
-                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'5px', fontSize:'0.85rem' }}>
-                  <span style={{ color:'var(--text-muted)' }}>Extra Total</span>
-                  <span>Rp {(editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0).toLocaleString()}</span>
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between', fontWeight:'700', color:'var(--secondary)', fontSize:'1.1rem', marginTop:'10px', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:'10px' }}>
-                  <span>Total Billing</span>
-                  <span>Rp {(parseFloat(editingInvoice.subtotal || editingInvoice.amount || 0) + (editingInvoice.extra_charges || []).reduce((s, c) => s + parseFloat(c.amount || 0), 0)).toLocaleString()}</span>
-                </div>
-              </div>
 
-              <div style={{ display:'flex', gap:'12px', marginTop:'10px' }}>
-                <button onClick={() => setEditingInvoice(null)} className="btn" style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)', color:'var(--text)' }}>Cancel</button>
-                <ButtonWithLoading onClick={handleSaveInvoiceEdit} className="btn btn-gold" style={{ flex:2, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
-                  <Save size={18} /> Update Invoice
-                </ButtonWithLoading>
+                <div style={{ display:'flex', gap:'12px', marginTop:'10px' }}>
+                  <button onClick={() => setEditingInvoice(null)} className="btn" style={{ flex:1, background:'rgba(255,255,255,0.05)', border:'1px solid var(--border)', color:'var(--text)' }}>Cancel</button>
+                  <ButtonWithLoading onClick={handleSaveInvoiceEdit} className="btn btn-gold" style={{ flex:2, display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+                    <Save size={18} /> Update Invoice
+                  </ButtonWithLoading>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Photo Viewer Modal */}
       {photoViewer && (

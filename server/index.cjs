@@ -991,9 +991,10 @@ app.post('/api/invoices', async (req, res) => {
   }
 });
 
-app.put('/api/invoices/:id', async (req, res) => {
+app.put('/api/invoices/*id', async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id.join('/') : req.params.id;
   const updates = req.body;
-  const { error } = await supabase.from('invoices').update(updates).eq('id', req.params.id);
+  const { error } = await supabase.from('invoices').update(updates).eq('id', id);
   if (error) return handleError(res, error, 'PUT invoices');
 
   // Sync receivables with only valid columns
@@ -1011,15 +1012,16 @@ app.put('/api/invoices/:id', async (req, res) => {
   if (updates.paidDate !== undefined) recUpdates.paidDate = updates.paidDate;
 
   if (Object.keys(recUpdates).length > 0) {
-    const { error: recError } = await supabase.from('receivables').update(recUpdates).eq('id', req.params.id);
+    const { error: recError } = await supabase.from('receivables').update(recUpdates).eq('id', id);
     if (recError) {
-      console.error(`[PUT /invoices/:id] Failed to sync receivables for ${req.params.id}:`, recError.message);
+      console.error(`[PUT /invoices/:id] Failed to sync receivables for ${id}:`, recError.message);
     }
   }
   res.sendStatus(200);
 });
 
-app.put('/api/invoices/:id/settle', async (req, res) => {
+app.put('/api/invoices/*id/settle', async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id.join('/') : req.params.id;
   const { paymentProofPhoto, taxesDeducted, taxDeductionProof, paidDate } = req.body;
   
   // Calculate total tax from the array
@@ -1035,10 +1037,10 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
       taxes_deducted: taxesJson,
       tax_deduction_proof: taxDeductionProof,
       paidDate
-    }).eq('id', req.params.id);
+    }).eq('id', id);
     
     if (invErr) {
-      console.warn(`[SETTLE] Invoice update failed for ${req.params.id}: ${invErr.message}`);
+      console.warn(`[SETTLE] Invoice update failed for ${id}: ${invErr.message}`);
       // Fallback if columns are missing (e.g. paidDate)
       if (invErr.message.includes('column') || invErr.message.includes('schema cache') || invErr.code === '42703' || invErr.code === 'PGRST204') {
         const { error: fallbackErr } = await supabase.from('invoices').update({ 
@@ -1046,7 +1048,7 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
           tax_deduction: totalTax,
           taxes_deducted: taxesJson,
           tax_deduction_proof: taxDeductionProof
-        }).eq('id', req.params.id);
+        }).eq('id', id);
         if (fallbackErr) {
           console.error(`[SETTLE] Invoice fallback update failed:`, fallbackErr.message);
           return res.status(500).json({ error: `Invoice fallback update failed: ${fallbackErr.message}` });
@@ -1065,10 +1067,10 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
       taxes_deducted: taxesJson,
       tax_deduction_proof: taxDeductionProof,
       paidDate
-    }).eq('invoiceId', req.params.id);
+    }).eq('invoiceId', id);
     
     if (recErr) {
-      console.warn(`[SETTLE] Receivable update failed for ${req.params.id}: ${recErr.message}`);
+      console.warn(`[SETTLE] Receivable update failed for ${id}: ${recErr.message}`);
       if (recErr.message.includes('column') || recErr.message.includes('schema cache') || recErr.code === '42703' || recErr.code === 'PGRST204') {
         const { error: fallbackErr } = await supabase.from('receivables').update({ 
           status: 'paid', 
@@ -1077,7 +1079,7 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
           tax_deduction: totalTax,
           taxes_deducted: taxesJson,
           tax_deduction_proof: taxDeductionProof
-        }).eq('invoiceId', req.params.id);
+        }).eq('invoiceId', id);
         if (fallbackErr) {
           console.error(`[SETTLE] Receivable fallback update failed:`, fallbackErr.message);
           return res.status(500).json({ error: `Receivable fallback update failed: ${fallbackErr.message}` });
@@ -1095,13 +1097,14 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
 });
 
 
-app.delete('/api/invoices/:id', async (req, res) => {
+app.delete('/api/invoices/*id', async (req, res) => {
+  const id = Array.isArray(req.params.id) ? req.params.id.join('/') : req.params.id;
   try {
     // 1. Fetch the invoice first to identify linked Job Orders
     const { data: invoice, error: fetchErr } = await supabase
       .from('invoices')
       .select('joId, notes, consolidatedJOs')
-      .eq('id', req.params.id)
+      .eq('id', id)
       .single();
 
     if (!fetchErr && invoice) {
@@ -1139,8 +1142,8 @@ app.delete('/api/invoices/:id', async (req, res) => {
     }
 
     // 2. Delete receivables and invoice
-    await supabase.from('receivables').delete().eq('invoiceId', req.params.id);
-    const { error } = await supabase.from('invoices').delete().eq('id', req.params.id);
+    await supabase.from('receivables').delete().eq('invoiceId', id);
+    const { error } = await supabase.from('invoices').delete().eq('id', id);
     if (error) return handleError(res, error, 'DELETE invoices');
     res.sendStatus(204);
   } catch (err) {
