@@ -1039,12 +1039,20 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
     
     if (invErr) {
       console.warn(`[SETTLE] Invoice update failed for ${req.params.id}: ${invErr.message}`);
-      // Fallback if columns are missing
-      if (invErr.message.includes('column') || invErr.code === '42703') {
-        await supabase.from('invoices').update({ 
+      // Fallback if columns are missing (e.g. paidDate)
+      if (invErr.message.includes('column') || invErr.message.includes('schema cache') || invErr.code === '42703' || invErr.code === 'PGRST204') {
+        const { error: fallbackErr } = await supabase.from('invoices').update({ 
           status: 'paid', 
-          tax_deduction: totalTax 
+          tax_deduction: totalTax,
+          taxes_deducted: taxesJson,
+          tax_deduction_proof: taxDeductionProof
         }).eq('id', req.params.id);
+        if (fallbackErr) {
+          console.error(`[SETTLE] Invoice fallback update failed:`, fallbackErr.message);
+          return res.status(500).json({ error: `Invoice fallback update failed: ${fallbackErr.message}` });
+        }
+      } else {
+        return res.status(500).json({ error: `Invoice update failed: ${invErr.message}` });
       }
     }
     
@@ -1061,13 +1069,21 @@ app.put('/api/invoices/:id/settle', async (req, res) => {
     
     if (recErr) {
       console.warn(`[SETTLE] Receivable update failed for ${req.params.id}: ${recErr.message}`);
-      if (recErr.message.includes('column') || recErr.code === '42703') {
-        await supabase.from('receivables').update({ 
+      if (recErr.message.includes('column') || recErr.message.includes('schema cache') || recErr.code === '42703' || recErr.code === 'PGRST204') {
+        const { error: fallbackErr } = await supabase.from('receivables').update({ 
           status: 'paid', 
           balance: 0,
           paymentProofPhoto,
-          tax_deduction: totalTax
+          tax_deduction: totalTax,
+          taxes_deducted: taxesJson,
+          tax_deduction_proof: taxDeductionProof
         }).eq('invoiceId', req.params.id);
+        if (fallbackErr) {
+          console.error(`[SETTLE] Receivable fallback update failed:`, fallbackErr.message);
+          return res.status(500).json({ error: `Receivable fallback update failed: ${fallbackErr.message}` });
+        }
+      } else {
+        return res.status(500).json({ error: `Receivable update failed: ${recErr.message}` });
       }
     }
     
