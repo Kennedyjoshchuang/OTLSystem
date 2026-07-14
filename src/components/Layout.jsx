@@ -55,6 +55,7 @@ const Layout = ({ children }) => {
 
   return (
     <div className={theme === 'light' ? 'light-theme' : ''} style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)', overflowX: 'hidden' }}>
+      <a href="#main-content" className="skip-link">Skip to Main Content</a>
       {/* Sidebar Overlay (Mobile) */}
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -83,15 +84,17 @@ const Layout = ({ children }) => {
         zIndex: 200,
         borderRadius: '18px',
         background: theme === 'light' ? 'rgba(255, 255, 255, 0.4)' : 'rgba(3, 7, 18, 0.4)',
-        transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: isMobile && !isMobileMenuOpen ? `translateX(-${SIDEBAR_WIDTH + 40}px)` : 'translateX(0)'
+        transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.4s',
+        transform: isMobile && !isMobileMenuOpen ? `translateX(-${SIDEBAR_WIDTH + 40}px)` : 'translateX(0)',
+        visibility: isMobile && !isMobileMenuOpen ? 'hidden' : 'visible'
       }}>
         <div style={{ marginBottom: isLaptop ? '25px' : '50px', textAlign: 'center', position: 'relative' }}>
           {/* Close button for mobile */}
           {isMobile && (
             <button 
               onClick={() => setIsMobileMenuOpen(false)}
-              style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              aria-label="Tutup menu"
+              style={{ position: 'absolute', top: '-10px', right: '-10px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={24} />
             </button>
@@ -124,7 +127,7 @@ const Layout = ({ children }) => {
                   borderRadius: '12px',
                   textDecoration: 'none',
                   color: isActive ? 'white' : 'var(--text-muted)',
-                  background: isActive ? 'var(--emerald-metallic)' : 'transparent',
+                  background: isActive ? 'var(--primary)' : 'transparent',
                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                   boxShadow: isActive ? '0 8px 16px rgba(6, 95, 70, 0.3)' : 'none',
                   border: isActive ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent'
@@ -144,9 +147,9 @@ const Layout = ({ children }) => {
             style={{ 
               width: '100%', 
               justifyContent: 'center', 
-              color: '#ef4444', 
-              background: 'rgba(239, 68, 68, 0.05)',
-              border: '1px solid rgba(239, 68, 68, 0.1)' 
+              color: 'var(--danger)', 
+              background: 'var(--danger-bg)',
+              border: '1px solid var(--danger-border)' 
             }}
             onClick={logout}
           >
@@ -157,7 +160,7 @@ const Layout = ({ children }) => {
       </aside>
 
       {/* Main Content */}
-      <main style={{ 
+      <main id="main-content" style={{ 
         flex: 1, 
         marginLeft: isMobile ? '0' : `${SIDEBAR_WIDTH + (isLaptop ? 24 : 40)}px`, 
         padding: isMobile ? '20px 16px' : isLaptop ? '24px 30px' : '40px 50px',
@@ -176,7 +179,8 @@ const Layout = ({ children }) => {
               <button 
                 onClick={() => setIsMobileMenuOpen(true)}
                 className="btn-icon"
-                style={{ width: '38px', height: '38px' }}
+                aria-label="Buka menu"
+                style={{ width: '44px', height: '44px' }}
               >
                 <Menu size={20} />
               </button>
@@ -199,12 +203,13 @@ const Layout = ({ children }) => {
             <button 
               onClick={toggleTheme}
               className="glass-card"
+              aria-label={language === 'id' ? 'Ubah tema' : 'Toggle theme'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: '42px',
-                height: '42px',
+                width: '44px',
+                height: '44px',
                 borderRadius: '50%',
                 cursor: 'pointer',
                 border: '1px solid var(--border)',
@@ -220,11 +225,13 @@ const Layout = ({ children }) => {
             <button 
               onClick={toggleLanguage}
               className="glass-card"
+              aria-label={language === 'id' ? 'Ubah bahasa' : 'Change language'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '10px 15px',
+                minHeight: '44px',
                 borderRadius: '100px',
                 cursor: 'pointer',
                 border: '1px solid var(--border)',

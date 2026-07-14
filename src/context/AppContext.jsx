@@ -272,6 +272,10 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
+    document.documentElement.lang = language || 'en';
+  }, [language]);
+
+  useEffect(() => {
     const handleUnauthorized = () => {
       logout();
       toast.error('Sesi Anda telah berakhir. Silakan login kembali.');

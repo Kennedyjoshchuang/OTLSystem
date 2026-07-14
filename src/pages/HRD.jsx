@@ -287,6 +287,7 @@ const HRD = () => {
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <button 
                             className="btn-icon" 
+                            aria-label={isID ? `Edit Karyawan: ${emp.name}` : `Edit Employee: ${emp.name}`}
                             onClick={() => {
                               setSelectedEmployee(emp);
                               setFormData({ ...emp });
@@ -297,7 +298,8 @@ const HRD = () => {
                           </button>
                           <button 
                             className="btn-icon" 
-                            style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)' }}
+                            aria-label={isID ? `Hapus Karyawan: ${emp.name}` : `Delete Employee: ${emp.name}`}
+                            style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }}
                             onClick={() => {
                               if (confirm(isID ? `Hapus karyawan ${emp.name}?` : `Delete employee ${emp.name}?`)) {
                                 deleteEmployee(emp.id);

@@ -295,6 +295,7 @@ const SystemControl = () => {
                 {verifyStep === 2 && (
                   <div className="input-group">
                     <input
+                      aria-label={isID ? "Ketik DELETE untuk konfirmasi" : "Type DELETE to confirm"}
                       type="text"
                       value={verifyText}
                       onChange={e => setVerifyText(e.target.value)}
@@ -304,9 +305,9 @@ const SystemControl = () => {
                         fontSize: '1.2rem',
                         letterSpacing: '2px',
                         fontWeight: '700',
-                        border: '2px solid rgba(239, 68, 68, 0.3)',
-                        background: 'rgba(239, 68, 68, 0.05)',
-                        color: '#ef4444'
+                        border: '2px solid var(--danger-border)',
+                        background: 'var(--danger-bg)',
+                        color: 'var(--danger)'
                       }}
                       autoFocus
                     />
@@ -315,8 +316,9 @@ const SystemControl = () => {
 
                 {verifyStep === 3 && (
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', marginBottom: '15px' }}>{isID ? 'Masukkan Kunci Keamanan 4-Digit' : 'Enter 4-Digit Security Key'}</label>
+                    <label htmlFor="system-reset-otp" style={{ color: 'var(--secondary)', marginBottom: '15px' }}>{isID ? 'Masukkan Kunci Keamanan 4-Digit' : 'Enter 4-Digit Security Key'}</label>
                     <input
+                      id="system-reset-otp"
                       type="text"
                       maxLength={4}
                       value={otpInput}
@@ -328,7 +330,7 @@ const SystemControl = () => {
                         letterSpacing: '15px',
                         fontWeight: '900',
                         border: '2px solid var(--secondary)',
-                        background: 'rgba(212, 175, 55, 0.05)',
+                        background: 'var(--secondary-bg)',
                         color: 'var(--secondary)'
                       }}
                       autoFocus

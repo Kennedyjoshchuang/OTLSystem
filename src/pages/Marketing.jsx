@@ -743,10 +743,10 @@ const Marketing = () => {
             >
               <h3 style={{ marginBottom: '25px', color: 'var(--secondary)' }}>{t('createQuotation')} - {activeProspectForQuote.name}</h3>
               <form onSubmit={handleCreateProspectQuotation}>
-
                 <div className="input-group" style={{ marginBottom: '25px' }}>
-                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
+                  <label htmlFor="quote-subject" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
                   <input
+                    id="quote-subject"
                     required
                     type="text"
                     value={quoteSubject}
@@ -758,8 +758,9 @@ const Marketing = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Attn: PIC Name</label>
+                    <label htmlFor="quote-pic" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Attn: PIC Name</label>
                     <input
+                      id="quote-pic"
                       required
                       type="text"
                       value={quotePic}
@@ -769,8 +770,9 @@ const Marketing = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Dari</label>
+                    <label htmlFor="quote-valid-from" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Dari</label>
                     <input
+                      id="quote-valid-from"
                       required
                       type="date"
                       value={quoteValidFrom}
@@ -779,8 +781,9 @@ const Marketing = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Sampai</label>
+                    <label htmlFor="quote-valid-to" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Sampai</label>
                     <input
+                      id="quote-valid-to"
                       required
                       type="date"
                       value={quoteValidTo}
@@ -790,7 +793,7 @@ const Marketing = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <div className="grid-quote-items desktop-only" style={{ gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <div>{t('activity')}</div>
                   <div>{t('ratePerTrip')}</div>
                   <div>{t('quantity')}</div>
@@ -799,12 +802,11 @@ const Marketing = () => {
                 </div>
 
                 {quoteItems.map((item, index) => (
-                  <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '15px' }}>
-                    <input required type="text" value={item.description} onChange={e => updateQuoteItem(index, 'description', e.target.value)} placeholder="Service description..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <input required type="number" step="any" value={item.rate} onChange={e => updateQuoteItem(index, 'rate', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <input required type="number" step="any" value={item.quantity} onChange={e => updateQuoteItem(index, 'quantity', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <input type="text" value={item.unit} onChange={e => updateQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <button type="button" onClick={() => removeQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                  <div key={index} className="grid-quote-items" style={{ gap: '15px', marginBottom: '15px' }}>
+                    <input required type="text" value={item.description} onChange={e => updateQuoteItem(index, 'description', e.target.value)} placeholder="Service description..." aria-label={t('activity') || 'Deskripsi Pekerjaan'} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input required type="number" step="any" value={item.rate} onChange={e => updateQuoteItem(index, 'rate', e.target.value)} aria-label={t('ratePerTrip') || 'Tarif'} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input required type="number" step="any" value={item.quantity} onChange={e => updateQuoteItem(index, 'quantity', e.target.value)} aria-label={t('quantity') || 'Jumlah'} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input type="text" value={item.unit} onChange={e => updateQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." aria-label="Satuan" style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                   </div>
                 ))}
 
@@ -926,8 +928,9 @@ const Marketing = () => {
                 </div>
 
                 <div className="input-group" style={{ marginBottom: '25px' }}>
-                  <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
+                  <label htmlFor="edit-quote-subject" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Subject (Subjek Penawaran)</label>
                   <input
+                    id="edit-quote-subject"
                     required
                     type="text"
                     value={editQuoteSubject}
@@ -939,8 +942,9 @@ const Marketing = () => {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Attn: PIC Name</label>
+                    <label htmlFor="edit-quote-pic" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Attn: PIC Name</label>
                     <input
+                      id="edit-quote-pic"
                       required
                       type="text"
                       value={editQuotePic}
@@ -950,8 +954,9 @@ const Marketing = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Dari</label>
+                    <label htmlFor="edit-quote-valid-from" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Dari</label>
                     <input
+                      id="edit-quote-valid-from"
                       required
                       type="date"
                       value={editQuoteValidFrom}
@@ -960,8 +965,9 @@ const Marketing = () => {
                     />
                   </div>
                   <div className="input-group">
-                    <label style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Sampai</label>
+                    <label htmlFor="edit-quote-valid-to" style={{ color: 'var(--secondary)', fontWeight: '600' }}>Berlaku Sampai</label>
                     <input
+                      id="edit-quote-valid-to"
                       required
                       type="date"
                       value={editQuoteValidTo}
@@ -971,7 +977,7 @@ const Marketing = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                <div className="grid-quote-items desktop-only" style={{ gap: '15px', marginBottom: '10px', fontWeight: '600', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   <div>{t('activity') || 'Deskripsi Pekerjaan'}</div>
                   <div>{t('ratePerTrip') || 'Tarif'}</div>
                   <div>{t('quantity') || 'Jumlah'}</div>
@@ -980,12 +986,11 @@ const Marketing = () => {
                 </div>
 
                 {editQuoteItems.map((item, index) => (
-                  <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px 50px', minWidth: "700px", gap: '15px', marginBottom: '15px' }}>
-                    <input required type="text" value={item.description} onChange={e => updateEditQuoteItem(index, 'description', e.target.value)} placeholder="Service description..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <input required type="number" step="any" value={item.rate} onChange={e => updateEditQuoteItem(index, 'rate', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <input required type="number" step="any" value={item.quantity} onChange={e => updateEditQuoteItem(index, 'quantity', e.target.value)} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <input type="text" value={item.unit} onChange={e => updateEditQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
-                    <button type="button" onClick={() => removeEditQuoteItem(index)} style={{ background: 'rgba(239, 68, 68, 0.75)', color: '#ffffff', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                  <div key={index} className="grid-quote-items" style={{ gap: '15px', marginBottom: '15px' }}>
+                    <input required type="text" value={item.description} onChange={e => updateEditQuoteItem(index, 'description', e.target.value)} placeholder="Service description..." aria-label={t('activity') || 'Deskripsi Pekerjaan'} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input required type="number" step="any" value={item.rate} onChange={e => updateEditQuoteItem(index, 'rate', e.target.value)} aria-label={t('ratePerTrip') || 'Tarif'} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input required type="number" step="any" value={item.quantity} onChange={e => updateEditQuoteItem(index, 'quantity', e.target.value)} aria-label={t('quantity') || 'Jumlah'} style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
+                    <input type="text" value={item.unit} onChange={e => updateEditQuoteItem(index, 'unit', e.target.value)} placeholder="Trip/Kg/..." aria-label="Satuan" style={{ background: 'var(--input-bg)', border: '1px solid var(--border)', borderRadius: '8px', color: 'var(--text)', padding: '10px' }} />
                   </div>
                 ))}
 
@@ -1351,14 +1356,14 @@ const Marketing = () => {
       {/* Main Content - Hidden during Print */}
       <div className="no-print">
         {/* Header & Tabs */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
-        <div style={{ display: 'flex', gap: '30px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap', rowGap: '4px' }}>
           <button
             onClick={() => setActiveTab('jobOrders')}
             style={{
               background: 'none', border: 'none', padding: '10px 0',
               color: activeTab === 'jobOrders' ? 'var(--secondary)' : 'var(--text-muted)',
-              fontSize: '1rem', fontWeight: '600', cursor: 'pointer', position: 'relative', transition: 'all 0.3s'
+              fontSize: '1rem', fontWeight: '600', cursor: 'pointer', position: 'relative', transition: 'all 0.3s', whiteSpace: 'nowrap'
             }}
           >
             {t('activeJobOrders') || 'Active JO'}
@@ -1369,7 +1374,7 @@ const Marketing = () => {
             style={{
               background: 'none', border: 'none', padding: '10px 0',
               color: activeTab === 'quotationList' ? 'var(--secondary)' : 'var(--text-muted)',
-              fontSize: '1rem', fontWeight: '600', cursor: 'pointer', position: 'relative', transition: 'all 0.3s'
+              fontSize: '1rem', fontWeight: '600', cursor: 'pointer', position: 'relative', transition: 'all 0.3s', whiteSpace: 'nowrap'
             }}
           >
             {t('quotationList') || 'Quotation List'}
@@ -1380,7 +1385,7 @@ const Marketing = () => {
             style={{
               background: 'none', border: 'none', padding: '10px 0',
               color: activeTab === 'prospects' ? 'var(--secondary)' : 'var(--text-muted)',
-              fontSize: '1rem', fontWeight: '600', cursor: 'pointer', position: 'relative', transition: 'all 0.3s'
+              fontSize: '1rem', fontWeight: '600', cursor: 'pointer', position: 'relative', transition: 'all 0.3s', whiteSpace: 'nowrap'
             }}
           >
             {t('prospectCustomers')}
