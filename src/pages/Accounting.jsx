@@ -6,6 +6,7 @@ import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, D
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 import CascadeConfirmModal from '../components/CascadeConfirmModal';
+import { apiRequest } from '../api/api';
 
 const defaultSubcategories = {
   'Gaji': [
@@ -2057,13 +2058,23 @@ const Accounting = () => {
         }
       });
 
+      let suggestedInvoiceId = '';
+      try {
+        const nextRes = await apiRequest('invoices/next-number');
+        if (nextRes && nextRes.nextInvoiceId) {
+          suggestedInvoiceId = nextRes.nextInvoiceId;
+        }
+      } catch (err) {
+        console.error('Failed to fetch next invoice ID:', err);
+      }
+
       setInvoiceConfirmData({
         joId,
         bankAccount,
         consolidatedJOIds: targetJOs.map(j => j.id),
         linkedJOs: targetJOs,
         form: {
-          id: '',
+          id: suggestedInvoiceId,
           customerName: linkedJO.customerName || '',
           customerAddress: linkedQuo?.companyAddress || linkedJO?.address || customers.find(c => c.name === (linkedJO?.customerName || ''))?.address || '',
           customerPic: linkedQuo?.pic || '',
