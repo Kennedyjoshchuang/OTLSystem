@@ -1012,7 +1012,7 @@ app.put('/api/invoices/*id', async (req, res) => {
   if (updates.paidDate !== undefined) recUpdates.paidDate = updates.paidDate;
 
   if (Object.keys(recUpdates).length > 0) {
-    const { error: recError } = await supabase.from('receivables').update(recUpdates).eq('id', id);
+    const { error: recError } = await supabase.from('receivables').update(recUpdates).eq('invoiceId', id);
     if (recError) {
       console.error(`[PUT /invoices/:id] Failed to sync receivables for ${id}:`, recError.message);
     }
