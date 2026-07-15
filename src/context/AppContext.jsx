@@ -533,6 +533,7 @@ export const AppProvider = ({ children }) => {
               description: item.description || 'Freight Forwarding Services',
               qty,
               rate,
+              joId: targetJo.id,
               containerNo: item.containerNo || [],
               vehicleNo: item.vehicleNo || [],
               driverName: item.driverName || []
@@ -568,6 +569,7 @@ export const AppProvider = ({ children }) => {
           description: targetJo.instruction || targetJo.jobDescription || 'Freight Forwarding Services',
           qty,
           rate,
+          joId: targetJo.id,
           containerNo: Array.isArray(targetJo.containerNo) ? targetJo.containerNo : (targetJo.containerNo ? [targetJo.containerNo] : []),
           vehicleNo: Array.isArray(targetJo.vehicleNo) ? targetJo.vehicleNo : (targetJo.vehicleNo ? [targetJo.vehicleNo] : []),
           driverName: Array.isArray(targetJo.driverName) ? targetJo.driverName : (targetJo.driverName ? [targetJo.driverName] : [])
