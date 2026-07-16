@@ -1360,7 +1360,7 @@ const Executor = () => {
                               <button 
                                 className="btn-icon" 
                                 style={{ width: '38px', height: '38px', color: '#030712', background: 'rgba(212, 175, 55, 0.75)', border: '1px solid rgba(212, 175, 55, 0.85)' }}
-                                onClick={(e) => { e.stopPropagation(); navigate(`/executor/surat-jalan/${jo.id}`); }}
+                                onClick={(e) => { e.stopPropagation(); navigate(`/surat-jalan/${jo.id}`); }}
                                 title={isID ? "Lihat Surat Jalan" : "View Delivery Order"}
                               >
                                 <FileText size={20} />
@@ -1368,7 +1368,7 @@ const Executor = () => {
                               <button 
                                 className="btn-icon" 
                                 style={{ width: '38px', height: '38px', color: '#ffffff', background: 'rgba(16, 185, 129, 0.75)', border: '1px solid rgba(16, 185, 129, 0.85)' }}
-                                onClick={(e) => { e.stopPropagation(); navigate(`/executor/surat-jalan/${jo.id}?print=true`); }}
+                                onClick={(e) => { e.stopPropagation(); navigate(`/surat-jalan/${jo.id}?print=true`); }}
                                 title={isID ? "Cetak Surat Jalan" : "Print Delivery Order"}
                               >
                                 <Printer size={20} />
