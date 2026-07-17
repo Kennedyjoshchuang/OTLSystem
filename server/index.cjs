@@ -527,7 +527,8 @@ app.post('/api/job-orders', async (req, res) => {
       phone, email, rate: parsedRate, quoteValidity, date,
       photos: [], costs: [],
       containerNo: [], vehicleNo: [], driverName: [],
-      items: joItems
+      items: joItems,
+      extra_charges: req.body.extra_charges || []
     });
     if (error) return handleError(res, error, 'POST job_orders');
     clearJobOrdersCache();
