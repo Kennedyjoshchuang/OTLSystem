@@ -6,6 +6,7 @@ import { exportToExcel } from '../utils/exportUtils';
 import { exportQuotationsFolder } from '../utils/quotationPdfUtils.jsx';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 import ExportProgressModal from '../components/ExportProgressModal';
+import ExportFilterModal from '../components/ExportFilterModal';
 import CascadeConfirmModal from '../components/CascadeConfirmModal';
 
 const DEFAULT_TERMS = [
@@ -29,29 +30,19 @@ const Marketing = () => {
   const [jobOrderSortBy, setJobOrderSortBy] = useState('created_desc');
   const [quotationSortBy, setQuotationSortBy] = useState('created_desc');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState({ isOpen: false, current: 0, total: 0, statusText: '' });
 
-  const handleExportAllPdfs = async () => {
-    const filteredQuotes = quotations
-      .filter(q => filterByDate(q.date))
-      .filter(q => {
-        const name = q.customerName || '';
-        const id = q.id || '';
-        const pic = q.pic || '';
-        const term = fullQuoteSearchTerm.toLowerCase();
-        return name.toLowerCase().includes(term) ||
-               id.toLowerCase().includes(term) ||
-               pic.toLowerCase().includes(term);
-      });
-
+  const handleConfirmExport = async (targetList, filterType) => {
+    if (!targetList || targetList.length === 0) return;
     setIsExportingPdf(true);
-    setExportStatus({ isOpen: true, current: 0, total: filteredQuotes.length, statusText: language === 'id' ? 'Memulai ekspor...' : 'Starting export...' });
+    setExportStatus({ isOpen: true, current: 0, total: targetList.length, statusText: language === 'id' ? 'Memulai ekspor...' : 'Starting export...' });
 
     try {
-      await exportQuotationsFolder(filteredQuotes, {
+      await exportQuotationsFolder(targetList, {
         companyName: "PT. OMEGA TRUST LOGISTIK",
         companyAddress: "Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau",
-        systemName: "OTL"
+        systemName: filterType === 'pending' ? "OTL_Pending" : (filterType === 'approved' ? "OTL_Approved" : "OTL")
       }, (current, total, statusText) => {
         setExportStatus({ isOpen: true, current, total, statusText });
       });
@@ -712,6 +703,24 @@ const Marketing = () => {
         current={exportStatus.current}
         total={exportStatus.total}
         statusText={exportStatus.statusText}
+        isID={language === 'id'}
+      />
+
+      <ExportFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onConfirm={handleConfirmExport}
+        quotations={quotations
+          .filter(q => filterByDate(q.date))
+          .filter(q => {
+            const name = q.customerName || '';
+            const id = q.id || '';
+            const pic = q.pic || '';
+            const term = fullQuoteSearchTerm.toLowerCase();
+            return name.toLowerCase().includes(term) ||
+                   id.toLowerCase().includes(term) ||
+                   pic.toLowerCase().includes(term);
+          })}
         isID={language === 'id'}
       />
 
@@ -1741,7 +1750,7 @@ const Marketing = () => {
                 <ButtonWithLoading
                   className="btn btn-gold"
                   disabled={isExportingPdf || quotations.length === 0}
-                  onClick={handleExportAllPdfs}
+                  onClick={() => setIsFilterModalOpen(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.85rem' }}
                   title={language === 'id' ? "Unduh semua penawaran sebagai folder ZIP" : "Download all quotations as a ZIP folder"}
                 >

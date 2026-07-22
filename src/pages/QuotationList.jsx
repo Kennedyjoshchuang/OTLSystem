@@ -14,6 +14,7 @@ import {
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 import { exportQuotationsFolder } from '../utils/quotationPdfUtils.jsx';
 import ExportProgressModal from '../components/ExportProgressModal';
+import ExportFilterModal from '../components/ExportFilterModal';
 
 const QuotationList = () => {
   const { 
@@ -33,16 +34,18 @@ const QuotationList = () => {
   const [selectedDraft, setSelectedDraft] = useState(null);
   const [sortBy, setSortBy] = useState('created_desc');
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [exportStatus, setExportStatus] = useState({ isOpen: false, current: 0, total: 0, statusText: '' });
 
-  const handleExportAllPdfs = async () => {
+  const handleConfirmExport = async (targetList, filterType) => {
+    if (!targetList || targetList.length === 0) return;
     setIsExportingPdf(true);
-    setExportStatus({ isOpen: true, current: 0, total: filteredQuotations.length, statusText: isID ? 'Memulai ekspor...' : 'Starting export...' });
+    setExportStatus({ isOpen: true, current: 0, total: targetList.length, statusText: isID ? 'Memulai ekspor...' : 'Starting export...' });
     try {
-      await exportQuotationsFolder(filteredQuotations, {
+      await exportQuotationsFolder(targetList, {
         companyName: "PT. OMEGA TRUST LOGISTIK",
         companyAddress: "Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau",
-        systemName: "OTL"
+        systemName: filterType === 'pending' ? "OTL_Pending" : (filterType === 'approved' ? "OTL_Approved" : "OTL")
       }, (current, total, statusText) => {
         setExportStatus({ isOpen: true, current, total, statusText });
       });
@@ -121,6 +124,14 @@ const QuotationList = () => {
         current={exportStatus.current}
         total={exportStatus.total}
         statusText={exportStatus.statusText}
+        isID={isID}
+      />
+
+      <ExportFilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onConfirm={handleConfirmExport}
+        quotations={filteredQuotations}
         isID={isID}
       />
       
@@ -341,7 +352,7 @@ const QuotationList = () => {
             <ButtonWithLoading
               className="btn btn-gold"
               disabled={isExportingPdf || filteredQuotations.length === 0}
-              onClick={handleExportAllPdfs}
+              onClick={() => setIsFilterModalOpen(true)}
               style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.85rem' }}
               title={isID ? "Unduh semua penawaran sebagai folder ZIP" : "Download all quotations as a ZIP folder"}
             >
