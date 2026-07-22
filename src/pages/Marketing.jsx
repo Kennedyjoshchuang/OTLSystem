@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Download, CheckCircle, XCircle, FileText, UserPlus, Search, Trash2, FileSpreadsheet, Edit } from 'lucide-react';
+import { Plus, Download, FolderDown, CheckCircle, XCircle, FileText, UserPlus, Search, Trash2, FileSpreadsheet, Edit } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { exportToExcel } from '../utils/exportUtils';
+import { exportQuotationsFolder } from '../utils/quotationPdfUtils.jsx';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
+import ExportProgressModal from '../components/ExportProgressModal';
 import CascadeConfirmModal from '../components/CascadeConfirmModal';
 
 const DEFAULT_TERMS = [
@@ -26,6 +28,38 @@ const Marketing = () => {
   const [fullQuoteSearchTerm, setFullQuoteSearchTerm] = useState('');
   const [jobOrderSortBy, setJobOrderSortBy] = useState('created_desc');
   const [quotationSortBy, setQuotationSortBy] = useState('created_desc');
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportStatus, setExportStatus] = useState({ isOpen: false, current: 0, total: 0, statusText: '' });
+
+  const handleExportAllPdfs = async () => {
+    const filteredQuotes = quotations
+      .filter(q => filterByDate(q.date))
+      .filter(q => {
+        const name = q.customerName || '';
+        const id = q.id || '';
+        const pic = q.pic || '';
+        const term = fullQuoteSearchTerm.toLowerCase();
+        return name.toLowerCase().includes(term) ||
+               id.toLowerCase().includes(term) ||
+               pic.toLowerCase().includes(term);
+      });
+
+    setIsExportingPdf(true);
+    setExportStatus({ isOpen: true, current: 0, total: filteredQuotes.length, statusText: language === 'id' ? 'Memulai ekspor...' : 'Starting export...' });
+
+    try {
+      await exportQuotationsFolder(filteredQuotes, {
+        companyName: "PT. OMEGA TRUST LOGISTIK",
+        companyAddress: "Jl. Duyung Kavling III, Batu Ampar, Batam, Kepulauan Riau",
+        systemName: "OTL"
+      }, (current, total, statusText) => {
+        setExportStatus({ isOpen: true, current, total, statusText });
+      });
+    } finally {
+      setIsExportingPdf(false);
+      setExportStatus({ isOpen: false, current: 0, total: 0, statusText: '' });
+    }
+  };
 
   const getQuotationTime = (q) => {
     if (!q.date) return 0;
@@ -673,6 +707,13 @@ const Marketing = () => {
 
   return (
     <div className="marketing-container" style={{ display: 'flex', flexDirection: 'column', gap: '25px', minWidth: 0, width: '100%' }}>
+      <ExportProgressModal
+        isOpen={exportStatus.isOpen}
+        current={exportStatus.current}
+        total={exportStatus.total}
+        statusText={exportStatus.statusText}
+        isID={language === 'id'}
+      />
 
 
 
@@ -1697,6 +1738,16 @@ const Marketing = () => {
                   </option>
                 </select>
 
+                <ButtonWithLoading
+                  className="btn btn-gold"
+                  disabled={isExportingPdf || quotations.length === 0}
+                  onClick={handleExportAllPdfs}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', fontSize: '0.85rem' }}
+                  title={language === 'id' ? "Unduh semua penawaran sebagai folder ZIP" : "Download all quotations as a ZIP folder"}
+                >
+                  <FolderDown size={16} />
+                  {isExportingPdf ? (language === 'id' ? 'Memproses...' : 'Processing...') : (language === 'id' ? 'Unduh Semua PDF (ZIP)' : 'Download All PDFs (ZIP)')}
+                </ButtonWithLoading>
                 <div style={{ position: 'relative', width: '300px' }}>
                   <input
                     type="text"
