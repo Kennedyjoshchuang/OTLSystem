@@ -499,10 +499,42 @@ app.get('/api/job-orders', async (req, res) => {
   res.json(data);
 });
 
+async function getNextJoId(supabase, date) {
+  const [yearStr, monthStr] = date.split('-');
+  const year = parseInt(yearStr, 10);
+  const month = monthStr;
+
+  const { data, error } = await supabase
+    .from('job_orders')
+    .select('id')
+    .like('id', `${year}.%`);
+
+  if (error) {
+    console.error('Error fetching job orders for sequence:', error);
+    return `${year}.${month}.0001`;
+  }
+
+  let maxSeq = 0;
+  if (data && data.length > 0) {
+    for (const jo of data) {
+      const parts = jo.id.split('.');
+      if (parts.length === 3 && parts[0] === String(year)) {
+        const seq = parseInt(parts[2], 10);
+        if (!isNaN(seq) && seq > maxSeq) {
+          maxSeq = seq;
+        }
+      }
+    }
+  }
+
+  const nextSeq = maxSeq + 1;
+  const seqStr = String(nextSeq).padStart(4, '0');
+  return `${year}.${month}.${seqStr}`;
+}
+
 app.post('/api/job-orders', async (req, res) => {
   try {
     const { quotationId, customerName, jobDescription, phone, email, rate, quantity, quoteValidity, items } = req.body;
-    const id = 'JO-' + Date.now() + String(Math.floor(Math.random() * 1000)).padStart(3, '0');
     const date = new Date().toISOString().split('T')[0];
 
     let joItems = items || [];
@@ -521,16 +553,39 @@ app.post('/api/job-orders', async (req, res) => {
     const parsedQty = quantity !== undefined && quantity !== null ? parseInt(quantity) : joItems.reduce((acc, i) => acc + (i.quantity || 0), 0);
     const instructionStr = jobDescription || joItems.map(i => i.description).join(', ');
 
-    const { error } = await supabase.from('job_orders').insert({
-      id, quotationId, customerName, instruction: instructionStr,
-      status: 'pending', quantity: parsedQty, issueQuantity: 0,
-      phone, email, rate: parsedRate, quoteValidity, date,
-      photos: [], costs: [],
-      containerNo: [], vehicleNo: [], driverName: [],
-      items: joItems,
-      extra_charges: req.body.extra_charges || []
-    });
-    if (error) return handleError(res, error, 'POST job_orders');
+    let id;
+    let attempts = 0;
+    let success = false;
+    let insertError = null;
+
+    while (attempts < 5 && !success) {
+      id = await getNextJoId(supabase, date);
+      const { error } = await supabase.from('job_orders').insert({
+        id, quotationId, customerName, instruction: instructionStr,
+        status: 'pending', quantity: parsedQty, issueQuantity: 0,
+        phone, email, rate: parsedRate, quoteValidity, date,
+        photos: [], costs: [],
+        containerNo: [], vehicleNo: [], driverName: [],
+        items: joItems,
+        extra_charges: req.body.extra_charges || []
+      });
+
+      if (error) {
+        if (error.code === '23505') {
+          attempts++;
+          await new Promise(resolve => setTimeout(resolve, Math.random() * 50));
+          continue;
+        }
+        insertError = error;
+        break;
+      }
+      success = true;
+    }
+
+    if (!success) {
+      return handleError(res, insertError || new Error('Failed to generate unique JO ID'), 'POST job_orders');
+    }
+
     clearJobOrdersCache();
     res.status(201).json({ id });
   } catch (err) {

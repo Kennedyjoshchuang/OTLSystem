@@ -6,6 +6,7 @@ import { CreditCard, Download, Receipt, Wallet, CheckCircle, Plus, X, XCircle, D
 import { exportToExcel } from '../utils/exportUtils';
 import { ButtonWithLoading } from '../components/ButtonWithLoading';
 import CascadeConfirmModal from '../components/CascadeConfirmModal';
+import ExtraDocsUploader from '../components/ExtraDocsUploader';
 import { apiRequest } from '../api/api';
 
 const defaultSubcategories = {
@@ -575,6 +576,14 @@ const Accounting = () => {
     if (match) {
       const num = parseInt(match[1]);
       if (!isNaN(num)) return num;
+    }
+    const parts = jo.id.split('.');
+    if (parts.length === 3) {
+      const seq = parseInt(parts[2], 10);
+      if (!isNaN(seq)) {
+        const time = jo.date ? new Date(jo.date).getTime() : 0;
+        return time + seq;
+      }
     }
     if (jo.date) {
       const time = new Date(jo.date).getTime();
@@ -7440,6 +7449,13 @@ const Accounting = () => {
                       <p style={{ textAlign:'center', color:'var(--text-muted)', fontSize:'0.8rem', padding:'10px', background:'rgba(255,255,255,0.02)', borderRadius:'8px' }}>Tidak ada biaya tambahan</p>
                     )}
                   </div>
+                </div>
+
+                <div>
+                  <ExtraDocsUploader
+                    extraDocuments={editingInvoice.extraDocuments || editingInvoice.extra_documents || []}
+                    onChange={docs => setEditingInvoice({ ...editingInvoice, extraDocuments: docs, extra_documents: docs })}
+                  />
                 </div>
 
                 {linkedJOs.length > 0 && (

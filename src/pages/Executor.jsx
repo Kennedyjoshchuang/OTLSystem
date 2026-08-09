@@ -71,6 +71,14 @@ const Executor = () => {
       const num = parseInt(match[1]);
       if (!isNaN(num)) return num;
     }
+    const parts = jo.id.split('.');
+    if (parts.length === 3) {
+      const seq = parseInt(parts[2], 10);
+      if (!isNaN(seq)) {
+        const time = jo.date ? new Date(jo.date).getTime() : 0;
+        return time + seq;
+      }
+    }
     if (jo.date) {
       const time = new Date(jo.date).getTime();
       if (!isNaN(time)) return time;
